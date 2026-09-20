@@ -44,8 +44,8 @@ func _run() -> void:
 			simulated += DT
 			if game.player.hp < last_hp - 0.5:
 				var boss = _boss_enemy()
-				var boss_note := "none" if boss == null else "%s p=%d phase=%d d=%.0f" % [boss.state, boss.pattern, boss.phase, boss.position.distance_to(game.player.position)]
-				var hostile_projectiles := 0
+				var boss_note: String = "none" if boss == null else "%s p=%d phase=%d d=%.0f" % [boss.state, boss.pattern, boss.phase, boss.position.distance_to(game.player.position)]
+				var hostile_projectiles: int = 0
 				for projectile in game.projectiles:
 					if is_instance_valid(projectile) and not projectile.dead and not projectile.friendly:
 						hostile_projectiles += 1
@@ -59,7 +59,7 @@ func _run() -> void:
 			_advance_route_if_ready()
 			if simulated >= next_report:
 				var boss = _boss_enemy()
-				var boss_status := "" if boss == null else " boss_hp=%d/%d boss_state=%s pattern=%d phase=%d" % [ceili(boss.hp), ceili(boss.max_hp), boss.state, boss.pattern, boss.phase]
+				var boss_status: String = "" if boss == null else " boss_hp=%d/%d boss_state=%s pattern=%d phase=%d" % [ceili(boss.hp), ceili(boss.max_hp), boss.state, boss.pattern, boss.phase]
 				print("CAMPAIGN STATUS t=", snapped(simulated, 0.1), " room=", game.dungeon.room_at(game.player.position), " active=", game.dungeon.active, " enemies=", game.enemies.size(), " kills=", game.kills, " hp=", snapped(game.player.hp, 0.1), boss_status)
 				next_report += 120.0
 			if simulated >= MAX_SIM_SECONDS:
@@ -123,17 +123,17 @@ func _drive_player() -> void:
 		if distance > 0.001:
 			player.facing = to_enemy / distance
 		if target.kind == "boss":
-			var boss_move := _boss_move(target, to_enemy, distance)
+			var boss_move: Vector2 = _boss_move(target, to_enemy, distance)
 			if boss_move.length() > 0.05:
 				player.test_move = boss_move
 				return
-		var evade := _danger_move(target)
+		var evade: Vector2 = _danger_move(target)
 		if evade.length() > 0.05:
 			player.test_move = evade
 		else:
 			var healing = _nearest_health_drop()
-			var heal_threshold := 0.62 if game.dungeon.active == 9 else 0.42
-			var heal_reach := 620.0 if game.dungeon.active == 9 else 420.0
+			var heal_threshold: float = 0.62 if game.dungeon.active == 9 else 0.42
+			var heal_reach: float = 620.0 if game.dungeon.active == 9 else 420.0
 			if player.hp < player.stats.hp * heal_threshold and healing != null and player.position.distance_to(healing.position) < heal_reach:
 				player.test_move = _navigate_toward(healing.position)
 				return
@@ -152,7 +152,7 @@ func _drive_player() -> void:
 			var orbit: Vector2 = to_enemy.orthogonal().normalized()
 			if orbit.dot(player.last_move) < 0.0:
 				orbit = -orbit
-			var away_weight := 0.52 if distance < 82.0 else (0.28 if target.kind == "boss" else 0.18)
+			var away_weight: float = 0.52 if distance < 82.0 else (0.28 if target.kind == "boss" else 0.18)
 			player.test_move = (orbit - to_enemy.normalized() * away_weight).normalized()
 		if distance <= 112.0 and target.state != "spawn":
 			if player.attack():
@@ -213,7 +213,7 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 	var rel: Vector2 = player.position - boss.position
 	if charge_side.dot(rel) < 0.0:
 		charge_side = -charge_side
-	var hostile_count := _hostile_projectile_count()
+	var hostile_count: int = _hostile_projectile_count()
 
 	# A radial volley lives for several seconds after release. Do not cut back
 	# through it just because the boss has already entered the next animation.
@@ -267,7 +267,7 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 	return side
 
 func _hostile_projectile_count() -> int:
-	var count := 0
+	var count: int = 0
 	for projectile in game.projectiles:
 		if is_instance_valid(projectile) and not projectile.dead and not projectile.friendly:
 			count += 1
@@ -312,24 +312,24 @@ func _nearest_live_enemy():
 func _incoming_projectile_dodge() -> Vector2:
 	var player = game.player
 	var boss = _boss_enemy()
-	var tangent := Vector2.ZERO
+	var tangent: Vector2 = Vector2.ZERO
 	if boss != null:
 		var radial: Vector2 = player.position - boss.position
 		if radial.length() > 0.01:
 			tangent = radial.orthogonal().normalized()
 			if tangent.dot(player.last_move) < 0.0:
 				tangent = -tangent
-	var threat := false
+	var threat: bool = false
 	for projectile in game.projectiles:
 		if not is_instance_valid(projectile) or projectile.dead or projectile.friendly:
 			continue
 		var velocity: Vector2 = projectile.velocity
-		var speed_sq := velocity.length_squared()
+		var speed_sq: float = velocity.length_squared()
 		if speed_sq < 1.0:
 			continue
 		var rel: Vector2 = projectile.position - player.position
-		var t := clampf(-rel.dot(velocity) / speed_sq, 0.0, 1.25)
-		var miss := (rel + velocity * t).length()
+		var t: float = clampf(-rel.dot(velocity) / speed_sq, 0.0, 1.25)
+		var miss: float = (rel + velocity * t).length()
 		if t > 0.0 and miss < 62.0:
 			threat = true
 			if tangent == Vector2.ZERO:
@@ -340,13 +340,13 @@ func _incoming_projectile_dodge() -> Vector2:
 
 func _danger_move(primary) -> Vector2:
 	var player = game.player
-	var threat_dir := Vector2.ZERO
-	var threat_weight := 0.0
+	var threat_dir: Vector2 = Vector2.ZERO
+	var threat_weight: float = 0.0
 	for hazard in game.hazards:
 		if hazard.delay > 0.7:
 			continue
 		var delta: Vector2 = player.position - hazard.p
-		var limit := float(hazard.radius) + 115.0
+		var limit: float = float(hazard.radius) + 115.0
 		if delta.length() < limit:
 			threat_dir += delta.normalized() * (limit - delta.length() + 40.0)
 			threat_weight += 1.0
@@ -364,7 +364,7 @@ func _danger_move(primary) -> Vector2:
 		if not is_instance_valid(enemy) or enemy.dead or enemy.state == "spawn":
 			continue
 		var delta: Vector2 = player.position - enemy.position
-		var distance := delta.length()
+		var distance: float = delta.length()
 		if enemy.state == "charge" and distance < 270.0:
 			var side: Vector2 = enemy.aim.orthogonal().normalized()
 			if side.dot(delta) < 0.0:
@@ -379,12 +379,12 @@ func _danger_move(primary) -> Vector2:
 	if threat_weight <= 0.0 or threat_dir.length() < 0.05:
 		return Vector2.ZERO
 	var desired: Vector2 = threat_dir.normalized()
-	var best := Vector2.ZERO
-	var best_progress := -1.0
+	var best: Vector2 = Vector2.ZERO
+	var best_progress: float = -1.0
 	for angle in [0.0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05]:
 		var candidate: Vector2 = desired.rotated(float(angle))
 		var next: Vector2 = game.dungeon.move_body(player.position, candidate * 72.0, 18.0)
-		var progress := next.distance_to(player.position)
+		var progress: float = next.distance_to(player.position)
 		if progress > best_progress:
 			best_progress = progress
 			best = candidate
@@ -416,7 +416,7 @@ func _windup_dodge(enemy, delta: Vector2, distance: float) -> Vector2:
 				3:
 					return side
 		_:
-			var reach := float(enemy.spec.get("reach", 80.0)) + 55.0
+			var reach: float = float(enemy.spec.get("reach", 80.0)) + 55.0
 			if distance < reach and absf(enemy.aim.angle_to(delta)) < 1.35:
 				return (side + delta.normalized() * 0.25).normalized()
 	return Vector2.ZERO
