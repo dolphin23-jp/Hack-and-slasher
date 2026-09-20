@@ -165,8 +165,8 @@ func _frames(count: int = 2) -> void:
 		await process_frame
 
 func _click(base_position: Vector2) -> void:
-	var viewport_size := game.ui.get_viewport_rect().size
-	var screen_position := base_position / BASE * viewport_size
+	var viewport_size: Vector2 = game.ui.get_viewport_rect().size
+	var screen_position: Vector2 = base_position / BASE * viewport_size
 	var motion := InputEventMouseMotion.new()
 	motion.position = screen_position
 	motion.global_position = screen_position
@@ -189,8 +189,8 @@ func _click(base_position: Vector2) -> void:
 
 
 func _touch(base_position: Vector2) -> void:
-	var viewport_size := game.ui.get_viewport_rect().size
-	var screen_position := base_position / BASE * viewport_size
+	var viewport_size: Vector2 = game.ui.get_viewport_rect().size
+	var screen_position: Vector2 = base_position / BASE * viewport_size
 	var down := InputEventScreenTouch.new()
 	down.index = 0
 	down.pressed = true
