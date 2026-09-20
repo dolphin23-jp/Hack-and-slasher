@@ -15,6 +15,17 @@ func _run() -> void:
 	root.add_child(game)
 	await _frames(5)
 
+	# Every UI run starts from a deterministic profile. Previous test processes
+	# share user:// on the runner and may otherwise leave CONTINUE or touch mode on.
+	game.profile.run = {}
+	game.profile.settings = {"music": .65, "sfx": .8, "shake": .7, "auto_aim": false, "touch": false}
+	game.sound.settings = game.profile.settings
+	game.sound.update_volume()
+	game.profile.write_save()
+	game.mode = "title"
+	game.ui.queue_redraw()
+	await _frames(3)
+
 	_expect("starts on title", game.mode == "title")
 	await _shot("01_title")
 
