@@ -47,9 +47,17 @@ await page.keyboard.up("KeyD");
 await page.waitForTimeout(500);
 await page.screenshot({ path: `${outDir}/03_web_movement.png`, fullPage: true });
 
-const runtime = await page.evaluate(() => {
+const runtime = await page.evaluate(async () => {
   const canvas = document.querySelector("canvas");
   const rect = canvas.getBoundingClientRect();
+  const manifest = document.querySelector('link[rel="manifest"]')?.href || "";
+  let serviceWorker = false;
+  if ("serviceWorker" in navigator) {
+    serviceWorker = await Promise.race([
+      navigator.serviceWorker.ready.then(() => true),
+      new Promise((resolve) => setTimeout(() => resolve(false), 10_000)),
+    ]);
+  }
   return {
     title: document.title,
     canvasWidth: canvas.width,
@@ -57,8 +65,14 @@ const runtime = await page.evaluate(() => {
     cssWidth: Math.round(rect.width),
     cssHeight: Math.round(rect.height),
     visibility: document.visibilityState,
+    manifest,
+    serviceWorker,
   };
 });
+
+if (!runtime.manifest || !runtime.serviceWorker) {
+  throw new Error(`PWA registration incomplete: ${JSON.stringify(runtime)}`);
+}
 
 const ignoredConsolePatterns = [
   /AudioContext/i,
