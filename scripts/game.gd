@@ -352,7 +352,7 @@ func inventory_before(a:Dictionary,b:Dictionary)->bool:
  return String(a.name).naturalnocasecmp_to(String(b.name))<0
 func sort_inventory()->void:
  if not is_instance_valid(player) or player.inventory.size()<2:return
- player.inventory.sort_custom(Callable(self,"inventory_before"));sound.play("ui",.5);toast("Pack sorted by rarity, tier, and slot.");save_run()
+ player.inventory.sort_custom(Callable(self,"inventory_before"));sound.play("ui",.5);save_run()
 func salvage(i:int)->void:
  if i<0 or i>=player.inventory.size():return
  var rarity=int(player.inventory[i].rarity);player.inventory.remove_at(i);player.heal(player.stats.hp*(.025+rarity*.0125));sound.play("equip",.6)
