@@ -40,13 +40,13 @@ jobs:
       - name: Run 43-check gameplay regression
         run: |
           set -o pipefail
-          timeout 90s /tmp/godot/godot --headless --audio-driver Dummy --path . -- --test --qa \
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --qa \
             2>&1 | tee test-artifacts/qa.log
 
       - name: Run ten-room basic-combat campaign
         run: |
           set -o pipefail
-          timeout 180s /tmp/godot/godot --headless --audio-driver Dummy --path . -- --test --campaign \
+          timeout 180s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --campaign \
             2>&1 | tee test-artifacts/campaign.log
 
       - name: Render and click through UI
@@ -59,7 +59,7 @@ jobs:
       - name: Fail on resource leak warnings
         if: always()
         run: |
-          if grep -E "ObjectDB instances leaked|resources still in use at exit|RID allocations|WARNING:.*leak" test-artifacts/import.log test-artifacts/qa.log test-artifacts/campaign.log test-artifacts/visual.log; then
+          if grep -E "ObjectDB instances leaked|resources still in use at exit|RID allocations|WARNING:.*leak" test-artifacts/*.log; then
             echo "Resource leak warning detected."
             exit 1
           fi
