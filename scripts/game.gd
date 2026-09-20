@@ -222,8 +222,8 @@ func spawn_wave()->void:
   if i==0 and wave==room.waves and room.id in [3,4,6,8]:kind="elite"
   spawn_enemy(kind,dungeon.spawn_point(room.id,i),room.tier,room.id)
  if wave>1:toast("%s  /  WAVE %d OF %d"%[room.encounter,wave,room.waves])
-func spawn_enemy(kind:String,p:Vector2,tier:int,room:int):
- var e=EnemyScript.new();add_child(e);e.setup(self,kind,p,tier,room);enemies.append(e);return e
+func spawn_enemy(kind:String,p:Vector2,tier:int,room:int,affix:String=""):
+ var e=EnemyScript.new();add_child(e);e.setup(self,kind,p,tier,room,affix);enemies.append(e);return e
 func clear_encounter()->void:
  var id=dungeon.active
  if id<0:return

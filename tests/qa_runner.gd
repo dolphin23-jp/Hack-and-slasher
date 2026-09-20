@@ -49,6 +49,27 @@ func _run() -> void:
 	_expect("normal attack damages a nearby enemy", enemy.hp < enemy_hp)
 	_expect("damage metric records combat", game.metrics.damage_dealt > 0.0)
 
+	var frenzied = game.spawn_enemy("elite", game.player.position + Vector2(150, 40), 2, 3, "frenzied")
+	_expect("forced elite affix selects Frenzied", frenzied.affix == "frenzied" and frenzied.speed > float(frenzied.spec.speed))
+	frenzied.start_windup()
+	_expect("Frenzied elite shortens its attack windup", frenzied.windup < float(frenzied.spec.windup))
+
+	var bulwark = game.spawn_enemy("elite", game.player.position + Vector2(170, -40), 2, 4, "bulwark")
+	var normal_elite_hp: float = float(bulwark.spec.hp) * 1.25
+	_expect("Bulwark elite gains extra maximum life", bulwark.affix == "bulwark" and bulwark.max_hp > normal_elite_hp)
+
+	var volatile = game.spawn_enemy("elite", game.player.position + Vector2(190, 0), 2, 6, "volatile")
+	volatile.state = "approach"
+	var hazards_before: int = game.hazards.size()
+	volatile.take_damage(volatile.max_hp + 1.0, Vector2.ZERO)
+	_expect("Volatile elite leaves a telegraphed death blast", game.hazards.size() == hazards_before + 1)
+
+	for elite in [frenzied, bulwark]:
+		game.enemies.erase(elite)
+		if is_instance_valid(elite):
+			elite.queue_free()
+	game.hazards.clear()
+
 	game.player.attack_cd = 0.0
 	game.player.dash_cd = 0.0
 	game.player.dash_time = 0.0
@@ -147,8 +168,8 @@ func _run() -> void:
 	_expect("finishing the boss encounter enters victory mode", game.mode == "victory")
 	_expect("victory clears the resumable run and increments wins", game.profile.run.is_empty() and int(game.profile.records.wins) == wins_before + 1)
 
-	if checks != 43:
-		failures.append("expected 43 checks, executed %d" % checks)
+	if checks != 47:
+		failures.append("expected 47 checks, executed %d" % checks)
 		printerr("QA FAIL check count: ", checks)
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts"))
