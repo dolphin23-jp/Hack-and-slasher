@@ -210,10 +210,10 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 	var side: Vector2 = to_enemy.orthogonal().normalized()
 	if side.dot(player.last_move) < 0.0:
 		side = -side
-	var charge_side: Vector2 = boss.aim.orthogonal().normalized()
-	var rel: Vector2 = player.position - boss.position
-	if charge_side.dot(rel) < 0.0:
-		charge_side = -charge_side
+	var charge_side: Vector2 = _best_charge_dodge(boss)
+	var hazard_dodge: Vector2 = _boss_hazard_dodge()
+	if hazard_dodge.length() > 0.05:
+		return hazard_dodge
 	var hostile_count: int = _hostile_projectile_count()
 
 	# A radial volley lives for several seconds after release. Do not cut back
@@ -266,6 +266,48 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 	if distance > 280.0:
 		return to_enemy.normalized()
 	return side
+
+func _best_charge_dodge(boss) -> Vector2:
+	var player = game.player
+	var base: Vector2 = boss.aim.orthogonal().normalized()
+	if base.length() < 0.05:
+		base = Vector2.UP
+	var best: Vector2 = base
+	var best_progress: float = -1.0
+	for candidate in [base, -base, base.rotated(0.35), base.rotated(-0.35), (-base).rotated(0.35), (-base).rotated(-0.35)]:
+		var next: Vector2 = game.dungeon.move_body(player.position, candidate * 300.0, 18.0)
+		var progress: float = next.distance_to(player.position)
+		if progress > best_progress:
+			best_progress = progress
+			best = candidate
+	return best.normalized()
+
+func _boss_hazard_dodge() -> Vector2:
+	if game.hazards.is_empty():
+		return Vector2.ZERO
+	var player = game.player
+	var desired := Vector2.ZERO
+	var threatened := false
+	for hazard in game.hazards:
+		var delta: Vector2 = player.position - hazard.p
+		var limit: float = float(hazard.radius) + 175.0
+		if delta.length() < limit:
+			threatened = true
+			if delta.length() > 0.01:
+				desired += delta.normalized() * (limit - delta.length() + 60.0)
+	if not threatened or desired.length() < 0.05:
+		return Vector2.ZERO
+	var direct: Vector2 = desired.normalized()
+	var best: Vector2 = direct
+	var best_progress: float = -1.0
+	for angle in [0.0, 0.35, -0.35, 0.7, -0.7]:
+		var candidate: Vector2 = direct.rotated(float(angle))
+		var next: Vector2 = game.dungeon.move_body(player.position, candidate * 260.0, 18.0)
+		var progress: float = next.distance_to(player.position)
+		if progress > best_progress:
+			best_progress = progress
+			best = candidate
+	return best.normalized()
 
 func _hostile_projectile_count() -> int:
 	var count: int = 0
