@@ -116,16 +116,15 @@ func _drive_player() -> void:
 		if target.state == "windup":
 			primary_evade = _windup_dodge(target, player.position - target.position, distance)
 		var evade: Vector2 = primary_evade if primary_evade.length() > 0.05 else _danger_move(target)
+		var health_drop = null
+		if player.hp < player.stats.hp * 0.72:
+			health_drop = _nearest_health_drop(620.0)
 		if evade.length() > 0.05:
 			if game.enemies.size() == 1 and target.state == "recover" and distance > 118.0:
 				evade = (evade * 1.15 + to_enemy.normalized() * 0.85).normalized()
 			player.test_move = _safe_direction(evade)
-		elif player.hp < player.stats.hp * 0.72:
-			var health_drop = _nearest_health_drop(620.0)
-			if health_drop != null:
-				player.test_move = _navigate_toward(health_drop.position)
-			else:
-				player.test_move = _combat_approach(target, to_enemy, distance)
+		elif health_drop != null:
+			player.test_move = _navigate_toward(health_drop.position)
 		elif not game.dungeon.line_clear(player.position, target.position):
 			var room_center: Vector2 = game.dungeon.rooms[target.room_id].center
 			if player.position.distance_to(room_center) > 90.0 and game.dungeon.line_clear(player.position, room_center):
