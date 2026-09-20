@@ -1,0 +1,6 @@
+.godot/
+build/
+test-artifacts/
+*.log
+__pycache__/
+.DS_Store
