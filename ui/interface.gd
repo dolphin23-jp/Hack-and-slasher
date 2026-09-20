@@ -372,12 +372,27 @@ func draw_pause()->void:
  dim();icon("crest",Rect2(680,147,80,80));text("A MOMENT OF STILLNESS",Vector2(720,280),32,TEXT,true,true)
  button(Rect2(535,333,370,53),"RETURN TO THE CATHEDRAL","resume",true);button(Rect2(535,402,370,48),"SETTINGS","settings");button(Rect2(535,467,370,48),"HOW TO PLAY","help");button(Rect2(535,532,370,48),"SAVE & RETURN TO TITLE","title")
  wrapped_text("Equipment and blessings are kept. An unfinished encounter restarts from the last reclaimed sanctuary.",Vector2(492,642),460,15,MUTED,25)
+func draw_run_summary()->void:
+ var m=game.metrics
+ panel(Rect2(380,398,680,82),Color("101f2a"),LINE)
+ text("RUN SUMMARY",Vector2(720,418),11,GOLD,true)
+ var rows=[
+  ["DAMAGE",str(roundi(float(m.get("damage_dealt",0))))],
+  ["HITS",str(int(m.get("hits_taken",0)))],
+  ["LOOT",str(int(m.get("pickups",0)))],
+  ["SWAPS",str(int(m.get("equips",0)))],
+  ["OATHS",str(int(m.get("level_ups",0)))]]
+ for i in range(rows.size()):
+  var x=428+i*146
+  text(rows[i][0],Vector2(x,442),10,MUTED,true)
+  text(rows[i][1],Vector2(x,467),19,TEXT,true,true)
 func draw_end(won:bool)->void:
  dim();icon("crest" if won else "sword",Rect2(665,108,110,110));text("THE VOW IS FULFILLED" if won else "THE VOW IS UNBROKEN",Vector2(720,272),39,TEXT,true,true)
  text("The bells are silent. You are not." if won else "The cathedral keeps your name. Try another promise.",Vector2(720,320),17,MUTED,true)
  var seconds=int(game.elapsed);text("LEVEL %d / %d FOES SLAIN / %02d:%02d"%[game.player.level,game.kills,seconds/60,seconds%60],Vector2(720,384),18,GOLD,true)
+ draw_run_summary()
  if won:
-  wrapped_text("Four legendary relics have joined your pack. Inspect them, then descend again with your build. Salvage to 40 items before ascending.",Vector2(454,430),535,17,MUTED,28)
+  wrapped_text("Four legendary relics joined your pack. Inspect them or ascend with this build.",Vector2(454,505),535,14,MUTED,22)
   var next_asc=game.ascension+1
   var next_vow=game.ASCENSION_VOWS[(next_asc-1)%game.ASCENSION_VOWS.size()]
   button(Rect2(502,541,436,54),"INSPECT THE KING'S RELICS","inspect_victory",true)
@@ -385,7 +400,7 @@ func draw_end(won:bool)->void:
   text(next_vow.detail,Vector2(720,687),12,GOLD,true)
   button(Rect2(502,720,436,48),"RETURN TO TITLE","title")
  else:
-  wrapped_text("Dodge the bright wind-ups. Use Soul Nova to create space. A flask and a different weapon can change the next fight.",Vector2(454,433),535,17,MUTED,28)
+  wrapped_text("Read the wind-ups, keep moving, and use your flask before the next opening closes.",Vector2(454,505),535,14,MUTED,22)
   button(Rect2(502,557,436,54),"BEGIN ANOTHER DESCENT","start",true)
   button(Rect2(502,689,436,48),"RETURN TO TITLE","title")
 func draw_settings()->void:
