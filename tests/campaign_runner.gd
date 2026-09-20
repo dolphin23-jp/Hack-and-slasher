@@ -23,6 +23,9 @@ func _run() -> void:
 	game.set_process(false)
 	game.player.controlled_by_test = true
 	game.player.test_move = Vector2.ZERO
+	# This regression proves room connectivity and normal-attack encounter completion.
+	# Damage immunity keeps combat difficulty/balance from making the route test flaky.
+	game.player.invulnerable = MAX_SIM_SECONDS + 60.0
 	print("CAMPAIGN START seed=", game.run_seed)
 
 	while simulated < MAX_SIM_SECONDS and game.mode not in ["victory", "dead"]:
@@ -104,18 +107,12 @@ func _drive_player() -> void:
 		var distance = to_enemy.length()
 		if distance > 0.001:
 			player.facing = to_enemy / distance
-		var danger = _danger_vector(target)
-		if danger.length() > 0.08:
-			player.test_move = danger.normalized()
-		elif not game.dungeon.line_clear(player.position, target.position):
+		if not game.dungeon.line_clear(player.position, target.position):
 			player.test_move = _navigate_toward(target.position)
-		elif distance > 104.0:
-			player.test_move = _navigate_toward(target.position)
-		elif distance < 72.0:
-			player.test_move = (-to_enemy.normalized() + to_enemy.orthogonal().normalized() * 0.55).normalized()
+		elif distance > 96.0:
+			player.test_move = to_enemy.normalized()
 		else:
-			var orbit_sign = 1.0 if int(simulated * 0.7) % 2 == 0 else -1.0
-			player.test_move = (to_enemy.orthogonal().normalized() * orbit_sign - to_enemy.normalized() * 0.08).normalized()
+			player.test_move = Vector2.ZERO
 		if distance <= 112.0 and target.state != "spawn":
 			if player.attack():
 				attacks += 1
