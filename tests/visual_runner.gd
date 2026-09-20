@@ -174,6 +174,10 @@ func _run() -> void:
 	await _shot("13_victory_inventory")
 	await _click(Vector2(1305, 61))
 	_expect("victory inventory return click", game.mode == "victory")
+	await _click(Vector2(720, 637))
+	_expect("victory Ascend starts the next vow", game.mode == "play" and game.ascension == 1 and String(game.ascension_vow().id) == "ember_tide")
+	await _frames(4)
+	await _shot("13b_ascension_vow")
 
 	# iPad-class 4:3 window: keep click mapping and legibility under a different aspect ratio.
 	DisplayServer.window_set_size(Vector2i(1024, 768))
@@ -273,7 +277,7 @@ func _shot(label: String) -> void:
 	else:
 		shots += 1
 		print("SHOT ", label, " ", image.get_width(), "x", image.get_height())
-		if label in ["04_gameplay", "09b_touch_gameplay", "10b_elite_affix", "11_boss_hud", "14_ipad_4x3_touch"]:
+		if label in ["04_gameplay", "09b_touch_gameplay", "10b_elite_affix", "11_boss_hud", "13b_ascension_vow", "14_ipad_4x3_touch"]:
 			_expect("world visible in " + label, _world_visible(image))
 
 func _world_visible(image: Image) -> bool:
