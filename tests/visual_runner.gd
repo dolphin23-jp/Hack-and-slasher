@@ -165,6 +165,11 @@ func _run() -> void:
 	await _frames(3)
 	await _shot("11_boss_hud")
 
+	game.metrics.damage_dealt = 12345.0
+	game.metrics.hits_taken = 7
+	game.metrics.pickups = 12
+	game.metrics.equips = 4
+	game.metrics.level_ups = 3
 	game.mode = "victory"
 	game.dungeon.active = -1
 	await _frames(3)
