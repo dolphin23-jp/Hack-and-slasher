@@ -119,10 +119,12 @@ func _drive_player() -> void:
 			player.test_move = evade
 		else:
 			var healing = _nearest_health_drop()
-			if player.hp < player.stats.hp * 0.42 and healing != null and player.position.distance_to(healing.position) < 420.0:
+			var heal_threshold := 0.62 if game.dungeon.active == 9 else 0.42
+			var heal_reach := 620.0 if game.dungeon.active == 9 else 420.0
+			if player.hp < player.stats.hp * heal_threshold and healing != null and player.position.distance_to(healing.position) < heal_reach:
 				player.test_move = _navigate_toward(healing.position)
 				return
-			if simulated < retreat_until and target.kind in ["hound", "warden", "elite", "boss"]:
+			if simulated < retreat_until and target.kind in ["hound", "warden", "elite"]:
 				var away: Vector2 = -to_enemy.normalized()
 				var flank: Vector2 = to_enemy.orthogonal().normalized()
 				if flank.dot(player.last_move) < 0.0:
@@ -131,13 +133,13 @@ func _drive_player() -> void:
 				return
 		if not game.dungeon.line_clear(player.position, target.position):
 			player.test_move = _navigate_toward(target.position)
-		elif distance > 102.0:
+		elif distance > (108.0 if target.kind == "boss" else 102.0):
 			player.test_move = to_enemy.normalized()
 		else:
 			var orbit: Vector2 = to_enemy.orthogonal().normalized()
 			if orbit.dot(player.last_move) < 0.0:
 				orbit = -orbit
-			var away_weight := 0.42 if distance < 82.0 else 0.18
+			var away_weight := 0.52 if distance < 82.0 else (0.28 if target.kind == "boss" else 0.18)
 			player.test_move = (orbit - to_enemy.normalized() * away_weight).normalized()
 		if distance <= 112.0 and target.state != "spawn":
 			if player.attack():
@@ -146,7 +148,7 @@ func _drive_player() -> void:
 					"hound": retreat_until = simulated + 0.35
 					"warden": retreat_until = simulated + 0.75
 					"elite": retreat_until = simulated + 1.15
-					"boss": retreat_until = simulated + 0.85
+					"boss": retreat_until = simulated
 		return
 
 	if game.dungeon.active >= 0:
@@ -321,7 +323,7 @@ func _windup_dodge(enemy, delta: Vector2, distance: float) -> Vector2:
 				1:
 					return side
 				2:
-					return delta.normalized() if distance < 285.0 else side
+					return (side * 1.45 + delta.normalized() * 0.12).normalized()
 				3:
 					return side
 		_:
