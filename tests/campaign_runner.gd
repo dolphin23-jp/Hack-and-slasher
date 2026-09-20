@@ -46,7 +46,11 @@ func _run() -> void:
 
 			_advance_route_if_ready()
 			if simulated >= next_report:
-				print("CAMPAIGN STATUS t=", snapped(simulated, 0.1), " room=", game.dungeon.room_at(game.player.position), " active=", game.dungeon.active, " enemies=", game.enemies.size(), " kills=", game.kills, " hp=", snapped(game.player.hp, 0.1))
+				var debug_target = _nearest_live_enemy()
+				var target_info := "none"
+				if debug_target != null:
+					target_info = "%s/%s d=%.1f hp=%.1f" % [debug_target.kind, debug_target.state, debug_target.position.distance_to(game.player.position), debug_target.hp]
+				print("CAMPAIGN STATUS t=", snapped(simulated, 0.1), " room=", game.dungeon.room_at(game.player.position), " active=", game.dungeon.active, " enemies=", game.enemies.size(), " kills=", game.kills, " hp=", snapped(game.player.hp, 0.1), " target=", target_info)
 				next_report += 120.0
 			if simulated >= MAX_SIM_SECONDS:
 				break
@@ -113,7 +117,7 @@ func _drive_player() -> void:
 			primary_evade = _windup_dodge(target, player.position - target.position, distance)
 		var evade: Vector2 = primary_evade if primary_evade.length() > 0.05 else _danger_move(target)
 		if evade.length() > 0.05:
-			player.test_move = evade
+			player.test_move = _safe_direction(evade)
 		elif not game.dungeon.line_clear(player.position, target.position):
 			var room_center: Vector2 = game.dungeon.rooms[target.room_id].center
 			if player.position.distance_to(room_center) > 90.0 and game.dungeon.line_clear(player.position, room_center):
@@ -262,17 +266,21 @@ func _danger_move(primary) -> Vector2:
 				threat_weight += 1.0
 	if threat_weight <= 0.0 or threat_dir.length() < 0.05:
 		return Vector2.ZERO
-	var desired: Vector2 = threat_dir.normalized()
+	return _safe_direction(threat_dir.normalized())
+
+func _safe_direction(desired: Vector2) -> Vector2:
+	if desired.length() < 0.05:
+		return Vector2.ZERO
 	var best := Vector2.ZERO
 	var best_progress := -1.0
-	for angle in [0.0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05]:
-		var candidate: Vector2 = desired.rotated(float(angle))
-		var next: Vector2 = game.dungeon.move_body(player.position, candidate * 72.0, 18.0)
-		var progress := next.distance_to(player.position)
+	for angle in [0.0, 0.32, -0.32, 0.64, -0.64, 0.96, -0.96, 1.28, -1.28, 1.57, -1.57]:
+		var candidate: Vector2 = desired.rotated(float(angle)).normalized()
+		var next: Vector2 = game.dungeon.move_body(game.player.position, candidate * 72.0, 18.0)
+		var progress: float = next.distance_to(game.player.position)
 		if progress > best_progress:
 			best_progress = progress
 			best = candidate
-	return best.normalized() if best_progress >= 8.0 else Vector2.ZERO
+	return best if best_progress >= 8.0 else Vector2.ZERO
 
 func _windup_dodge(enemy, delta: Vector2, distance: float) -> Vector2:
 	var side: Vector2 = enemy.aim.orthogonal().normalized()
