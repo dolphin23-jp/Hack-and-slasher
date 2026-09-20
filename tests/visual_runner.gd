@@ -1,6 +1,7 @@
 extends SceneTree
 
 const BASE := Vector2(1440, 900)
+# Rendered click-through regression harness. Keep coordinates in BASE space.
 var game
 var failures: Array[String] = []
 var shots := 0
