@@ -109,6 +109,11 @@ func _drive_player() -> void:
 		var distance = to_enemy.length()
 		if distance > 0.001:
 			player.facing = to_enemy / distance
+		if target.kind == "boss":
+			var boss_move := _boss_move(target, to_enemy, distance)
+			if boss_move.length() > 0.05:
+				player.test_move = boss_move
+				return
 		var evade := _danger_move(target)
 		if evade.length() > 0.05:
 			player.test_move = evade
@@ -182,6 +187,41 @@ func _navigate_toward(target_position: Vector2) -> Vector2:
 			best_score = score
 			best = candidate
 	return best
+
+func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
+	var player = game.player
+	var away := -to_enemy.normalized()
+	var side := to_enemy.orthogonal().normalized()
+	if side.dot(player.last_move) < 0.0:
+		side = -side
+	if boss.state == "windup":
+		match boss.pattern % 4:
+			0:
+				return (side * 1.5 + away * 0.8).normalized()
+			1:
+				# Ground markers are centered on the player's position at windup start.
+				# Keep translating rather than circling back through them.
+				return (side * 0.8 + away * 0.9).normalized()
+			2:
+				# Give the radial volley room to spread before threading the gap.
+				return away if distance < 390.0 else side
+			3:
+				return side
+	if boss.state == "charge":
+		return side
+	# During recovery, close just long enough for basic attacks.
+	if boss.state == "recover":
+		if distance > 104.0:
+			return to_enemy.normalized()
+		if player.attack():
+			attacks += 1
+		return (side - to_enemy.normalized() * 0.18).normalized()
+	# Approach state: stay outside the boss's melee cone until it commits.
+	if distance < 250.0:
+		return (side * 0.8 + away * 0.55).normalized()
+	if distance > 340.0:
+		return to_enemy.normalized()
+	return side
 
 func _nearest_health_drop():
 	var nearest = null
