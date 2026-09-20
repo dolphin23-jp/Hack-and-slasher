@@ -534,16 +534,7 @@ func _windup_dodge(enemy, delta: Vector2, distance: float) -> Vector2:
 	return Vector2.ZERO
 
 func _build_score(loadout: Dictionary) -> float:
-	var stats: Dictionary = game.player.calculated(loadout)
-	var dps: float = float(stats.attack) * (1.0 + float(stats.haste))
-	dps *= 1.0 + float(stats.crit) * float(stats.crit_damage)
-	var score: float = dps + float(stats.hp) * 0.018 + float(stats.armor) * 0.10 + float(stats.speed) * 5.0
-	for slot in ItemDB.SLOTS:
-		match String(loadout[slot].effect):
-			"echo": score += dps * 0.28
-			"crit_blast": score += dps * 0.16
-			"chain": score += dps * 0.12
-	return score
+	return game.player.build_score(loadout)
 
 func _equip_best_collected_gear() -> void:
 	var player = game.player

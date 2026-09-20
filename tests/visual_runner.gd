@@ -73,6 +73,21 @@ func _run() -> void:
 	await _frames(4)
 	await _shot("04_gameplay")
 
+	# Nearby loot should communicate whether it is likely to improve the current build.
+	var preview_item: Dictionary = game.player.equipment.weapon.duplicate(true)
+	preview_item.id = "visual-upgrade"
+	preview_item.name = "Hallowed Trial Edge"
+	preview_item.rarity = 2
+	preview_item.tier = 4
+	preview_item.base = {"attack": 90.0}
+	preview_item.affixes = {}
+	var preview_drop = game.spawn_drop(game.player.position + Vector2(155, 35), preview_item)
+	await _frames(3)
+	_expect("nearby loot exposes a positive upgrade score", game.player.item_upgrade_ratio(preview_item) > 0.10)
+	await _shot("04b_loot_upgrade_hint")
+	preview_drop.take()
+	await _frames(2)
+
 	await _click(Vector2(1294, 88))
 	_expect("minimap opens large map", game.ui.big_map)
 	await _shot("05_map")
