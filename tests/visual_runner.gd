@@ -138,9 +138,9 @@ func _run() -> void:
 
 	# iPad-class 4:3 window: keep click mapping and legibility under a different aspect ratio.
 	DisplayServer.window_set_size(Vector2i(1024, 768))
-	root.size = Vector2i(1024, 768)
 	await _frames(8)
-	_expect("4:3 viewport resize takes effect", root.size == Vector2i(1024, 768))
+	_expect("4:3 window resize takes effect", DisplayServer.window_get_size() == Vector2i(1024, 768))
+	print("VISUAL 4:3 window=", DisplayServer.window_get_size(), " root=", root.size, " ui=", game.ui.get_viewport_rect().size)
 	game.mode = "play"
 	game.ui.big_map = false
 	game.player.position = game.dungeon.rooms[0].center
@@ -165,7 +165,7 @@ func _frames(count: int = 2) -> void:
 		await process_frame
 
 func _click(base_position: Vector2) -> void:
-	var viewport_size: Vector2 = game.ui.get_viewport_rect().size
+	var viewport_size: Vector2 = Vector2(root.size)
 	var screen_position: Vector2 = base_position / BASE * viewport_size
 	var motion := InputEventMouseMotion.new()
 	motion.position = screen_position
@@ -189,7 +189,7 @@ func _click(base_position: Vector2) -> void:
 
 
 func _touch(base_position: Vector2) -> void:
-	var viewport_size: Vector2 = game.ui.get_viewport_rect().size
+	var viewport_size: Vector2 = Vector2(root.size)
 	var screen_position: Vector2 = base_position / BASE * viewport_size
 	var down := InputEventScreenTouch.new()
 	down.index = 0
