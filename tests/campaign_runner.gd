@@ -125,6 +125,28 @@ func _drive_player() -> void:
 		var distance = to_enemy.length()
 		if distance > 0.001:
 			player.facing = to_enemy / distance
+		var boss = _boss_enemy()
+		if boss != null and int(boss.phase) == 2 and target.kind != "boss":
+			var danger: Vector2 = _danger_move(target)
+			if danger.length() > 0.05:
+				player.test_move = danger
+			else:
+				var healing = _nearest_health_drop()
+				if player.hp < player.stats.hp * 0.80 and healing != null and player.position.distance_to(healing.position) < 680.0:
+					player.test_move = _navigate_toward(healing.position)
+				elif player.position.distance_to(boss.position) < 420.0:
+					var room: Dictionary = game.dungeon.rooms[9]
+					player.test_move = _boss_safe_direction((player.position - boss.position).normalized(), room)
+				elif distance > 104.0:
+					player.test_move = _navigate_toward(target.position)
+				else:
+					var kite_side: Vector2 = to_enemy.orthogonal().normalized()
+					var boss_away: Vector2 = (player.position - boss.position).normalized()
+					player.test_move = (kite_side + boss_away * 0.45).normalized()
+			if distance <= 112.0 and target.state != "spawn":
+				if player.attack():
+					attacks += 1
+			return
 		if target.kind == "boss":
 			var boss_move: Vector2 = _boss_move(target, to_enemy, distance)
 			if boss_move.length() > 0.05:
