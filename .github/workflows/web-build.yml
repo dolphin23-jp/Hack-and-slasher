@@ -82,6 +82,26 @@ jobs:
           curl -fsS "http://127.0.0.1:8080/$(basename "$wasm")" -o /dev/null
           curl -fsS "http://127.0.0.1:8080/$(basename "$pck")" -o /dev/null
 
+      - name: Run browser runtime smoke
+        run: |
+          set -euxo pipefail
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+          python3 -m http.server 8080 --directory build/web >/tmp/ashen-vow-browser.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8080/index.html >/dev/null; then
+              break
+            fi
+            sleep 0.25
+          done
+
+          ASHEN_VOW_URL=http://127.0.0.1:8080/index.html \
+          ASHEN_VOW_BROWSER_ARTIFACTS=build/browser-smoke \
+            node tools/web_runtime_smoke.mjs
+
       - name: Upload Web build
         uses: actions/upload-artifact@v4
         with:
@@ -90,4 +110,5 @@ jobs:
             build/web/
             build/web-build-manifest.txt
             build/web-export.log
+            build/browser-smoke/
           if-no-files-found: error
