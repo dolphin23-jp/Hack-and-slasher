@@ -206,66 +206,110 @@ func _navigate_toward(target_position: Vector2) -> Vector2:
 
 func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 	var player = game.player
+	var room: Dictionary = game.dungeon.rooms[9]
+	var safe_rect: Rect2 = room.rect.grow(-145.0)
 	var away: Vector2 = -to_enemy.normalized()
 	var side: Vector2 = to_enemy.orthogonal().normalized()
 	if side.dot(player.last_move) < 0.0:
 		side = -side
-	var charge_side: Vector2 = boss.aim.orthogonal().normalized()
-	var rel: Vector2 = player.position - boss.position
-	if charge_side.dot(rel) < 0.0:
-		charge_side = -charge_side
 	var hostile_count: int = _hostile_projectile_count()
 
-	# A radial volley lives for several seconds after release. Do not cut back
-	# through it just because the boss has already entered the next animation.
+	# Never re-enter while delayed floor effects are still threatening us.
+	if not game.hazards.is_empty():
+		var hazard_dodge: Vector2 = _danger_move(boss)
+		if hazard_dodge.length() > 0.05:
+			return _boss_safe_direction(hazard_dodge, room)
+
+	# Radial volleys outlive the animation. Keep translating around the arena
+	# until every hostile projectile has cleared instead of cutting back inward.
 	if hostile_count > 0:
-		if boss.state == "charge":
-			return charge_side
+		var volley_move: Vector2 = side
 		if distance < 500.0:
-			return (side + away * 0.55).normalized()
-		return side
+			volley_move = (side + away * 0.55).normalized()
+		return _boss_safe_direction(volley_move, room)
 
 	if boss.state == "windup":
 		match boss.pattern % 4:
 			0:
-				# The cone reaches 220 px. Pure radial retreat guarantees we leave it.
-				return away if distance < 285.0 else side
+				return _boss_safe_direction(away if distance < 285.0 else side, room)
 			1:
-				# Ground markers snapshot our position when windup begins.
-				return (side + away * 0.8).normalized()
+				return _boss_safe_direction((side + away * 0.8).normalized(), room)
 			2:
-				# Create room before the 18-way radial volley is emitted.
-				return away if distance < 480.0 else side
+				return _boss_safe_direction(away if distance < 480.0 else side, room)
 			3:
-				# The charge keeps the aim captured at windup start.
-				return charge_side
+				return _boss_charge_dodge(boss, room)
 
 	if boss.state == "charge":
-		return charge_side
+		return _boss_charge_dodge(boss, room)
 
-	# Recovery is the only deliberate damage window. Stay in sword range and
-	# orbit while repeatedly using the normal attack.
+	# Recovery is the deliberate damage window. Stay in sword range, attack,
+	# and orbit without drifting toward the arena boundary.
 	if boss.state == "recover":
+		if not safe_rect.has_point(player.position):
+			return _boss_safe_direction((room.center - player.position).normalized(), room)
 		if distance > 118.0:
-			return to_enemy.normalized()
+			return _boss_safe_direction(to_enemy.normalized(), room)
 		if player.attack():
 			attacks += 1
+		var orbit: Vector2 = side
 		if distance < 76.0:
-			return (side + away * 0.4).normalized()
-		if distance > 106.0:
-			return (side + to_enemy.normalized() * 0.18).normalized()
-		return side
+			orbit = (side + away * 0.4).normalized()
+		elif distance > 106.0:
+			orbit = (side + to_enemy.normalized() * 0.18).normalized()
+		return _boss_safe_direction(orbit, room)
 
-	# Pattern 0 only commits inside 175 px. Enter its trigger range, then the
-	# windup branch above immediately evacuates. The other patterns trigger from
-	# much farther away and therefore need no special chase behavior.
+	# Between patterns, recover arena position first. Pattern 0 must be
+	# deliberately triggered inside 175 px; the other patterns can start afar.
+	if not safe_rect.has_point(player.position):
+		return _boss_safe_direction((room.center - player.position).normalized(), room)
 	if boss.pattern % 4 == 0:
 		if distance > 155.0:
-			return to_enemy.normalized()
-		return side
+			return _boss_safe_direction(to_enemy.normalized(), room)
+		return _boss_safe_direction(side, room)
 	if distance > 280.0:
-		return to_enemy.normalized()
-	return side
+		return _boss_safe_direction(to_enemy.normalized(), room)
+	return _boss_safe_direction(side, room)
+
+func _boss_charge_dodge(boss, room: Dictionary) -> Vector2:
+	var player = game.player
+	var aim: Vector2 = boss.aim.normalized()
+	var base_side: Vector2 = aim.orthogonal().normalized()
+	var safe_rect: Rect2 = room.rect.grow(-145.0)
+	var best: Vector2 = base_side
+	var best_score: float = -INF
+	for candidate in [base_side, -base_side, (base_side + (room.center-player.position).normalized()*0.45).normalized(), (-base_side + (room.center-player.position).normalized()*0.45).normalized()]:
+		var next: Vector2 = game.dungeon.move_body(player.position, candidate * 285.0, 18.0)
+		var progress: float = next.distance_to(player.position)
+		var rel: Vector2 = next - boss.position
+		var line_clearance: float = absf(rel.cross(aim))
+		var score: float = progress * 3.0 + minf(line_clearance, 360.0) * 1.8 - next.distance_to(room.center) * 0.18
+		if safe_rect.has_point(next):
+			score += 450.0
+		if score > best_score:
+			best_score = score
+			best = candidate
+	return best
+
+func _boss_safe_direction(desired: Vector2, room: Dictionary) -> Vector2:
+	var player = game.player
+	if desired.length() < 0.05:
+		return Vector2.ZERO
+	var safe_rect: Rect2 = room.rect.grow(-130.0)
+	var best: Vector2 = desired.normalized()
+	var best_score: float = -INF
+	for angle in [0.0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05]:
+		var candidate: Vector2 = desired.normalized().rotated(float(angle))
+		var next: Vector2 = game.dungeon.move_body(player.position, candidate * 150.0, 18.0)
+		var progress: float = next.distance_to(player.position)
+		if progress < 8.0:
+			continue
+		var score: float = progress * 2.0 - next.distance_to(room.center) * 0.08 - absf(float(angle)) * 8.0
+		if safe_rect.has_point(next):
+			score += 180.0
+		if score > best_score:
+			best_score = score
+			best = candidate
+	return best
 
 func _hostile_projectile_count() -> int:
 	var count: int = 0
