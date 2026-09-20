@@ -31,7 +31,22 @@ func _draw()->void:
   draw_line(Vector2.ZERO,Vector2(0,-102-rarity*17),Color(c,.3),2,true);draw_arc(Vector2.ZERO,22+sin(age*2)*2,0,TAU,40,Color(c,.55),2,true)
  var size=52 if kind=="chest" else (29 if kind=="health" else 36)
  draw_texture_rect(icon,Rect2(-size/2.0,-size+12+sin(age*3)*3,size,size),false)
- if kind=="item" and (rarity>=2 or game.player.position.distance_to(position)<180):
-  var w=font.get_string_size(item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,13).x
-  draw_rect(Rect2(-w/2-8,20,w+16,24),Color("101b25"));draw_string(font,Vector2(-w/2,37),item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,13,c)
+ if kind=="item" and (rarity>=2 or game.player.position.distance_to(position)<210):
+  var near:bool=game.player.position.distance_to(position)<210
+  var detail:String="TIER %d / %s"%[int(item.tier),String(item.slot).to_upper()]
+  var detail_color:=Color("9aabb0")
+  if near:
+   var delta:float=game.player.item_upgrade_ratio(item)
+   if delta>.035:
+    detail+="  /  ▲ UPGRADE +%d%%"%maxi(1,roundi(delta*100.0));detail_color=Color("91d7b8")
+   elif delta<-.035:
+    detail+="  /  ▼ WEAKER %d%%"%roundi(delta*100.0);detail_color=Color("dc8f84")
+   else:
+    detail+="  /  ≈ SIDEGRADE";detail_color=Color("c9c3a5")
+  var name_w:float=font.get_string_size(item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,13).x
+  var detail_w:float=font.get_string_size(detail,HORIZONTAL_ALIGNMENT_LEFT,-1,11).x
+  var w:float=maxf(name_w,detail_w)
+  draw_rect(Rect2(-w/2-9,18,w+18,43),Color("101b25"))
+  draw_string(font,Vector2(-name_w/2,35),item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,13,c)
+  draw_string(font,Vector2(-detail_w/2,53),detail,HORIZONTAL_ALIGNMENT_LEFT,-1,11,detail_color)
  if kind=="chest":draw_string(font,Vector2(-43,38),"[C] OPEN",HORIZONTAL_ALIGNMENT_LEFT,-1,13,c)
