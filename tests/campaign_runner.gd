@@ -117,10 +117,16 @@ func _drive_player() -> void:
 				player.test_move = _navigate_toward(room_center)
 			else:
 				player.test_move = _navigate_toward(target.position)
-		elif distance > 96.0:
+		elif distance > 104.0:
 			player.test_move = to_enemy.normalized()
 		else:
-			player.test_move = Vector2.ZERO
+			var orbit: Vector2 = to_enemy.orthogonal().normalized()
+			var orbit_sign: float = 1.0 if (target.room_id + int(target.position.x / 32.0) + int(target.position.y / 32.0)) % 2 == 0 else -1.0
+			orbit *= orbit_sign
+			if distance < 76.0:
+				player.test_move = (-to_enemy.normalized() + orbit * 0.65).normalized()
+			else:
+				player.test_move = (orbit * 0.92 + to_enemy.normalized() * 0.18).normalized()
 		if distance <= 112.0 and target.state != "spawn":
 			if player.attack():
 				attacks += 1
@@ -278,12 +284,12 @@ func _windup_dodge(enemy, delta: Vector2, distance: float) -> Vector2:
 			return delta.normalized() if distance < 160.0 else Vector2.ZERO
 		"elite":
 			if distance < 225.0 and absf(enemy.aim.angle_to(delta)) < 1.6:
-				return (side * 1.2 + delta.normalized() * 0.35).normalized()
+				return (side * 1.45 - delta.normalized() * 0.55).normalized()
 		"boss":
 			match enemy.pattern % 4:
 				0:
 					if distance < 285.0 and absf(enemy.aim.angle_to(delta)) < 1.7:
-						return (side * 1.3 + delta.normalized() * 0.45).normalized()
+						return (side * 1.45 - delta.normalized() * 0.45).normalized()
 				1:
 					return side
 				2:
