@@ -1,0 +1,93 @@
+name: Web build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'build/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Godot 4.5.1 and Web export templates
+        run: |
+          set -euxo pipefail
+          curl -L --fail --retry 3 -o /tmp/godot.zip \
+            https://github.com/godotengine/godot/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          mv /tmp/godot/Godot_v4.5.1-stable_linux.x86_64 /tmp/godot/godot
+          chmod +x /tmp/godot/godot
+
+          curl -L --fail --retry 3 -o /tmp/templates.tpz \
+            https://github.com/godotengine/godot/releases/download/4.5.1-stable/Godot_v4.5.1-stable_export_templates.tpz
+          rm -rf /tmp/export-templates
+          mkdir -p /tmp/export-templates "$HOME/.local/share/godot/export_templates/4.5.1.stable"
+          unzip -q /tmp/templates.tpz -d /tmp/export-templates
+          cp -a /tmp/export-templates/templates/. "$HOME/.local/share/godot/export_templates/4.5.1.stable/"
+
+          /tmp/godot/godot --version
+          test -s "$HOME/.local/share/godot/export_templates/4.5.1.stable/web_release.zip"
+
+      - name: Import project
+        run: |
+          set -o pipefail
+          timeout 90s /tmp/godot/godot --headless --audio-driver Dummy --path . --editor --quit 2>&1 | tee /tmp/web-import.log
+
+      - name: Export Web release
+        run: |
+          set -euxo pipefail
+          mkdir -p build/web
+          timeout 180s /tmp/godot/godot --headless --audio-driver Dummy --path . \
+            --export-release "Web" build/web/index.html 2>&1 | tee build/web-export.log
+
+      - name: Verify Web bundle
+        run: |
+          set -euxo pipefail
+          test -s build/web/index.html
+          wasm="$(find build/web -maxdepth 1 -type f -name '*.wasm' -print -quit)"
+          pck="$(find build/web -maxdepth 1 -type f -name '*.pck' -print -quit)"
+          test -n "$wasm"
+          test -n "$pck"
+          test -s "$wasm"
+          test -s "$pck"
+
+          {
+            echo "ASHEN VOW Web build"
+            echo "Commit: $GITHUB_SHA"
+            echo
+            find build/web -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+            echo
+            sha256sum build/web/*
+          } > build/web-build-manifest.txt
+
+          python3 -m http.server 8080 --directory build/web >/tmp/ashen-vow-web.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8080/index.html >/tmp/index.html; then
+              break
+            fi
+            sleep 0.25
+          done
+          grep -qi "canvas\|godot" /tmp/index.html
+          curl -fsS "http://127.0.0.1:8080/$(basename "$wasm")" -o /dev/null
+          curl -fsS "http://127.0.0.1:8080/$(basename "$pck")" -o /dev/null
+
+      - name: Upload Web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ashen-vow-web
+          path: |
+            build/web/
+            build/web-build-manifest.txt
+            build/web-export.log
+          if-no-files-found: error
