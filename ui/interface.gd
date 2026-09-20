@@ -262,9 +262,16 @@ func draw_hud()->void:
   var next=game.next_passage(id);status=next.heading+" / "+next.name if not next.is_empty() else "THE CATHEDRAL IS SILENT"
   if id==1 and 3 not in game.dungeon.cleared:status+=" - OPTIONAL RELIC: NORTH"
  text(status,Vector2(720,74),12,GOLD,true);draw_map(Rect2(1175,20,238,136),false);buttons.append({"rect":Rect2(1175,20,238,136),"action":"map"})
+ var elite=null
  for e in game.enemies:
   if e.kind=="boss":
-   text("THE BELLLESS KING",Vector2(720,173),23,Color("efd5a5"),true,true);bar(Rect2(400,185,640,10),e.hp/e.max_hp,Color("be756b"));text("PHASE "+("II" if e.phase==2 else "I"),Vector2(720,216),12,GOLD,true);break
+   text("THE BELLLESS KING",Vector2(720,173),23,Color("efd5a5"),true,true);bar(Rect2(400,185,640,10),e.hp/e.max_hp,Color("be756b"));text("PHASE "+("II" if e.phase==2 else "I"),Vector2(720,216),12,GOLD,true);elite=null;break
+  if e.kind=="elite" and elite==null:elite=e
+ if elite!=null:
+  var elite_color=elite.affix_color()
+  text("OATHLESS KNIGHT / "+elite.affix_name(),Vector2(720,160),16,elite_color,true,true)
+  bar(Rect2(565,170,310,7),elite.hp/elite.max_hp,elite_color)
+  text(elite.affix_hint(),Vector2(720,194),10,MUTED,true)
  if game.banner_time>0 and game.mode=="play" and game.enemies.is_empty():
   text(game.banner_title,Vector2(720,269),29,Color(TEXT,minf(1,game.banner_time)),true,true);text(game.banner_sub,Vector2(720,306),15,Color(MUTED,minf(1,game.banner_time)),true)
  panel(Rect2(24,768,1390,109),Color(.045,.085,.12,.95),LINE)
