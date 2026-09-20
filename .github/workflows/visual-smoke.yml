@@ -50,6 +50,7 @@ jobs:
             2>&1 | tee test-artifacts/campaign.log
 
       - name: Render and click through UI
+        if: always()
         run: |
           set -o pipefail
           timeout 90s xvfb-run -a -s "-screen 0 1440x900x24" \
