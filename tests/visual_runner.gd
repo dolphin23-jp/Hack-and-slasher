@@ -72,6 +72,22 @@ func _run() -> void:
 	await _click(Vector2(720, 359))
 	_expect("resume click", game.mode == "play")
 
+	# Exercise the touch HUD through the same settings path a player uses.
+	await _click(Vector2(1294, 847))
+	await _click(Vector2(720, 426))
+	_expect("settings opens before enabling touch controls", game.mode == "settings")
+	var touch_before: bool = game.profile.settings.touch
+	await _click(Vector2(720, 564))
+	_expect("touch controls toggle by click", bool(game.profile.settings.touch) != touch_before)
+	await _click(Vector2(720, 737))
+	await _click(Vector2(720, 359))
+	_expect("returns to play with touch controls enabled", game.mode == "play" and game.profile.settings.touch)
+	await _shot("09b_touch_gameplay")
+	game.player.dash_cd = 0.0
+	await _touch(Vector2(1128, 698))
+	_expect("touch DASH button invokes dash", game.player.dash_cd > 0.0)
+	game.player.dash_time = 0.0
+
 	game.pending_upgrades = 1
 	game.prepare_upgrade()
 	await _frames(3)
@@ -99,6 +115,18 @@ func _run() -> void:
 	await _shot("13_victory_inventory")
 	await _click(Vector2(1305, 61))
 	_expect("victory inventory return click", game.mode == "victory")
+
+	# iPad-class 4:3 window: keep click mapping and legibility under a different aspect ratio.
+	DisplayServer.window_set_size(Vector2i(1024, 768))
+	await _frames(8)
+	game.mode = "play"
+	game.ui.big_map = false
+	game.player.position = game.dungeon.rooms[0].center
+	game.camera.position = game.player.position
+	await _shot("14_ipad_4x3_touch")
+	await _click(Vector2(1294, 88))
+	_expect("4:3 scaled minimap remains clickable", game.ui.big_map)
+	game.ui.big_map = false
 
 	var summary := "VISUAL_SMOKE shots=%d failures=%d\n" % [shots, failures.size()]
 	for failure in failures:
@@ -134,6 +162,23 @@ func _click(base_position: Vector2) -> void:
 	up.pressed = false
 	up.position = screen_position
 	up.global_position = screen_position
+	Input.parse_input_event(up)
+	await _frames(2)
+
+
+func _touch(base_position: Vector2) -> void:
+	var viewport_size := Vector2(root.size)
+	var screen_position := base_position / BASE * viewport_size
+	var down := InputEventScreenTouch.new()
+	down.index = 0
+	down.pressed = true
+	down.position = screen_position
+	Input.parse_input_event(down)
+	await _frames(2)
+	var up := InputEventScreenTouch.new()
+	up.index = 0
+	up.pressed = false
+	up.position = screen_position
 	Input.parse_input_event(up)
 	await _frames(2)
 
