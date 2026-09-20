@@ -1,6 +1,6 @@
 extends Node
 
-const DT = 1.0 / 30.0
+const DT = 1.0 / 60.0
 const SUBSTEPS_PER_FRAME = 30
 const MAX_SIM_SECONDS = 2400.0
 const ROUTE = [1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
@@ -114,10 +114,10 @@ func _drive_player() -> void:
 			player.test_move = evade
 		else:
 			var healing = _nearest_health_drop()
-			if player.hp < player.stats.hp * 0.42 and healing != null:
+			if player.hp < player.stats.hp * 0.42 and healing != null and player.position.distance_to(healing.position) < 420.0:
 				player.test_move = _navigate_toward(healing.position)
 				return
-			if simulated < retreat_until and target.kind in ["elite", "boss"]:
+			if simulated < retreat_until and target.kind in ["hound", "warden", "elite", "boss"]:
 				var away: Vector2 = -to_enemy.normalized()
 				var flank: Vector2 = to_enemy.orthogonal().normalized()
 				if flank.dot(player.last_move) < 0.0:
@@ -126,17 +126,22 @@ func _drive_player() -> void:
 				return
 		if not game.dungeon.line_clear(player.position, target.position):
 			player.test_move = _navigate_toward(target.position)
-		elif distance > 96.0:
+		elif distance > 102.0:
 			player.test_move = to_enemy.normalized()
 		else:
-			player.test_move = Vector2.ZERO
+			var orbit: Vector2 = to_enemy.orthogonal().normalized()
+			if orbit.dot(player.last_move) < 0.0:
+				orbit = -orbit
+			var away_weight := 0.42 if distance < 82.0 else 0.18
+			player.test_move = (orbit - to_enemy.normalized() * away_weight).normalized()
 		if distance <= 112.0 and target.state != "spawn":
 			if player.attack():
 				attacks += 1
-				if target.kind == "elite":
-					retreat_until = simulated + 1.05
-				elif target.kind == "boss":
-					retreat_until = simulated + 0.75
+				match target.kind:
+					"hound": retreat_until = simulated + 0.35
+					"warden": retreat_until = simulated + 0.75
+					"elite": retreat_until = simulated + 1.15
+					"boss": retreat_until = simulated + 0.85
 		return
 
 	if game.dungeon.active >= 0:
@@ -218,11 +223,11 @@ func _danger_move(primary) -> Vector2:
 		if not is_instance_valid(projectile) or projectile.dead or projectile.friendly:
 			continue
 		var delta: Vector2 = player.position - projectile.position
-		if delta.length() < 175.0:
+		if delta.length() < 230.0:
 			var side: Vector2 = projectile.velocity.orthogonal().normalized()
 			if side.dot(delta) < 0.0:
 				side = -side
-			threat_dir += side * 120.0
+			threat_dir += side * 165.0
 			threat_weight += 1.0
 	for enemy in game.enemies:
 		if not is_instance_valid(enemy) or enemy.dead or enemy.state == "spawn":
@@ -264,7 +269,7 @@ func _windup_dodge(enemy, delta: Vector2, distance: float) -> Vector2:
 		"hound":
 			return side if distance < 320.0 else Vector2.ZERO
 		"warden":
-			return delta.normalized() if distance < 160.0 else Vector2.ZERO
+			return delta.normalized() if distance < 205.0 else Vector2.ZERO
 		"elite":
 			if distance < 225.0 and absf(enemy.aim.angle_to(delta)) < 1.6:
 				return (side * 1.2 + delta.normalized() * 0.35).normalized()
