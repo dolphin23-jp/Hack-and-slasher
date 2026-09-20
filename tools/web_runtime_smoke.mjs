@@ -74,6 +74,51 @@ if (!runtime.manifest || !runtime.serviceWorker) {
   throw new Error(`PWA registration incomplete: ${JSON.stringify(runtime)}`);
 }
 
+// Reload once online so the newly installed service worker controls the page,
+// then prove the exported PWA can boot with the network fully disabled.
+await page.reload({ waitUntil: "domcontentloaded", timeout: 120_000 });
+await page.waitForSelector("canvas", { state: "visible", timeout: 120_000 });
+await page.waitForTimeout(4000);
+const serviceWorkerControlled = await page.evaluate(
+  () => Boolean(navigator.serviceWorker?.controller),
+);
+if (!serviceWorkerControlled) {
+  throw new Error("PWA service worker did not take control after reload");
+}
+
+await page.context().setOffline(true);
+let offlineRuntime;
+try {
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 120_000 });
+  await page.waitForSelector("canvas", { state: "visible", timeout: 120_000 });
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector("canvas");
+    return canvas && canvas.width >= 640 && canvas.height >= 360;
+  }, null, { timeout: 120_000 });
+  await page.waitForTimeout(4000);
+  offlineRuntime = await page.evaluate(() => {
+    const canvas = document.querySelector("canvas");
+    return {
+      online: navigator.onLine,
+      controlled: Boolean(navigator.serviceWorker?.controller),
+      canvasWidth: canvas?.width || 0,
+      canvasHeight: canvas?.height || 0,
+    };
+  });
+  await page.screenshot({ path: `${outDir}/06_web_offline.png`, fullPage: true });
+} finally {
+  await page.context().setOffline(false);
+}
+if (
+  !offlineRuntime ||
+  offlineRuntime.online ||
+  !offlineRuntime.controlled ||
+  offlineRuntime.canvasWidth < 640 ||
+  offlineRuntime.canvasHeight < 360
+) {
+  throw new Error(`Offline PWA boot failed: ${JSON.stringify(offlineRuntime)}`);
+}
+
 const ignoredConsolePatterns = [
   /AudioContext/i,
   /autoplay/i,
@@ -86,6 +131,7 @@ const actionableConsoleErrors = consoleErrors.filter(
 const summary = {
   url: baseUrl,
   runtime,
+  offlineRuntime,
   consoleErrors,
   pageErrors,
   actionableConsoleErrors,
