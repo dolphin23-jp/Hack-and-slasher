@@ -190,7 +190,7 @@ func _danger_move(primary) -> Vector2:
 			continue
 		var delta: Vector2 = player.position - projectile.position
 		if delta.length() < 175.0:
-			var side := projectile.velocity.orthogonal().normalized()
+			var side: Vector2 = projectile.velocity.orthogonal().normalized()
 			if side.dot(delta) < 0.0:
 				side = -side
 			threat_dir += side * 120.0
@@ -201,23 +201,23 @@ func _danger_move(primary) -> Vector2:
 		var delta: Vector2 = player.position - enemy.position
 		var distance := delta.length()
 		if enemy.state == "charge" and distance < 270.0:
-			var side := enemy.aim.orthogonal().normalized()
+			var side: Vector2 = enemy.aim.orthogonal().normalized()
 			if side.dot(delta) < 0.0:
 				side = -side
 			threat_dir += side * 170.0
 			threat_weight += 1.0
 		elif enemy.state == "windup":
-			var dodge := _windup_dodge(enemy, delta, distance)
+			var dodge: Vector2 = _windup_dodge(enemy, delta, distance)
 			if dodge.length() > 0.05:
 				threat_dir += dodge * 150.0
 				threat_weight += 1.0
 	if threat_weight <= 0.0 or threat_dir.length() < 0.05:
 		return Vector2.ZERO
-	var desired := threat_dir.normalized()
+	var desired: Vector2 = threat_dir.normalized()
 	var best := Vector2.ZERO
 	var best_progress := -1.0
 	for angle in [0.0, 0.35, -0.35, 0.7, -0.7, 1.05, -1.05]:
-		var candidate := desired.rotated(float(angle))
+		var candidate: Vector2 = desired.rotated(float(angle))
 		var next: Vector2 = game.dungeon.move_body(player.position, candidate * 72.0, 18.0)
 		var progress := next.distance_to(player.position)
 		if progress > best_progress:
@@ -226,7 +226,7 @@ func _danger_move(primary) -> Vector2:
 	return best.normalized() if best_progress >= 8.0 else Vector2.ZERO
 
 func _windup_dodge(enemy, delta: Vector2, distance: float) -> Vector2:
-	var side := enemy.aim.orthogonal().normalized()
+	var side: Vector2 = enemy.aim.orthogonal().normalized()
 	if side.dot(delta) < 0.0:
 		side = -side
 	match enemy.kind:
