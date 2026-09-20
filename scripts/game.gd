@@ -30,6 +30,10 @@ const ROOM_MODIFIER_TEXT={
  5:"EMBER SCRIPT / SIGILS FORM IN LINES",
  6:"CINDER TRAIL / KEEP MOVING",
  8:"THORN PROCESSION / CROSS-SIGILS FOLLOW YOU"}
+const ASCENSION_VOWS=[
+ {"id":"ember_tide","name":"EMBER TIDE","detail":"Sanctuary hazards return 22% faster."},
+ {"id":"thickened_veil","name":"THICKENED VEIL","detail":"Oathless Knights gain 28% life and 8% damage."},
+ {"id":"hollow_choir","name":"HOLLOW CHOIR","detail":"Each non-boss wave gains one additional foe."}]
 var mode="title"
 var profile=ProfileStore.new()
 var sound:Soundscape
@@ -90,6 +94,16 @@ func configure_input()->void:
   var ev=InputEventJoypadButton.new();ev.button_index=pad[action];InputMap.action_add_event(action,ev)
  for spec in [["move_left",JOY_AXIS_LEFT_X,-1.0],["move_right",JOY_AXIS_LEFT_X,1.0],["move_up",JOY_AXIS_LEFT_Y,-1.0],["move_down",JOY_AXIS_LEFT_Y,1.0]]:
   var ev=InputEventJoypadMotion.new();ev.axis=spec[1];ev.axis_value=spec[2];InputMap.action_add_event(spec[0],ev)
+func ascension_vow()->Dictionary:
+ if ascension<=0:return {}
+ return ASCENSION_VOWS[(ascension-1)%ASCENSION_VOWS.size()]
+func has_ascension_vow(id:String)->bool:
+ var vow=ascension_vow()
+ return not vow.is_empty() and String(vow.id)==id
+func room_modifier_interval(base:float)->float:return base*(.78 if has_ascension_vow("ember_tide") else 1.0)
+func ascension_wave_bonus()->int:return 1 if has_ascension_vow("hollow_choir") else 0
+func ascension_elite_hp_mult()->float:return 1.28 if has_ascension_vow("thickened_veil") else 1.0
+func ascension_elite_damage_mult()->float:return 1.08 if has_ascension_vow("thickened_veil") else 1.0
 func clear_world()->void:
  for child in get_children():
   if child is Node2D:remove_child(child);child.queue_free()
@@ -124,7 +138,9 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
   player.equipment=carry.equipment;player.inventory=carry.inventory;player.level=carry.level;player.upgrades=carry.upgrades;ascension=carry.ascension;player.rebuild_stats();player.hp=player.stats.hp
  else:profile.records.runs+=1
  camera.position=player.position;mode="play";sound.set_music("dungeon")
- banner("ASHEN VOW","Descend into the cathedral. Leave with a different build.")
+ if ascension>0:
+  var vow=ascension_vow();banner("ASCENSION %02d / %s"%[ascension,vow.name],vow.detail)
+ else:banner("ASHEN VOW","Descend into the cathedral. Leave with a different build.")
  if not resume:
   var gift=ItemDB.generate(rng,1,1);gift.slot="weapon";gift.name="Pilgrim's First Flame";gift.base={"attack":16.0}
   spawn_drop(Vector2(80,-25),gift);spawn_chest(Vector2(160,100),1,false)
@@ -172,7 +188,7 @@ func check_rooms(dt:float)->void:
    if wave<dungeon.rooms[dungeon.active].waves:spawn_wave()
    else:clear_encounter()
 func begin_encounter(id:int)->void:
- dungeon.active=id;encounter_room=id;wave=0;wave_delay=.9;room_modifier_timer=4.5
+ dungeon.active=id;encounter_room=id;wave=0;wave_delay=.9;room_modifier_timer=room_modifier_interval(4.5)
  if id in ROOM_MODIFIER_TEXT:toast(ROOM_MODIFIER_TEXT[id])
  if id==9:sound.set_music("boss_music");sound.play("boss")
 func room_hazard_point(p:Vector2)->Vector2:
@@ -186,20 +202,20 @@ func tick_room_modifier(dt:float)->void:
  var id=int(dungeon.active);var damage=(9.0+id*.7)*(1+ascension*.15)
  match id:
   4:
-   room_modifier_timer=8.6
+   room_modifier_timer=room_modifier_interval(8.6)
    var angle=rng.randf_range(0,TAU)
    add_hazard(room_hazard_point(player.position),68,.12,damage,false,1.05)
    add_hazard(room_hazard_point(player.position+Vector2.from_angle(angle)*145),62,.12,damage,false,1.35)
   5:
-   room_modifier_timer=9.5
+   room_modifier_timer=room_modifier_interval(9.5)
    var line=Vector2.from_angle(rng.randf_range(0,TAU))
    for i in range(-1,2):add_hazard(room_hazard_point(player.position+line*145*i),72,.12,damage,false,1.05+abs(i)*.18)
   6:
-   room_modifier_timer=7.8
+   room_modifier_timer=room_modifier_interval(7.8)
    var trail=player.last_move if player.last_move.length()>.1 else player.facing
    for i in range(3):add_hazard(room_hazard_point(player.position-trail*90*i),58,.12,damage,false,.9+i*.18)
   8:
-   room_modifier_timer=8.8
+   room_modifier_timer=room_modifier_interval(8.8)
    var offsets=[Vector2.ZERO,Vector2(145,0),Vector2(-145,0),Vector2(0,145),Vector2(0,-145)]
    for i in range(offsets.size()):add_hazard(room_hazard_point(player.position+offsets[i]),62,.12,damage,false,1.0+i*.08)
 func encounter_pool(room_id:int,current_wave:int)->Array:
@@ -217,7 +233,8 @@ func spawn_wave()->void:
  var room=dungeon.rooms[dungeon.active];wave+=1;wave_delay=3
  if room.id==9:spawn_enemy("boss",room.center+Vector2(200,0),7,9);return
  var pool=encounter_pool(room.id,wave)
- for i in range(room.count+wave*2):
+ var enemy_total=room.count+wave*2+ascension_wave_bonus()
+ for i in range(enemy_total):
   var kind=pool[rng.randi_range(0,pool.size()-1)]
   if i==0 and wave==room.waves and room.id in [3,4,6,8]:kind="elite"
   spawn_enemy(kind,dungeon.spawn_point(room.id,i),room.tier,room.id)
