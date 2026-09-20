@@ -293,7 +293,7 @@ func _nearest_health_drop():
 
 func _nearest_live_enemy():
 	var boss = _boss_enemy()
-	var prioritize_adds := boss != null and boss.phase == 2
+	var prioritize_adds: bool = boss != null and int(boss.phase) == 2
 	var nearest = null
 	var best = INF
 	for enemy in game.enemies:
