@@ -384,18 +384,23 @@ func _nearest_health_drop():
 
 func _nearest_live_enemy():
 	var boss = _boss_enemy()
-	var prioritize_adds: bool = boss != null and int(boss.phase) == 2
+	var phase_two: bool = boss != null and int(boss.phase) == 2
 	var nearest = null
-	var best = INF
+	var best: float = INF
 	for enemy in game.enemies:
 		if not is_instance_valid(enemy) or enemy.dead or enemy.state == "spawn":
 			continue
-		if prioritize_adds and enemy.kind == "boss":
+		if phase_two and enemy.kind == "boss":
 			continue
-		var distance = enemy.position.distance_squared_to(game.player.position)
+		var distance: float = enemy.position.distance_squared_to(game.player.position)
 		if distance < best:
 			best = distance
 			nearest = enemy
+	if phase_two and boss != null and not boss.dead and boss.state != "spawn":
+		# Summons matter only when they are an immediate local threat. Do not
+		# chase them across the arena and starve the boss of damage.
+		if nearest == null or best > 330.0 * 330.0:
+			return boss
 	if nearest == null and boss != null and not boss.dead and boss.state != "spawn":
 		return boss
 	return nearest
