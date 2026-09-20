@@ -2,13 +2,13 @@
 
 A playable top-down action RPG / hack-and-slasher vertical slice built in Godot 4.5.1.
 
-The current slice contains a ten-room cathedral run, optional treasury, room-specific encounter identities and telegraphed hazards, affixed elite enemies, randomized loot, equipment comparison and salvage, level-up blessings, save/resume, touch controls, gamepad menu navigation, a two-phase boss, victory rewards, and an installable Web/PWA export.
+The current slice contains a ten-room cathedral run, optional treasury, room-specific encounter identities and telegraphed hazards, affixed elite enemies, rotating post-victory Ascension Vows, randomized loot, equipment comparison and salvage, level-up blessings, save/resume, touch controls, gamepad menu navigation, a two-phase boss, victory rewards, and an installable Web/PWA export.
 
 ## Current regression gates
 
 The repository keeps the vertical slice reproducible in GitHub Actions.
 
-- 47 gameplay/save checks: combat, elite affixes, loot, equip/salvage, growth, save/resume, boss rewards.
+- 52 gameplay/save checks: combat, elite affixes, Ascension Vows, loot, equip/salvage, growth, save/resume, boss rewards.
 - Deterministic full-run campaign: visits all 10 rooms including the optional treasury and defeats the boss using movement + normal attacks for combat while using collected gear and level growth.
 - Rendered UI smoke: title, settings, help, gameplay, map, inventory comparison/equip, pause, upgrades, boss HUD, victory, touch HUD, and 4:3 coverage.
 - Shutdown leak gate: Godot resource/object leak warnings fail CI.
