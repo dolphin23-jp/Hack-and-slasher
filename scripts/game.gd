@@ -128,6 +128,10 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
   player.rebuild_stats();player.hp=clampf(s.hp,1,player.stats.hp)
   dungeon.cleared=s.cleared.duplicate();dungeon.visited=s.get("visited",dungeon.cleared).duplicate()
   run_seed=int(s.seed);rng.seed=run_seed;ascension=int(s.ascension);kills=int(s.kills);elapsed=float(s.elapsed)
+  var saved_metrics=s.get("metrics",{})
+  if saved_metrics is Dictionary:
+   for key in metrics:
+    if saved_metrics.has(key) and (saved_metrics[key] is int or saved_metrics[key] is float):metrics[key]=saved_metrics[key]
   var pos=Vector2(s.position[0],s.position[1]);player.position=pos if dungeon.walkable(pos,18,false) else Vector2.ZERO
   var id=dungeon.room_at(player.position)
   if id<0 or id not in dungeon.cleared:player.position=dungeon.rooms[int(dungeon.cleared[-1])].center
@@ -371,7 +375,7 @@ func run_snapshot(victory_ready:bool=false)->Dictionary:
  if not victory_ready:
   for d in drops:
    if not d.taken and d.kind!="health":saved_drops.append({"kind":d.kind,"item":d.item.duplicate(true),"position":[d.position.x,d.position.y]})
- return {"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades,"victory_ready":victory_ready}
+ return {"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades,"victory_ready":victory_ready,"metrics":metrics.duplicate(true)}
 func finish_run()->void:
  victory_pending=false;mode="victory"
  if 9 not in dungeon.cleared:dungeon.cleared.append(9)
