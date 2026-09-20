@@ -257,6 +257,16 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 
 	if boss.state == "windup":
 		var pattern_id: int = boss.pattern % 4
+		# Phase I has long, readable telegraphs and no summons. Use only the
+		# early half for basic swings; phase II stays fully defensive.
+		if boss.phase == 1:
+			var attack_cutoff: float = [0.58, 0.65, 0.80, 0.85][pattern_id]
+			if boss.timer > attack_cutoff:
+				if distance > 112.0:
+					return _boss_safe_direction(to_enemy.normalized(), room)
+				if player.attack():
+					attacks += 1
+				return _boss_safe_direction(side, room)
 		match pattern_id:
 			0:
 				return _boss_safe_direction(away if distance < 285.0 else side, room)
@@ -269,6 +279,14 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 
 	if boss.state == "charge":
 		return _boss_charge_dodge(boss, room)
+
+	# Health drops are collected by movement alone. In phase II, spend a safe
+	# window recovering before returning to the boss rather than dying with
+	# healing still on the floor.
+	if boss.phase == 2 and player.hp < player.stats.hp * 0.62:
+		var healing = _nearest_health_drop()
+		if healing != null and player.position.distance_to(healing.position) < 760.0:
+			return _boss_safe_direction((healing.position - player.position).normalized(), room)
 
 	# Recovery is the deliberate damage window. Stay in sword range, attack,
 	# and orbit without drifting toward the arena boundary.
