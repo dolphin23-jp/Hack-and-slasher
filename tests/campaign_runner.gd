@@ -209,57 +209,52 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 	var side := to_enemy.orthogonal().normalized()
 	if side.dot(player.last_move) < 0.0:
 		side = -side
+
 	if boss.state == "windup":
-		# One basic hit at the start of a long telegraph is safe while we are
-		# already translating out of the danger zone.
-		if distance <= 130.0 and player.attack():
-			attacks += 1
+		# The boss cannot deal damage until release_attack(). Use the early half
+		# of the telegraph for basic swings, then evacuate before the release.
+		var attack_window := 0.58 if boss.phase == 1 else 0.48
+		if boss.timer > attack_window:
+			if distance > 112.0:
+				return to_enemy.normalized()
+			if player.attack():
+				attacks += 1
+			return side
 		match boss.pattern % 4:
 			0:
-				return (side * 1.5 + away * 0.8).normalized()
+				return (side * 1.55 + away * 0.9).normalized()
 			1:
-				# Ground markers are centered on the player's position at windup start.
-				# Keep translating rather than circling back through them.
-				return (side * 0.8 + away * 0.9).normalized()
+				return (side * 0.8 + away * 1.0).normalized()
 			2:
-				# Give the radial volley room to spread before threading the gap.
-				return away if distance < 390.0 else side
+				return away if distance < 330.0 else side
 			3:
 				return side
+
 	if boss.state == "charge":
 		return side
-	# Radial projectiles and delayed ground effects can outlive the boss's
-	# animation. Never dive back in while those hazards are still crossing.
+
+	# Projectiles and delayed ground effects may persist into recovery.
 	var lingering := _danger_move(boss)
 	if lingering.length() > 0.05:
 		return lingering
-	# During recovery, close just long enough for basic attacks.
+
 	if boss.state == "recover":
-		if distance > 124.0:
+		# Recovery is the main damage window: stay just inside sword range and
+		# keep strafing while repeatedly using only the normal attack.
+		if distance > 110.0:
 			return to_enemy.normalized()
 		if player.attack():
 			attacks += 1
-		if distance < 78.0:
-			return (side + away * 0.35).normalized()
-		if distance > 108.0:
-			return (side + to_enemy.normalized() * 0.22).normalized()
-		return side
-	# Every approach tick is a free opportunity to land a basic hit before
-	# the boss commits to its next telegraph.
-	if distance <= 130.0 and player.attack():
-		attacks += 1
-	# Pattern 0 only begins inside 175 px. Enter close enough to land the
-	# pre-telegraph hit, then leave as soon as windup begins.
-	if boss.pattern % 4 == 0:
-		if distance > 118.0:
-			return to_enemy.normalized()
-		return side
-	# The ranged/charge patterns can commit from far away. Keep a moderate
-	# orbit so recovery windows are reachable without camping in melee.
-	if distance < 210.0:
-		return (side * 0.9 + away * 0.35).normalized()
-	if distance > 300.0:
+		if distance < 76.0:
+			return (side + away * 0.45).normalized()
+		return (side + to_enemy.normalized() * 0.12).normalized()
+
+	# After recovery the boss has only 0.18 s before it can start the next
+	# telegraph. Stay close enough that all four patterns trigger in sword range.
+	if distance > 112.0:
 		return to_enemy.normalized()
+	if player.attack():
+		attacks += 1
 	return side
 
 func _boss_enemy():
