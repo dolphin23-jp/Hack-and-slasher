@@ -32,19 +32,19 @@ jobs:
         run: |
           mkdir -p test-artifacts/ui
           set -o pipefail
-          timeout 90s /tmp/godot/godot --headless --audio-driver Dummy --path . --editor --quit 2>&1 | tee test-test-artifacts/import.log
+          timeout 90s /tmp/godot/godot --headless --audio-driver Dummy --path . --editor --quit 2>&1 | tee test-artifacts/import.log
 
       - name: Render and click through UI
         run: |
           set -o pipefail
           timeout 90s xvfb-run -a -s "-screen 0 1440x900x24" \
             /tmp/godot/godot --audio-driver Dummy --path . --script res://tests/visual_runner.gd -- --test \
-            2>&1 | tee test-test-artifacts/visual.log
+            2>&1 | tee test-artifacts/visual.log
 
       - name: Fail on resource leak warnings
         if: always()
         run: |
-          if grep -E "ObjectDB instances leaked|resources still in use at exit|RID allocations|WARNING:.*leak" test-test-artifacts/import.log test-test-artifacts/visual.log; then
+          if grep -E "ObjectDB instances leaked|resources still in use at exit|RID allocations|WARNING:.*leak" test-artifacts/import.log test-artifacts/visual.log; then
             echo "Resource leak warning detected."
             exit 1
           fi
