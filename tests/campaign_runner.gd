@@ -223,6 +223,9 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 	# Radial volleys outlive the animation. Keep translating around the arena
 	# until every hostile projectile has cleared instead of cutting back inward.
 	if hostile_count > 0:
+		var projectile_dodge: Vector2 = _incoming_projectile_dodge()
+		if projectile_dodge.length() > 0.05:
+			return projectile_dodge
 		var volley_move: Vector2 = side
 		if distance < 500.0:
 			volley_move = (side + away * 0.55).normalized()
@@ -356,32 +359,41 @@ func _nearest_live_enemy():
 
 func _incoming_projectile_dodge() -> Vector2:
 	var player = game.player
-	var boss = _boss_enemy()
-	var tangent: Vector2 = Vector2.ZERO
-	if boss != null:
-		var radial: Vector2 = player.position - boss.position
-		if radial.length() > 0.01:
-			tangent = radial.orthogonal().normalized()
-			if tangent.dot(player.last_move) < 0.0:
-				tangent = -tangent
-	var threat: bool = false
+	var hostile = []
 	for projectile in game.projectiles:
-		if not is_instance_valid(projectile) or projectile.dead or projectile.friendly:
-			continue
-		var velocity: Vector2 = projectile.velocity
-		var speed_sq: float = velocity.length_squared()
-		if speed_sq < 1.0:
-			continue
-		var rel: Vector2 = projectile.position - player.position
-		var t: float = clampf(-rel.dot(velocity) / speed_sq, 0.0, 1.25)
-		var miss: float = (rel + velocity * t).length()
-		if t > 0.0 and miss < 62.0:
-			threat = true
-			if tangent == Vector2.ZERO:
-				tangent = velocity.orthogonal().normalized()
-	if not threat:
+		if is_instance_valid(projectile) and not projectile.dead and not projectile.friendly:
+			hostile.append(projectile)
+	if hostile.is_empty():
 		return Vector2.ZERO
-	return tangent
+	var room: Dictionary = game.dungeon.rooms[9]
+	var safe_rect: Rect2 = room.rect.grow(-125.0)
+	var move_speed: float = 235.0 * (1.0 + float(player.stats.speed))
+	var best: Vector2 = Vector2.ZERO
+	var best_score: float = -INF
+	for i in range(16):
+		var candidate: Vector2 = Vector2.from_angle(float(i) * TAU / 16.0)
+		var projected: Vector2 = game.dungeon.move_body(player.position, candidate * 190.0, 18.0)
+		var progress: float = projected.distance_to(player.position)
+		if progress < 20.0:
+			continue
+		var min_clearance: float = INF
+		for projectile in hostile:
+			var rel: Vector2 = projectile.position - player.position
+			var relative_velocity: Vector2 = projectile.velocity - candidate * move_speed
+			var rv_sq: float = relative_velocity.length_squared()
+			var t: float = 0.0
+			if rv_sq > 1.0:
+				t = clampf(-rel.dot(relative_velocity) / rv_sq, 0.0, 2.4)
+			var clearance: float = (rel + relative_velocity * t).length() - float(projectile.radius) - 22.0
+			min_clearance = minf(min_clearance, clearance)
+		var score: float = min_clearance * 5.0 + progress * 0.7 - projected.distance_to(room.center) * 0.08
+		if safe_rect.has_point(projected):
+			score += 260.0
+		if score > best_score:
+			best_score = score
+			best = candidate
+	return best
+
 
 func _danger_move(primary) -> Vector2:
 	var player = game.player
