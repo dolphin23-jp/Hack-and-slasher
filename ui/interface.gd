@@ -127,7 +127,6 @@ func act(action:String)->void:
 func _draw()->void:
  buttons.clear()
  draw_set_transform(Vector2.ZERO)
- draw_rect(Rect2(Vector2.ZERO,get_viewport_rect().size),INK)
  var s=layout_scale()
  draw_set_transform(layout_offset(),0,Vector2(s,s))
  if game.mode=="title":draw_title();return
