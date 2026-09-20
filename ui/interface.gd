@@ -27,7 +27,14 @@ var attack_touch_id=-1
 func _ready()->void:
  mouse_filter=Control.MOUSE_FILTER_IGNORE
  for name in ["sword","armor","accessory","cleave","nova","bolt","dash","potion","crest","chest","flame","chain","crit"]:icons[name]=load("res://assets/icons/"+name+".svg")
-func point(p:Vector2)->Vector2:return p/get_viewport_rect().size*BASE
+func layout_scale()->float:
+ var size=get_viewport_rect().size
+ return minf(size.x/BASE.x,size.y/BASE.y)
+func layout_offset()->Vector2:
+ var s=layout_scale()
+ return (get_viewport_rect().size-BASE*s)*.5
+func point(p:Vector2)->Vector2:return (p-layout_offset())/layout_scale()
+func screen_point(p:Vector2)->Vector2:return layout_offset()+p*layout_scale()
 func _input(event:InputEvent)->void:
  if event is InputEventMouseMotion:hover=point(event.position)
  if event is InputEventMouseButton and event.pressed and event.button_index==MOUSE_BUTTON_LEFT:
@@ -118,7 +125,11 @@ func act(action:String)->void:
   "inspect_victory":game.mode="victory_inventory"
   "return_victory":game.mode="victory"
 func _draw()->void:
- buttons.clear();draw_set_transform(Vector2.ZERO,0,get_viewport_rect().size/BASE)
+ buttons.clear()
+ draw_set_transform(Vector2.ZERO)
+ draw_rect(Rect2(Vector2.ZERO,get_viewport_rect().size),INK)
+ var s=layout_scale()
+ draw_set_transform(layout_offset(),0,Vector2(s,s))
  if game.mode=="title":draw_title();return
  if is_instance_valid(game.player):draw_hud()
  match game.mode:
