@@ -120,22 +120,20 @@ func _drive_player() -> void:
 			if game.enemies.size() == 1 and target.state == "recover" and distance > 118.0:
 				evade = (evade * 1.15 + to_enemy.normalized() * 0.85).normalized()
 			player.test_move = _safe_direction(evade)
+		elif player.hp < player.stats.hp * 0.72:
+			var health_drop = _nearest_health_drop(620.0)
+			if health_drop != null:
+				player.test_move = _navigate_toward(health_drop.position)
+			else:
+				player.test_move = _combat_approach(target, to_enemy, distance)
 		elif not game.dungeon.line_clear(player.position, target.position):
 			var room_center: Vector2 = game.dungeon.rooms[target.room_id].center
 			if player.position.distance_to(room_center) > 90.0 and game.dungeon.line_clear(player.position, room_center):
 				player.test_move = _navigate_toward(room_center)
 			else:
 				player.test_move = _navigate_toward(target.position)
-		elif distance > 116.0:
-			player.test_move = to_enemy.normalized()
 		else:
-			var orbit: Vector2 = to_enemy.orthogonal().normalized()
-			var orbit_sign: float = 1.0 if (target.room_id + int(target.position.x / 32.0) + int(target.position.y / 32.0)) % 2 == 0 else -1.0
-			orbit *= orbit_sign
-			if distance < 82.0:
-				player.test_move = (-to_enemy.normalized() + orbit * 0.65).normalized()
-			else:
-				player.test_move = (orbit * 0.92 + to_enemy.normalized() * 0.18).normalized()
+			player.test_move = _combat_approach(target, to_enemy, distance)
 		if distance <= 120.0 and target.state != "spawn":
 			if player.attack():
 				attacks += 1
@@ -156,6 +154,28 @@ func _drive_player() -> void:
 		player.test_move = _navigate_toward(room.center)
 	else:
 		player.test_move = Vector2.ZERO
+
+func _combat_approach(target, to_enemy: Vector2, distance: float) -> Vector2:
+	if distance > 116.0:
+		return to_enemy.normalized()
+	var orbit: Vector2 = to_enemy.orthogonal().normalized()
+	var orbit_sign: float = 1.0 if (target.room_id + int(target.position.x / 32.0) + int(target.position.y / 32.0)) % 2 == 0 else -1.0
+	orbit *= orbit_sign
+	if distance < 82.0:
+		return (-to_enemy.normalized() + orbit * 0.65).normalized()
+	return (orbit * 0.92 + to_enemy.normalized() * 0.18).normalized()
+
+func _nearest_health_drop(reach: float):
+	var nearest = null
+	var best: float = reach * reach
+	for drop in game.drops:
+		if not is_instance_valid(drop) or drop.taken or drop.kind != "health":
+			continue
+		var dist: float = drop.position.distance_squared_to(game.player.position)
+		if dist < best:
+			best = dist
+			nearest = drop
+	return nearest
 
 func _navigate_toward(target_position: Vector2) -> Vector2:
 	var origin: Vector2 = game.player.position
