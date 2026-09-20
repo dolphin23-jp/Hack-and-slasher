@@ -2,7 +2,7 @@ extends Node
 
 const DT = 1.0 / 60.0
 const SUBSTEPS_PER_FRAME = 30
-const MAX_SIM_SECONDS = 900.0
+const MAX_SIM_SECONDS = 2400.0
 const ROUTE = [1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
 
 var game
@@ -107,8 +107,10 @@ func _drive_player() -> void:
 		var danger = _danger_vector(target)
 		if danger.length() > 0.08:
 			player.test_move = danger.normalized()
+		elif not game.dungeon.line_clear(player.position, target.position):
+			player.test_move = _navigate_toward(target.position)
 		elif distance > 104.0:
-			player.test_move = to_enemy.normalized()
+			player.test_move = _navigate_toward(target.position)
 		elif distance < 72.0:
 			player.test_move = (-to_enemy.normalized() + to_enemy.orthogonal().normalized() * 0.55).normalized()
 		else:
@@ -131,9 +133,32 @@ func _drive_player() -> void:
 	var to_room: Vector2 = room.center - player.position
 	if to_room.length() > 20.0:
 		player.facing = to_room.normalized()
-		player.test_move = to_room.normalized()
+		player.test_move = _navigate_toward(room.center)
 	else:
 		player.test_move = Vector2.ZERO
+
+func _navigate_toward(target_position: Vector2) -> Vector2:
+	var origin: Vector2 = game.player.position
+	var delta: Vector2 = target_position - origin
+	if delta.length() < 0.001:
+		return Vector2.ZERO
+	var direct: Vector2 = delta.normalized()
+	var best: Vector2 = direct
+	var best_score: float = INF
+	var phase_sign: float = 1.0 if int(simulated / 3.0) % 2 == 0 else -1.0
+	for angle in [0.0, 0.45 * phase_sign, -0.45 * phase_sign, 0.9 * phase_sign, -0.9 * phase_sign, 1.3 * phase_sign, -1.3 * phase_sign]:
+		var candidate: Vector2 = direct.rotated(float(angle))
+		var next: Vector2 = game.dungeon.move_body(origin, candidate * 82.0, 18.0)
+		var progress: float = next.distance_to(origin)
+		if progress < 8.0:
+			continue
+		var score: float = next.distance_to(target_position) + absf(float(angle)) * 8.0
+		if game.dungeon.line_clear(next, target_position):
+			score -= 260.0
+		if score < best_score:
+			best_score = score
+			best = candidate
+	return best
 
 func _nearest_live_enemy():
 	var nearest = null
