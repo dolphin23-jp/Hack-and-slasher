@@ -112,6 +112,8 @@ func _run() -> void:
 	_expect("choosing a blessing returns to play and consumes one choice", game.mode == "play" and game.pending_upgrades == pending_before - 1)
 
 	game.save_run()
+	if game.profile.run.is_empty() or not game.profile.valid_run(game.profile.run):
+		_print_save_diagnostics()
 	var saved_level: int = int(game.player.level)
 	var saved_weapon_id: String = game.player.equipment.weapon.id
 	_expect("current run serializes as a valid save", not game.profile.run.is_empty() and game.profile.valid_run(game.profile.run))
@@ -159,3 +161,27 @@ func _run() -> void:
 		file.close()
 	print(summary.strip_edges())
 	game.shutdown(0 if failures.is_empty() else 1)
+
+
+func _print_save_diagnostics() -> void:
+	print("QA SAVE DEBUG mode=", game.mode, " dead=", game.player.dead, " pack=", game.player.inventory.size(), " hp=", game.player.hp, " level=", game.player.level, " xp=", game.player.xp)
+	if game.profile.run.is_empty():
+		print("QA SAVE DEBUG run is empty")
+		return
+	var run: Dictionary = game.profile.run
+	print("QA SAVE DEBUG cleared=", run.get("cleared"), " visited=", run.get("visited"), " drops=", run.get("drops", []).size(), " position=", run.get("position"))
+	for slot in ItemDB.SLOTS:
+		var equipped = run.equipment.get(slot)
+		if not ItemDB.valid(equipped):
+			print("QA SAVE DEBUG invalid equipment ", slot, ": ", equipped)
+	for i in range(run.inventory.size()):
+		if not ItemDB.valid(run.inventory[i]):
+			print("QA SAVE DEBUG invalid inventory ", i, ": ", run.inventory[i])
+	for i in range(run.get("drops", []).size()):
+		var drop = run.drops[i]
+		if drop.get("kind") == "item" and not ItemDB.valid(drop.get("item")):
+			print("QA SAVE DEBUG invalid item drop ", i, ": ", drop)
+		elif drop.get("kind") == "chest":
+			var payload = drop.get("item")
+			if not payload is Dictionary or not (payload.get("tier") is int or payload.get("tier") is float) or not payload.get("gilded") is bool:
+				print("QA SAVE DEBUG invalid chest ", i, ": ", drop)
