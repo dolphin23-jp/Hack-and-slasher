@@ -37,6 +37,7 @@ func setup(g,type:String,p:Vector2,tier:int,room:int,forced_affix:String="")->vo
  damage=spec.damage*(1+maxi(0,tier-1)*.085+game.ascension*.15);speed=spec.speed;xp=int(spec.xp*(1+maxi(0,tier-1)*.12))
  texture=load("res://assets/characters/"+kind+".svg");windup=spec.windup
  if kind=="elite":
+  max_hp*=game.ascension_elite_hp_mult();hp=max_hp;damage*=game.ascension_elite_damage_mult()
   affix=forced_affix if forced_affix in ELITE_AFFIXES else ELITE_AFFIXES.keys()[game.rng.randi_range(0,ELITE_AFFIXES.size()-1)]
   apply_elite_affix()
  if kind=="boss":max_hp=spec.hp*(1+game.ascension*.55);hp=max_hp;timer=1.5
