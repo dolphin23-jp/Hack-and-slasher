@@ -112,7 +112,11 @@ func _drive_player() -> void:
 		if evade.length() > 0.05:
 			player.test_move = evade
 		elif not game.dungeon.line_clear(player.position, target.position):
-			player.test_move = _navigate_toward(target.position)
+			var room_center: Vector2 = game.dungeon.rooms[target.room_id].center
+			if player.position.distance_to(room_center) > 90.0 and game.dungeon.line_clear(player.position, room_center):
+				player.test_move = _navigate_toward(room_center)
+			else:
+				player.test_move = _navigate_toward(target.position)
 		elif distance > 96.0:
 			player.test_move = to_enemy.normalized()
 		else:
@@ -162,16 +166,21 @@ func _navigate_toward(target_position: Vector2) -> Vector2:
 	return best
 
 func _nearest_live_enemy():
-	var nearest = null
-	var best = INF
+	var visible = null
+	var visible_best: float = INF
+	var fallback = null
+	var fallback_best: float = INF
 	for enemy in game.enemies:
 		if not is_instance_valid(enemy) or enemy.dead or enemy.state == "spawn":
 			continue
-		var distance = enemy.position.distance_squared_to(game.player.position)
-		if distance < best:
-			best = distance
-			nearest = enemy
-	return nearest
+		var distance: float = enemy.position.distance_squared_to(game.player.position)
+		if distance < fallback_best:
+			fallback_best = distance
+			fallback = enemy
+		if game.dungeon.line_clear(game.player.position, enemy.position) and distance < visible_best:
+			visible_best = distance
+			visible = enemy
+	return visible if visible != null else fallback
 
 func _danger_move(primary) -> Vector2:
 	var player = game.player
