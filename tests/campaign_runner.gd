@@ -1,4 +1,5 @@
 extends Node
+# Deterministic full-run regression: combat input remains movement + normal attack.
 
 const DT = 1.0 / 60.0
 const SUBSTEPS_PER_FRAME = 120
