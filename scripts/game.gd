@@ -137,7 +137,10 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
  elif not carry.is_empty():
   player.equipment=carry.equipment;player.inventory=carry.inventory;player.level=carry.level;player.upgrades=carry.upgrades;ascension=carry.ascension;player.rebuild_stats();player.hp=player.stats.hp
  else:profile.records.runs+=1
- camera.position=player.position;mode="play";sound.set_music("dungeon")
+ camera.position=player.position
+ if resume and profile.valid_run(profile.run) and bool(profile.run.get("victory_ready",false)):
+  mode="victory";dungeon.active=-1;victory_pending=false;sound.set_music("menu");ui.selected=0;return
+ mode="play";sound.set_music("dungeon")
  if ascension>0:
   var vow=ascension_vow();banner("ASCENSION %02d / %s"%[ascension,vow.name],vow.detail)
  else:banner("ASHEN VOW","Descend into the cathedral. Leave with a different build.")
@@ -360,21 +363,25 @@ func toast(message:String)->void:toast_text=message;toast_time=3.7
 func shake(amount:float)->void:shake_amount=maxf(shake_amount,amount)
 func player_died()->void:
  mode="dead";sound.play("death");profile.records.best_level=maxi(profile.records.best_level,player.level);profile.records.total_kills+=kills;profile.run={};profile.write_save();fx.burst(player.position,Color("dfb888"),55,230)
+func run_snapshot(victory_ready:bool=false)->Dictionary:
+ var pos=player.position;var id=dungeon.room_at(pos)
+ if victory_ready:pos=dungeon.rooms[9].center
+ elif id<0 or id not in dungeon.cleared:pos=dungeon.rooms[int(dungeon.cleared[-1])].center
+ var saved_drops=[]
+ if not victory_ready:
+  for d in drops:
+   if not d.taken and d.kind!="health":saved_drops.append({"kind":d.kind,"item":d.item.duplicate(true),"position":[d.position.x,d.position.y]})
+ return {"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades,"victory_ready":victory_ready}
 func finish_run()->void:
  victory_pending=false;mode="victory"
  if 9 not in dungeon.cleared:dungeon.cleared.append(9)
  dungeon.active=-1;profile.records.wins+=1;profile.records.best_level=maxi(profile.records.best_level,player.level);profile.records.total_kills+=kills
  for d in drops.duplicate():
   if d.kind=="item" and d.item.get("boss_reward",false):player.inventory.append(d.item.duplicate(true));metrics.pickups+=1;d.take()
- profile.run={};profile.write_save();sound.set_music("menu");sound.play("legendary")
+ profile.run=run_snapshot(true);profile.write_save();sound.set_music("menu");sound.play("legendary")
 func save_run()->void:
  if not is_instance_valid(player) or player.dead or mode in ["title","dead","victory","victory_inventory"]:return
- var pos=player.position;var id=dungeon.room_at(pos)
- if id<0 or id not in dungeon.cleared:pos=dungeon.rooms[int(dungeon.cleared[-1])].center
- var saved_drops=[]
- for d in drops:
-  if not d.taken and d.kind!="health":saved_drops.append({"kind":d.kind,"item":d.item.duplicate(true),"position":[d.position.x,d.position.y]})
- profile.run={"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades}
+ profile.run=run_snapshot(false)
  if not profile.write_save():toast("Could not write save. Check user data folder permissions.")
 func return_to_title()->void:save_run();mode="title";sound.set_music("menu")
 func _notification(what:int)->void:
