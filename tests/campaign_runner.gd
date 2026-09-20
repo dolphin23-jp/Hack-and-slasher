@@ -235,13 +235,6 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 
 	if boss.state == "windup":
 		var pattern_id: int = boss.pattern % 4
-		var attack_cutoff: float = [0.58, 0.65, 0.80, 0.85][pattern_id]
-		if boss.timer > attack_cutoff:
-			if distance > 112.0:
-				return _boss_safe_direction(to_enemy.normalized(), room)
-			if player.attack():
-				attacks += 1
-			return _boss_safe_direction(side, room)
 		match pattern_id:
 			0:
 				return _boss_safe_direction(away if distance < 285.0 else side, room)
