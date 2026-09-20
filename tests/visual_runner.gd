@@ -161,12 +161,13 @@ func _run() -> void:
 	game.wave = 1
 	game.toast_time = 0.0
 	game.banner_time = 0.0
-	game.spawn_enemy("boss", game.player.position + Vector2(260, 0), 7, 9)
+	var visual_boss = game.spawn_enemy("boss", game.player.position + Vector2(260, 0), 7, 9)
 	await _frames(3)
 	await _shot("11_boss_hud")
 
-	game.mode = "victory"
-	game.dungeon.active = -1
+	visual_boss.dead = true
+	game.enemy_died(visual_boss)
+	game.finish_run()
 	await _frames(3)
 	await _shot("12_victory")
 	await _click(Vector2(720, 568))
@@ -174,10 +175,16 @@ func _run() -> void:
 	await _shot("13_victory_inventory")
 	await _click(Vector2(1305, 61))
 	_expect("victory inventory return click", game.mode == "victory")
+	await _click(Vector2(720, 744))
+	_expect("victory can return to title with checkpoint intact", game.mode == "title" and bool(game.profile.run.get("victory_ready", false)))
+	await _shot("13a_victory_title")
+	await _click(Vector2(281, 577))
+	_expect("title victory checkpoint resumes the victory screen", game.mode == "victory")
+	await _shot("13b_victory_resume")
 	await _click(Vector2(720, 637))
-	_expect("victory Ascend starts the next vow", game.mode == "play" and game.ascension == 1 and String(game.ascension_vow().id) == "ember_tide")
+	_expect("restored victory Ascend starts the next vow", game.mode == "play" and game.ascension == 1 and String(game.ascension_vow().id) == "ember_tide")
 	await _frames(4)
-	await _shot("13b_ascension_vow")
+	await _shot("13c_ascension_vow")
 
 	# iPad-class 4:3 window: keep click mapping and legibility under a different aspect ratio.
 	DisplayServer.window_set_size(Vector2i(1024, 768))
@@ -277,7 +284,7 @@ func _shot(label: String) -> void:
 	else:
 		shots += 1
 		print("SHOT ", label, " ", image.get_width(), "x", image.get_height())
-		if label in ["04_gameplay", "09b_touch_gameplay", "10b_elite_affix", "11_boss_hud", "13b_ascension_vow", "14_ipad_4x3_touch"]:
+		if label in ["04_gameplay", "09b_touch_gameplay", "10b_elite_affix", "11_boss_hud", "13c_ascension_vow", "14_ipad_4x3_touch"]:
 			_expect("world visible in " + label, _world_visible(image))
 
 func _world_visible(image: Image) -> bool:
