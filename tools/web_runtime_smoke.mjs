@@ -31,26 +31,6 @@ await page.waitForFunction(() => {
 }, null, { timeout: 120_000 });
 await page.waitForTimeout(5000);
 
-const pwa = await page.evaluate(async () => {
-  const manifest = document.querySelector('link[rel="manifest"]')?.getAttribute("href") || "";
-  let serviceWorkerActive = false;
-  if ("serviceWorker" in navigator) {
-    try {
-      const registration = await Promise.race([
-        navigator.serviceWorker.ready,
-        new Promise((_, reject) => setTimeout(() => reject(new Error("service worker timeout")), 15000)),
-      ]);
-      serviceWorkerActive = Boolean(registration?.active);
-    } catch {
-      serviceWorkerActive = false;
-    }
-  }
-  return { manifest, serviceWorkerActive };
-});
-if (!pwa.manifest || !pwa.serviceWorkerActive) {
-  throw new Error(`PWA registration failed: ${JSON.stringify(pwa)}`);
-}
-
 const titleCanvas = await page.locator("canvas").boundingBox();
 if (!titleCanvas || titleCanvas.width < 640 || titleCanvas.height < 360) {
   throw new Error(`Godot canvas has invalid bounds: ${JSON.stringify(titleCanvas)}`);
@@ -67,9 +47,17 @@ await page.keyboard.up("KeyD");
 await page.waitForTimeout(500);
 await page.screenshot({ path: `${outDir}/03_web_movement.png`, fullPage: true });
 
-const runtime = await page.evaluate(() => {
+const runtime = await page.evaluate(async () => {
   const canvas = document.querySelector("canvas");
   const rect = canvas.getBoundingClientRect();
+  const manifest = document.querySelector('link[rel="manifest"]')?.href || "";
+  let serviceWorker = false;
+  if ("serviceWorker" in navigator) {
+    serviceWorker = await Promise.race([
+      navigator.serviceWorker.ready.then(() => true),
+      new Promise((resolve) => setTimeout(() => resolve(false), 10_000)),
+    ]);
+  }
   return {
     title: document.title,
     canvasWidth: canvas.width,
@@ -77,9 +65,14 @@ const runtime = await page.evaluate(() => {
     cssWidth: Math.round(rect.width),
     cssHeight: Math.round(rect.height),
     visibility: document.visibilityState,
-    pwa,
+    manifest,
+    serviceWorker,
   };
 });
+
+if (!runtime.manifest || !runtime.serviceWorker) {
+  throw new Error(`PWA registration incomplete: ${JSON.stringify(runtime)}`);
+}
 
 const ignoredConsolePatterns = [
   /AudioContext/i,
