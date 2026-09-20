@@ -117,6 +117,8 @@ func _drive_player() -> void:
 			primary_evade = _windup_dodge(target, player.position - target.position, distance)
 		var evade: Vector2 = primary_evade if primary_evade.length() > 0.05 else _danger_move(target)
 		if evade.length() > 0.05:
+			if game.enemies.size() == 1 and target.state == "recover" and distance > 118.0:
+				evade = (evade * 1.15 + to_enemy.normalized() * 0.85).normalized()
 			player.test_move = _safe_direction(evade)
 		elif not game.dungeon.line_clear(player.position, target.position):
 			var room_center: Vector2 = game.dungeon.rooms[target.room_id].center
@@ -124,17 +126,17 @@ func _drive_player() -> void:
 				player.test_move = _navigate_toward(room_center)
 			else:
 				player.test_move = _navigate_toward(target.position)
-		elif distance > 104.0:
+		elif distance > 116.0:
 			player.test_move = to_enemy.normalized()
 		else:
 			var orbit: Vector2 = to_enemy.orthogonal().normalized()
 			var orbit_sign: float = 1.0 if (target.room_id + int(target.position.x / 32.0) + int(target.position.y / 32.0)) % 2 == 0 else -1.0
 			orbit *= orbit_sign
-			if distance < 76.0:
+			if distance < 82.0:
 				player.test_move = (-to_enemy.normalized() + orbit * 0.65).normalized()
 			else:
 				player.test_move = (orbit * 0.92 + to_enemy.normalized() * 0.18).normalized()
-		if distance <= 112.0 and target.state != "spawn":
+		if distance <= 120.0 and target.state != "spawn":
 			if player.attack():
 				attacks += 1
 		return
@@ -298,16 +300,16 @@ func _windup_dodge(enemy, delta: Vector2, distance: float) -> Vector2:
 		"elite":
 			if distance < 225.0 and absf(enemy.aim.angle_to(delta)) < 1.6:
 				var radial := Vector2.ZERO
-				if distance > 112.0:radial = -delta.normalized() * 0.42
-				elif distance < 90.0:radial = delta.normalized() * 0.25
+				if distance > 118.0:radial = -delta.normalized() * 0.32
+				elif distance < 94.0:radial = delta.normalized() * 0.25
 				return (side * 1.45 + radial).normalized()
 		"boss":
 			match enemy.pattern % 4:
 				0:
 					if distance < 285.0 and absf(enemy.aim.angle_to(delta)) < 1.7:
 						var radial := Vector2.ZERO
-						if distance > 112.0:radial = -delta.normalized() * 0.40
-						elif distance < 92.0:radial = delta.normalized() * 0.25
+						if distance > 118.0:radial = -delta.normalized() * 0.30
+						elif distance < 94.0:radial = delta.normalized() * 0.25
 						return (side * 1.5 + radial).normalized()
 				1:
 					return side
