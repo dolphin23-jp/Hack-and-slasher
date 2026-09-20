@@ -10,6 +10,7 @@ const LEGENDS=[
  {"name":"THE GLASS CHOIR","slot":"accessory","effect":"echo","text":"Every second sword swing releases 2 piercing spirit blades, each dealing 55% Attack."},
  {"name":"HEART OF THE PYRE","slot":"accessory","effect":"crit_blast","text":"Critical hits erupt for 80% Attack in an area. 0.7 second internal cooldown."}]
 static func generate(rng:RandomNumberGenerator,tier:int,rarity:int=-1,legend:int=-1)->Dictionary:
+ tier=maxi(1,tier)
  if rarity<0:
   var roll=rng.randf();rarity=3 if roll<.018 else (2 if roll<.18 else (1 if roll<.59 else 0))
  var slot=SLOTS[rng.randi_range(0,2)];var effect="";var desc="";var item_name=""
