@@ -1,0 +1,157 @@
+extends SceneTree
+
+const BASE := Vector2(1440, 900)
+var game
+var failures: Array[String] = []
+var shots := 0
+
+func _initialize() -> void:
+	call_deferred("_run")
+
+func _run() -> void:
+	DisplayServer.window_set_size(Vector2i(1440, 900))
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts/ui"))
+	game = load("res://main.tscn").instantiate()
+	root.add_child(game)
+	await _frames(5)
+
+	_expect("starts on title", game.mode == "title")
+	await _shot("01_title")
+
+	await _click(Vector2(190, 638))
+	_expect("title settings click", game.mode == "settings")
+	await _shot("02_settings")
+	var music_before: float = game.profile.settings.music
+	await _click(Vector2(720, 252))
+	_expect("settings value changes by click", not is_equal_approx(music_before, float(game.profile.settings.music)))
+	await _click(Vector2(720, 737))
+	_expect("settings back returns to title", game.mode == "title")
+
+	await _click(Vector2(373, 638))
+	_expect("help click", game.mode == "help")
+	await _shot("03_help")
+	await _click(Vector2(720, 788))
+	_expect("help back returns to title", game.mode == "title")
+
+	await _click(Vector2(281, 577))
+	_expect("begin descent click", game.mode == "play")
+	await _frames(4)
+	await _shot("04_gameplay")
+
+	await _click(Vector2(1294, 88))
+	_expect("minimap opens large map", game.ui.big_map)
+	await _shot("05_map")
+	await _click(Vector2(1294, 88))
+	_expect("minimap closes large map", not game.ui.big_map)
+
+	var sample := ItemDB.generate(game.rng, 3, 3, 0)
+	game.player.inventory.append(sample)
+	game.save_run()
+	await _click(Vector2(1094, 847))
+	_expect("reliquary click", game.mode == "inventory")
+	await _frames(3)
+	await _shot("06_inventory")
+	await _click(Vector2(380, 226))
+	_expect("inventory item click selects first item", game.ui.selected == 0)
+	var slot: String = game.player.inventory[0].slot
+	var old_id: String = game.player.equipment[slot].id
+	await _click(Vector2(901, 788))
+	_expect("equip click swaps equipment", game.player.equipment[slot].id != old_id)
+	await _shot("07_inventory_equipped")
+	await _click(Vector2(1305, 61))
+	_expect("inventory return click", game.mode == "play")
+
+	await _click(Vector2(1294, 847))
+	_expect("pause click", game.mode == "pause")
+	await _shot("08_pause")
+	await _click(Vector2(720, 426))
+	_expect("pause settings click", game.mode == "settings")
+	await _shot("09_pause_settings")
+	await _click(Vector2(720, 737))
+	_expect("nested settings back returns to pause", game.mode == "pause")
+	await _click(Vector2(720, 359))
+	_expect("resume click", game.mode == "play")
+
+	game.pending_upgrades = 1
+	game.prepare_upgrade()
+	await _frames(3)
+	_expect("upgrade overlay opens", game.mode == "upgrade" and game.upgrade_choices.size() == 3)
+	await _shot("10_upgrade")
+	await _click(Vector2(376, 477))
+	_expect("upgrade card click returns to play", game.mode == "play" and game.pending_upgrades == 0)
+
+	game.player.position = game.dungeon.rooms[9].center
+	game.camera.position = game.player.position
+	game.dungeon.active = 9
+	game.wave = 1
+	game.toast_time = 0.0
+	game.banner_time = 0.0
+	game.spawn_enemy("boss", game.player.position + Vector2(260, 0), 7, 9)
+	await _frames(3)
+	await _shot("11_boss_hud")
+
+	game.mode = "victory"
+	game.dungeon.active = -1
+	await _frames(3)
+	await _shot("12_victory")
+	await _click(Vector2(720, 568))
+	_expect("victory relic button click", game.mode == "victory_inventory")
+	await _shot("13_victory_inventory")
+	await _click(Vector2(1305, 61))
+	_expect("victory inventory return click", game.mode == "victory")
+
+	var summary := "VISUAL_SMOKE shots=%d failures=%d\n" % [shots, failures.size()]
+	for failure in failures:
+		summary += "FAIL: " + failure + "\n"
+	var file := FileAccess.open("res://test-artifacts/visual_summary.txt", FileAccess.WRITE)
+	if file:
+		file.store_string(summary)
+		file.close()
+	print(summary.strip_edges())
+	game.shutdown(0 if failures.is_empty() else 1)
+
+func _frames(count: int = 2) -> void:
+	for _i in range(count):
+		await process_frame
+
+func _click(base_position: Vector2) -> void:
+	var viewport_size := Vector2(root.size)
+	var screen_position := base_position / BASE * viewport_size
+	var motion := InputEventMouseMotion.new()
+	motion.position = screen_position
+	motion.global_position = screen_position
+	Input.parse_input_event(motion)
+	await process_frame
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.pressed = true
+	down.position = screen_position
+	down.global_position = screen_position
+	Input.parse_input_event(down)
+	await process_frame
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_LEFT
+	up.pressed = false
+	up.position = screen_position
+	up.global_position = screen_position
+	Input.parse_input_event(up)
+	await _frames(2)
+
+func _shot(label: String) -> void:
+	game.ui.queue_redraw()
+	await _frames(3)
+	var image := root.get_texture().get_image()
+	var path := ProjectSettings.globalize_path("res://test-artifacts/ui/%s.png" % label)
+	var err := image.save_png(path)
+	if err != OK:
+		failures.append("screenshot %s could not be saved: %s" % [label, error_string(err)])
+	else:
+		shots += 1
+		print("SHOT ", label, " ", image.get_width(), "x", image.get_height())
+
+func _expect(label: String, condition: bool) -> void:
+	if condition:
+		print("PASS ", label)
+	else:
+		failures.append(label)
+		printerr("FAIL ", label)
