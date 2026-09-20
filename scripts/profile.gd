@@ -53,6 +53,13 @@ func valid_run(v:Variant)->bool:
  if not vector_valid(v.position):return false
  if v.has("pending_upgrades") and not (v.pending_upgrades is int or v.pending_upgrades is float):return false
  if v.has("victory_ready") and not v.victory_ready is bool:return false
+ if v.has("metrics"):
+  if not v.metrics is Dictionary:return false
+  var allowed_metrics=["hits_taken","damage_dealt","kills","drops","pickups","equips","level_ups","boss_patterns"]
+  for key in v.metrics:
+   if key not in allowed_metrics:return false
+   var value=v.metrics[key]
+   if not (value is int or value is float) or not is_finite(float(value)) or float(value)<0 or float(value)>1000000000:return false
  if not v.get("drops",[]) is Array or v.get("drops",[]).size()>1200:return false
  for d in v.get("drops",[]):
   if not d is Dictionary or not vector_valid(d.get("position")):return false
