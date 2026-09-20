@@ -1,16 +1,16 @@
 extends Node
 
-const DT := 1.0 / 60.0
-const SUBSTEPS_PER_FRAME := 30
-const MAX_SIM_SECONDS := 900.0
-const ROUTE := [1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
+const DT = 1.0 / 60.0
+const SUBSTEPS_PER_FRAME = 30
+const MAX_SIM_SECONDS = 900.0
+const ROUTE = [1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
 
 var game
-var route_index := 0
-var simulated := 0.0
-var attacks := 0
-var blessings := 0
-var last_cleared_count := 1
+var route_index = 0
+var simulated = 0.0
+var attacks = 0
+var blessings = 0
+var last_cleared_count = 1
 var failures: Array[String] = []
 
 func _ready() -> void:
@@ -54,7 +54,7 @@ func _run() -> void:
 	game.player.test_move = Vector2.ZERO
 	var unique_visited: Array[int] = []
 	for id in game.dungeon.visited:
-		var room_id := int(id)
+		var room_id = int(id)
 		if room_id not in unique_visited:
 			unique_visited.append(room_id)
 	unique_visited.sort()
@@ -71,12 +71,12 @@ func _run() -> void:
 		failures.append("player died before campaign completion")
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts"))
-	var summary := "CAMPAIGN mode=%s simulated=%.1fs attacks=%d blessings=%d kills=%d visited=%s failures=%d\n" % [
+	var summary = "CAMPAIGN mode=%s simulated=%.1fs attacks=%d blessings=%d kills=%d visited=%s failures=%d\n" % [
 		game.mode, simulated, attacks, blessings, game.kills, str(unique_visited), failures.size()
 	]
 	for failure in failures:
 		summary += "FAIL: " + failure + "\n"
-	var file := FileAccess.open("res://test-artifacts/campaign_summary.txt", FileAccess.WRITE)
+	var file = FileAccess.open("res://test-artifacts/campaign_summary.txt", FileAccess.WRITE)
 	if file:
 		file.store_string(summary)
 		file.close()
@@ -87,7 +87,7 @@ func _advance_route_if_ready() -> void:
 	if route_index >= ROUTE.size() or game.dungeon.active >= 0 or not game.enemies.is_empty():
 		return
 	var target_room: int = ROUTE[route_index]
-	var current_room := game.dungeon.room_at(game.player.position)
+	var current_room = game.dungeon.room_at(game.player.position)
 	if current_room == target_room and target_room in game.dungeon.cleared:
 		route_index += 1
 		if route_index < ROUTE.size():
@@ -101,10 +101,10 @@ func _drive_player() -> void:
 	var target = _nearest_live_enemy()
 	if target != null:
 		var to_enemy: Vector2 = target.position - player.position
-		var distance := to_enemy.length()
+		var distance = to_enemy.length()
 		if distance > 0.001:
 			player.facing = to_enemy / distance
-		var danger := _danger_vector(target)
+		var danger = _danger_vector(target)
 		if danger.length() > 0.08:
 			player.test_move = danger.normalized()
 		elif distance > 104.0:
@@ -112,7 +112,7 @@ func _drive_player() -> void:
 		elif distance < 72.0:
 			player.test_move = (-to_enemy.normalized() + to_enemy.orthogonal().normalized() * 0.55).normalized()
 		else:
-			var orbit_sign := 1.0 if int(simulated * 0.7) % 2 == 0 else -1.0
+			var orbit_sign = 1.0 if int(simulated * 0.7) % 2 == 0 else -1.0
 			player.test_move = (to_enemy.orthogonal().normalized() * orbit_sign - to_enemy.normalized() * 0.08).normalized()
 		if distance <= 112.0 and target.state != "spawn":
 			if player.attack():
@@ -137,11 +137,11 @@ func _drive_player() -> void:
 
 func _nearest_live_enemy():
 	var nearest = null
-	var best := INF
+	var best = INF
 	for enemy in game.enemies:
 		if not is_instance_valid(enemy) or enemy.dead or enemy.state == "spawn":
 			continue
-		var distance := enemy.position.distance_squared_to(game.player.position)
+		var distance = enemy.position.distance_squared_to(game.player.position)
 		if distance < best:
 			best = distance
 			nearest = enemy
@@ -149,11 +149,11 @@ func _nearest_live_enemy():
 
 func _danger_vector(primary) -> Vector2:
 	var player = game.player
-	var avoid := Vector2.ZERO
+	var avoid = Vector2.ZERO
 
 	for hazard in game.hazards:
 		var delta: Vector2 = player.position - hazard.p
-		var safe_radius := float(hazard.radius) + 85.0
+		var safe_radius = float(hazard.radius) + 85.0
 		if delta.length() < safe_radius:
 			avoid += delta.normalized() * (3.0 if hazard.delay <= 0.35 else 1.8)
 
@@ -162,32 +162,32 @@ func _danger_vector(primary) -> Vector2:
 			continue
 		var delta: Vector2 = player.position - projectile.position
 		if delta.length() < 155.0:
-			var side := projectile.velocity.orthogonal().normalized()
+			var side = projectile.velocity.orthogonal().normalized()
 			if side.dot(delta) < 0:
 				side = -side
 			avoid += side * 2.4
 
-	var crowd_center := Vector2.ZERO
-	var crowd := 0
+	var crowd_center = Vector2.ZERO
+	var crowd = 0
 	for enemy in game.enemies:
 		if not is_instance_valid(enemy) or enemy.dead or enemy.state == "spawn":
 			continue
 		var delta: Vector2 = player.position - enemy.position
-		var distance := delta.length()
+		var distance = delta.length()
 		if distance < 145.0:
 			crowd_center += enemy.position
 			crowd += 1
 		if enemy.state == "windup":
-			var reach := float(enemy.spec.get("reach", 100.0))
+			var reach = float(enemy.spec.get("reach", 100.0))
 			if enemy.kind == "boss":
 				reach = 280.0
 			if distance < reach + 115.0:
-				var side := enemy.aim.orthogonal().normalized()
+				var side = enemy.aim.orthogonal().normalized()
 				if side.dot(delta) < 0:
 					side = -side
 				avoid += side * 3.2 + delta.normalized() * 1.2
 		if enemy.state == "charge" and distance < 230.0:
-			var side := enemy.aim.orthogonal().normalized()
+			var side = enemy.aim.orthogonal().normalized()
 			if side.dot(delta) < 0:
 				side = -side
 			avoid += side * 3.6
@@ -205,12 +205,12 @@ func _danger_vector(primary) -> Vector2:
 func _choose_survival_blessing() -> void:
 	if game.upgrade_choices.is_empty():
 		return
-	var priorities := ["HEARTWOOD", "SOUL TAKER", "WAYFARER", "OATH OF STEEL", "TEMPERED EDGE", "EXECUTIONER", "QUICKENING", "COLD SUN", "FORKED PROMISE"]
-	var choice := 0
-	var best_rank := priorities.size() + 1
+	var priorities = ["HEARTWOOD", "SOUL TAKER", "WAYFARER", "OATH OF STEEL", "TEMPERED EDGE", "EXECUTIONER", "QUICKENING", "COLD SUN", "FORKED PROMISE"]
+	var choice = 0
+	var best_rank = priorities.size() + 1
 	for i in range(game.upgrade_choices.size()):
 		var name: String = game.upgrade_choices[i].name
-		var rank := priorities.find(name)
+		var rank = priorities.find(name)
 		if rank >= 0 and rank < best_rank:
 			best_rank = rank
 			choice = i
