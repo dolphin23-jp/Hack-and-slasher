@@ -1,8 +1,8 @@
 extends Node
 
-const DT = 1.0 / 60.0
+const DT = 1.0 / 30.0
 const SUBSTEPS_PER_FRAME = 30
-const MAX_SIM_SECONDS = 2400.0
+const MAX_SIM_SECONDS = 1200.0
 const ROUTE = [1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
 
 var game
@@ -11,6 +11,7 @@ var simulated = 0.0
 var attacks = 0
 var blessings = 0
 var last_cleared_count = 1
+var next_report = 120.0
 var failures: Array[String] = []
 
 func _ready() -> void:
@@ -44,6 +45,9 @@ func _run() -> void:
 				print("CAMPAIGN CLEAR rooms=", game.dungeon.cleared, " t=", snapped(simulated, 0.1), " hp=", snapped(game.player.hp, 0.1), " level=", game.player.level)
 
 			_advance_route_if_ready()
+			if simulated >= next_report:
+				print("CAMPAIGN STATUS t=", snapped(simulated, 0.1), " room=", game.dungeon.room_at(game.player.position), " active=", game.dungeon.active, " enemies=", game.enemies.size(), " kills=", game.kills, " hp=", snapped(game.player.hp, 0.1))
+				next_report += 120.0
 			if simulated >= MAX_SIM_SECONDS:
 				break
 
