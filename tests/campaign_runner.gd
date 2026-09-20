@@ -47,7 +47,9 @@ func _run() -> void:
 
 			_advance_route_if_ready()
 			if simulated >= next_report:
-				print("CAMPAIGN STATUS t=", snapped(simulated, 0.1), " room=", game.dungeon.room_at(game.player.position), " active=", game.dungeon.active, " enemies=", game.enemies.size(), " kills=", game.kills, " hp=", snapped(game.player.hp, 0.1))
+				var boss = _boss_enemy()
+				var boss_status := "" if boss == null else " boss_hp=%d/%d boss_state=%s pattern=%d phase=%d" % [ceili(boss.hp), ceili(boss.max_hp), boss.state, boss.pattern, boss.phase]
+				print("CAMPAIGN STATUS t=", snapped(simulated, 0.1), " room=", game.dungeon.room_at(game.player.position), " active=", game.dungeon.active, " enemies=", game.enemies.size(), " kills=", game.kills, " hp=", snapped(game.player.hp, 0.1), boss_status)
 				next_report += 120.0
 			if simulated >= MAX_SIM_SECONDS:
 				break
@@ -231,6 +233,12 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 	if distance > 300.0:
 		return to_enemy.normalized()
 	return side
+
+func _boss_enemy():
+	for enemy in game.enemies:
+		if is_instance_valid(enemy) and not enemy.dead and enemy.kind == "boss":
+			return enemy
+	return null
 
 func _nearest_health_drop():
 	var nearest = null
