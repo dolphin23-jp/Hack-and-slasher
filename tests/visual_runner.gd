@@ -13,6 +13,10 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts/ui"))
 	game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	# Each harness must start from a clean profile state even when prior CI steps saved a run.
+	game.profile.run = {}
+	game.profile.settings.touch = false
+	game.profile.write_save()
 	await _frames(5)
 
 	# Every UI run starts from a deterministic profile. Previous test processes
