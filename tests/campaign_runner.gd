@@ -112,21 +112,11 @@ func _drive_player() -> void:
 		if evade.length() > 0.05:
 			player.test_move = evade
 		elif not game.dungeon.line_clear(player.position, target.position):
-			var room_center: Vector2 = game.dungeon.rooms[target.room_id].center
-			if player.position.distance_to(room_center) > 90.0 and game.dungeon.line_clear(player.position, room_center):
-				player.test_move = _navigate_toward(room_center)
-			else:
-				player.test_move = _navigate_toward(target.position)
-		elif distance > 104.0:
+			player.test_move = _navigate_toward(target.position)
+		elif distance > 96.0:
 			player.test_move = to_enemy.normalized()
 		else:
-			var orbit: Vector2 = to_enemy.orthogonal().normalized()
-			var orbit_sign: float = 1.0 if (target.room_id + int(target.position.x / 32.0) + int(target.position.y / 32.0)) % 2 == 0 else -1.0
-			orbit *= orbit_sign
-			if distance < 76.0:
-				player.test_move = (-to_enemy.normalized() + orbit * 0.65).normalized()
-			else:
-				player.test_move = (orbit * 0.92 + to_enemy.normalized() * 0.18).normalized()
+			player.test_move = Vector2.ZERO
 		if distance <= 112.0 and target.state != "spawn":
 			if player.attack():
 				attacks += 1
@@ -154,10 +144,6 @@ func _navigate_toward(target_position: Vector2) -> Vector2:
 	if delta.length() < 0.001:
 		return Vector2.ZERO
 	var direct: Vector2 = delta.normalized()
-	if game.dungeon.active >= 0 and not game.dungeon.line_clear(origin, target_position):
-		var waypoint = _corner_waypoint(origin, target_position)
-		if waypoint != null:
-			return (waypoint - origin).normalized()
 	var best: Vector2 = direct
 	var best_score: float = INF
 	var phase_sign: float = 1.0 if int(simulated / 3.0) % 2 == 0 else -1.0
@@ -175,49 +161,17 @@ func _navigate_toward(target_position: Vector2) -> Vector2:
 			best = candidate
 	return best
 
-func _corner_waypoint(origin: Vector2, target_position: Vector2):
-	var room: Dictionary = game.dungeon.rooms[game.dungeon.active]
-	var best = null
-	var best_cost: float = INF
-	for obstacle in game.dungeon.obstacles:
-		if not room.rect.grow(80.0).intersects(obstacle):
-			continue
-		var grown: Rect2 = obstacle.grow(62.0)
-		var corners: Array[Vector2] = [
-			grown.position,
-			Vector2(grown.end.x, grown.position.y),
-			grown.end,
-			Vector2(grown.position.x, grown.end.y)
-		]
-		for point: Vector2 in corners:
-			if not game.dungeon.walkable(point, 18.0):
-				continue
-			if not game.dungeon.line_clear(origin, point):
-				continue
-			if not game.dungeon.line_clear(point, target_position):
-				continue
-			var cost: float = origin.distance_to(point) + point.distance_to(target_position)
-			if cost < best_cost:
-				best_cost = cost
-				best = point
-	return best
-
 func _nearest_live_enemy():
-	var visible = null
-	var visible_best: float = INF
-	var fallback = null
-	var fallback_best: float = INF
+	var nearest = null
+	var best = INF
 	for enemy in game.enemies:
 		if not is_instance_valid(enemy) or enemy.dead or enemy.state == "spawn":
 			continue
-		var distance: float = enemy.position.distance_squared_to(game.player.position)
-		if distance < fallback_best:
-			fallback_best = distance
-			fallback = enemy
-		if game.dungeon.line_clear(game.player.position, enemy.position) and distance < visible_best:
-			visible_best = distance
-			visible = enemy
-	return visible if visible != null else fallback
+		var distance = enemy.position.distance_squared_to(game.player.position)
+		if distance < best:
+			best = distance
+			nearest = enemy
+	return nearest
 
 func _danger_move(primary) -> Vector2:
 	var player = game.player
@@ -284,12 +238,12 @@ func _windup_dodge(enemy, delta: Vector2, distance: float) -> Vector2:
 			return delta.normalized() if distance < 160.0 else Vector2.ZERO
 		"elite":
 			if distance < 225.0 and absf(enemy.aim.angle_to(delta)) < 1.6:
-				return (side * 1.45 - delta.normalized() * 0.55).normalized()
+				return (side * 1.2 + delta.normalized() * 0.35).normalized()
 		"boss":
 			match enemy.pattern % 4:
 				0:
 					if distance < 285.0 and absf(enemy.aim.angle_to(delta)) < 1.7:
-						return (side * 1.45 - delta.normalized() * 0.45).normalized()
+						return (side * 1.3 + delta.normalized() * 0.45).normalized()
 				1:
 					return side
 				2:
