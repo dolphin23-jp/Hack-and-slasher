@@ -57,6 +57,7 @@ func _run() -> void:
 	_expect("begin descent click", game.mode == "play")
 	await _frames(4)
 	await _shot("04_gameplay")
+	await _expect_world_visible("gameplay world remains visible beneath HUD")
 
 	await _click(Vector2(1294, 88))
 	_expect("minimap opens large map", game.ui.big_map)
@@ -207,6 +208,21 @@ func _touch(base_position: Vector2) -> void:
 	up.position = screen_position
 	Input.parse_input_event(up)
 	await _frames(2)
+
+func _expect_world_visible(label: String) -> void:
+	await _frames(2)
+	var image := root.get_texture().get_image()
+	var ink := Color("0d1722")
+	var visible := false
+	for uv in [Vector2(0.40,0.52),Vector2(0.50,0.55),Vector2(0.60,0.52),Vector2(0.50,0.66)]:
+		var x := clampi(roundi(uv.x * float(image.get_width()-1)),0,image.get_width()-1)
+		var y := clampi(roundi(uv.y * float(image.get_height()-1)),0,image.get_height()-1)
+		var pixel := image.get_pixel(x,y)
+		var delta := absf(pixel.r-ink.r)+absf(pixel.g-ink.g)+absf(pixel.b-ink.b)
+		if delta > 0.08:
+			visible = true
+			break
+	_expect(label,visible)
 
 func _shot(label: String) -> void:
 	game.ui.queue_redraw()
