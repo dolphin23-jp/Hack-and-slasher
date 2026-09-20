@@ -199,6 +199,10 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 	if side.dot(player.last_move) < 0.0:
 		side = -side
 	if boss.state == "windup":
+		# One basic hit at the start of a long telegraph is safe while we are
+		# already translating out of the danger zone.
+		if distance <= 130.0 and player.attack():
+			attacks += 1
 		match boss.pattern % 4:
 			0:
 				return (side * 1.5 + away * 0.8).normalized()
@@ -220,15 +224,23 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 		return lingering
 	# During recovery, close just long enough for basic attacks.
 	if boss.state == "recover":
-		if distance > 104.0:
+		if distance > 124.0:
 			return to_enemy.normalized()
 		if player.attack():
 			attacks += 1
-		return (side - to_enemy.normalized() * 0.18).normalized()
-	# Pattern 0 only begins inside 175 px. Step into trigger range, then
-	# immediately leave the cone once the windup starts.
+		if distance < 78.0:
+			return (side + away * 0.35).normalized()
+		if distance > 108.0:
+			return (side + to_enemy.normalized() * 0.22).normalized()
+		return side
+	# Every approach tick is a free opportunity to land a basic hit before
+	# the boss commits to its next telegraph.
+	if distance <= 130.0 and player.attack():
+		attacks += 1
+	# Pattern 0 only begins inside 175 px. Enter close enough to land the
+	# pre-telegraph hit, then leave as soon as windup begins.
 	if boss.pattern % 4 == 0:
-		if distance > 158.0:
+		if distance > 118.0:
 			return to_enemy.normalized()
 		return side
 	# The ranged/charge patterns can commit from far away. Keep a moderate
