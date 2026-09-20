@@ -38,6 +38,21 @@ func _run() -> void:
 	_expect("starts on title", game.mode == "title")
 	await _shot("01_title")
 
+	# Gamepad-only menu flow: spatial D-pad focus, activation and B/back.
+	await _joy(JOY_BUTTON_DPAD_DOWN)
+	_expect("gamepad down moves title focus spatially to settings", game.ui.pad_focus == 1)
+	await _joy(JOY_BUTTON_A)
+	_expect("gamepad A opens focused title settings", game.mode == "settings")
+	await _frames(2)
+	var pad_sfx_before: float = game.profile.settings.sfx
+	await _joy(JOY_BUTTON_DPAD_DOWN)
+	_expect("gamepad down advances settings focus", game.ui.pad_focus == 1)
+	await _joy(JOY_BUTTON_A)
+	_expect("gamepad A changes focused setting", not is_equal_approx(pad_sfx_before, float(game.profile.settings.sfx)))
+	await _joy(JOY_BUTTON_B)
+	_expect("gamepad B returns from settings", game.mode == "title")
+	await _frames(2)
+
 	await _click(Vector2(190, 638))
 	_expect("title settings click", game.mode == "settings")
 	await _shot("02_settings")
@@ -78,6 +93,9 @@ func _run() -> void:
 	await _click(Vector2(901, 788))
 	_expect("equip click swaps equipment", game.player.equipment[slot].id != old_id)
 	await _shot("07_inventory_equipped")
+	var pad_equipped_id: String = game.player.equipment[slot].id
+	await _joy(JOY_BUTTON_X)
+	_expect("gamepad X equips selected inventory item directly", game.player.equipment[slot].id != pad_equipped_id)
 	await _click(Vector2(1305, 61))
 	_expect("inventory return click", game.mode == "play")
 
@@ -113,8 +131,10 @@ func _run() -> void:
 	await _frames(3)
 	_expect("upgrade overlay opens", game.mode == "upgrade" and game.upgrade_choices.size() == 3)
 	await _shot("10_upgrade")
-	await _click(Vector2(376, 477))
-	_expect("upgrade card click returns to play", game.mode == "play" and game.pending_upgrades == 0)
+	await _joy(JOY_BUTTON_DPAD_RIGHT)
+	_expect("gamepad right moves between blessing cards", game.ui.pad_focus == 1)
+	await _joy(JOY_BUTTON_A)
+	_expect("gamepad A chooses focused blessing", game.mode == "play" and game.pending_upgrades == 0)
 
 	game.player.position = game.dungeon.rooms[9].center
 	game.camera.position = game.player.position
@@ -186,6 +206,21 @@ func _click(base_position: Vector2) -> void:
 	up.pressed = false
 	up.position = screen_position
 	up.global_position = screen_position
+	Input.parse_input_event(up)
+	await _frames(2)
+
+
+func _joy(button_index: int) -> void:
+	var down := InputEventJoypadButton.new()
+	down.device = 0
+	down.button_index = button_index
+	down.pressed = true
+	Input.parse_input_event(down)
+	await _frames(2)
+	var up := InputEventJoypadButton.new()
+	up.device = 0
+	up.button_index = button_index
+	up.pressed = false
 	Input.parse_input_event(up)
 	await _frames(2)
 
