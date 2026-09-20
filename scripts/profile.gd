@@ -3,7 +3,7 @@ extends RefCounted
 const VERSION=1
 var path="user://ashen_vow_v1.json"
 var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false}
-var records={"runs":0,"wins":0,"best_level":1,"total_kills":0}
+var records={"runs":0,"wins":0,"best_level":1,"best_ascension":0,"total_kills":0}
 var run={}
 func read_save()->void:
  if not FileAccess.file_exists(path):return
