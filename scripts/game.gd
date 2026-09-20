@@ -234,7 +234,7 @@ func enemy_died(e,proc:bool=false)->void:
    if other.dead or other.position.distance_to(e.position)>235:continue
    fx.lightning(e.position,other.position);other.take_damage(player.stats.attack*.9,Vector2.ZERO,false,true);count+=1
    if count>=3:break
- var tier=dungeon.rooms[e.room_id].tier+ascension*2
+ var tier=maxi(1,dungeon.rooms[e.room_id].tier+ascension*2)
  if e.kind=="boss":
   for i in range(4):
    var reward=ItemDB.generate(rng,tier,3,i);reward.boss_reward=true;spawn_drop(e.position+Vector2.from_angle(i*TAU/4)*70,reward)
