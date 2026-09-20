@@ -192,16 +192,11 @@ func _danger_vector(primary) -> Vector2:
 				side = -side
 			avoid += side * 2.4
 
-	var crowd_center = Vector2.ZERO
-	var crowd = 0
 	for enemy in game.enemies:
 		if not is_instance_valid(enemy) or enemy.dead or enemy.state == "spawn":
 			continue
 		var delta: Vector2 = player.position - enemy.position
 		var distance = delta.length()
-		if distance < 145.0:
-			crowd_center += enemy.position
-			crowd += 1
 		if enemy.state == "windup":
 			var reach = float(enemy.spec.get("reach", 100.0))
 			if enemy.kind == "boss":
@@ -217,9 +212,6 @@ func _danger_vector(primary) -> Vector2:
 				side = -side
 			avoid += side * 3.6
 
-	if crowd >= 3:
-		crowd_center /= crowd
-		avoid += (player.position - crowd_center).normalized() * 2.2
 
 	if primary != null and primary.kind in ["elite", "boss"] and primary.state == "windup":
 		var delta: Vector2 = player.position - primary.position
