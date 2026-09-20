@@ -31,6 +31,26 @@ await page.waitForFunction(() => {
 }, null, { timeout: 120_000 });
 await page.waitForTimeout(5000);
 
+const pwa = await page.evaluate(async () => {
+  const manifest = document.querySelector('link[rel="manifest"]')?.getAttribute("href") || "";
+  let serviceWorkerActive = false;
+  if ("serviceWorker" in navigator) {
+    try {
+      const registration = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, reject) => setTimeout(() => reject(new Error("service worker timeout")), 15000)),
+      ]);
+      serviceWorkerActive = Boolean(registration?.active);
+    } catch {
+      serviceWorkerActive = false;
+    }
+  }
+  return { manifest, serviceWorkerActive };
+});
+if (!pwa.manifest || !pwa.serviceWorkerActive) {
+  throw new Error(`PWA registration failed: ${JSON.stringify(pwa)}`);
+}
+
 const titleCanvas = await page.locator("canvas").boundingBox();
 if (!titleCanvas || titleCanvas.width < 640 || titleCanvas.height < 360) {
   throw new Error(`Godot canvas has invalid bounds: ${JSON.stringify(titleCanvas)}`);
@@ -57,6 +77,7 @@ const runtime = await page.evaluate(() => {
     cssWidth: Math.round(rect.width),
     cssHeight: Math.round(rect.height),
     visibility: document.visibilityState,
+    pwa,
   };
 });
 
