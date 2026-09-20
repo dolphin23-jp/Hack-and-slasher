@@ -57,7 +57,6 @@ func _run() -> void:
 	_expect("begin descent click", game.mode == "play")
 	await _frames(4)
 	await _shot("04_gameplay")
-	await _expect_world_visible("gameplay world remains visible beneath HUD")
 
 	await _click(Vector2(1294, 88))
 	_expect("minimap opens large map", game.ui.big_map)
@@ -209,21 +208,6 @@ func _touch(base_position: Vector2) -> void:
 	Input.parse_input_event(up)
 	await _frames(2)
 
-func _expect_world_visible(label: String) -> void:
-	await _frames(2)
-	var image := root.get_texture().get_image()
-	var ink := Color("0d1722")
-	var visible := false
-	for uv in [Vector2(0.40,0.52),Vector2(0.50,0.55),Vector2(0.60,0.52),Vector2(0.50,0.66)]:
-		var x := clampi(roundi(uv.x * float(image.get_width()-1)),0,image.get_width()-1)
-		var y := clampi(roundi(uv.y * float(image.get_height()-1)),0,image.get_height()-1)
-		var pixel := image.get_pixel(x,y)
-		var delta := absf(pixel.r-ink.r)+absf(pixel.g-ink.g)+absf(pixel.b-ink.b)
-		if delta > 0.08:
-			visible = true
-			break
-	_expect(label,visible)
-
 func _shot(label: String) -> void:
 	game.ui.queue_redraw()
 	await _frames(3)
@@ -235,6 +219,27 @@ func _shot(label: String) -> void:
 	else:
 		shots += 1
 		print("SHOT ", label, " ", image.get_width(), "x", image.get_height())
+		if label in ["04_gameplay","09b_touch_gameplay","11_boss_hud","14_ipad_4x3_touch"]:
+			_expect("world visible in " + label,_world_visible(image))
+
+func _world_visible(image: Image) -> bool:
+	var ink := Color("0d1722")
+	var changed := 0
+	var total := 0
+	var x0 := int(image.get_width()*0.24)
+	var x1 := int(image.get_width()*0.76)
+	var y0 := int(image.get_height()*0.28)
+	var y1 := int(image.get_height()*0.68)
+	var step_x := maxi(1,int((x1-x0)/18.0))
+	var step_y := maxi(1,int((y1-y0)/12.0))
+	for y in range(y0,y1,step_y):
+		for x in range(x0,x1,step_x):
+			var pixel := image.get_pixel(x,y)
+			var diff := absf(pixel.r-ink.r)+absf(pixel.g-ink.g)+absf(pixel.b-ink.b)
+			if diff>0.08:
+				changed+=1
+			total+=1
+	return total>0 and float(changed)/float(total)>0.35
 
 func _expect(label: String, condition: bool) -> void:
 	if condition:
