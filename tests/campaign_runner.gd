@@ -57,7 +57,8 @@ func _run() -> void:
 
 			if game.dungeon.cleared.size() > last_cleared_count:
 				last_cleared_count = game.dungeon.cleared.size()
-				print("CAMPAIGN CLEAR rooms=", game.dungeon.cleared, " t=", snapped(simulated, 0.1), " hp=", snapped(game.player.hp, 0.1), " level=", game.player.level)
+				_equip_best_collected_gear()
+				print("CAMPAIGN CLEAR rooms=", game.dungeon.cleared, " t=", snapped(simulated, 0.1), " hp=", snapped(game.player.hp, 0.1), " level=", game.player.level, " attack=", snapped(game.player.stats.attack, 0.1), " haste=", snapped(game.player.stats.haste, 0.01), " inventory=", game.player.inventory.size())
 
 			_advance_route_if_ready()
 			if simulated >= next_report:
@@ -531,6 +532,40 @@ func _windup_dodge(enemy, delta: Vector2, distance: float) -> Vector2:
 			if distance < reach and absf(enemy.aim.angle_to(delta)) < 1.35:
 				return (side + delta.normalized() * 0.25).normalized()
 	return Vector2.ZERO
+
+func _build_score(loadout: Dictionary) -> float:
+	var stats: Dictionary = game.player.calculated(loadout)
+	var dps: float = float(stats.attack) * (1.0 + float(stats.haste))
+	dps *= 1.0 + float(stats.crit) * float(stats.crit_damage)
+	var score: float = dps + float(stats.hp) * 0.018 + float(stats.armor) * 0.10 + float(stats.speed) * 5.0
+	for slot in ItemDB.SLOTS:
+		match String(loadout[slot].effect):
+			"echo": score += dps * 0.28
+			"crit_blast": score += dps * 0.16
+			"chain": score += dps * 0.12
+	return score
+
+func _equip_best_collected_gear() -> void:
+	var player = game.player
+	if player.inventory.is_empty():
+		return
+	for slot in ItemDB.SLOTS:
+		var best_index := -1
+		var best_score: float = _build_score(player.equipment)
+		for i in range(player.inventory.size()):
+			var item = player.inventory[i]
+			if String(item.slot) != slot:
+				continue
+			var loadout: Dictionary = player.equipment.duplicate(true)
+			loadout[slot] = item
+			var score: float = _build_score(loadout)
+			if score > best_score + 0.25:
+				best_score = score
+				best_index = i
+		if best_index >= 0:
+			var item_name: String = String(player.inventory[best_index].name)
+			player.equip(best_index)
+			print("CAMPAIGN EQUIP slot=", slot, " item=", item_name, " score=", snapped(best_score, 0.1))
 
 func _choose_survival_blessing() -> void:
 	if game.upgrade_choices.is_empty():
