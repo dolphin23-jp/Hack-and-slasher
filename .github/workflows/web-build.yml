@@ -60,6 +60,15 @@ jobs:
           test -s "$wasm"
           test -s "$pck"
 
+          manifest="$(find build/web -maxdepth 1 -type f -name '*.manifest.json' -print -quit)"
+          service_worker="$(find build/web -maxdepth 1 -type f -name '*service*worker*.js' -print -quit)"
+          test -n "$manifest"
+          test -n "$service_worker"
+          test -s "$manifest"
+          test -s "$service_worker"
+          grep -q '"display":"standalone"' "$manifest"
+          grep -q '"orientation":"landscape"' "$manifest"
+
           {
             echo "ASHEN VOW Web build"
             echo "Commit: $GITHUB_SHA"
@@ -81,6 +90,8 @@ jobs:
           grep -qi "canvas\|godot" /tmp/index.html
           curl -fsS "http://127.0.0.1:8080/$(basename "$wasm")" -o /dev/null
           curl -fsS "http://127.0.0.1:8080/$(basename "$pck")" -o /dev/null
+          curl -fsS "http://127.0.0.1:8080/$(basename "$manifest")" -o /dev/null
+          curl -fsS "http://127.0.0.1:8080/$(basename "$service_worker")" -o /dev/null
 
       - name: Run browser runtime smoke
         run: |
