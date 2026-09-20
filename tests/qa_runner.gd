@@ -53,7 +53,7 @@ func _run() -> void:
 
 	game.player.attack_cd = 0.0
 	game.player.dash_time = 0.0
-	var first_attack := game.player.attack()
+	var first_attack: bool = game.player.attack()
 	_check("basic attack starts", first_attack)
 	_check("attack cooldown blocks spam", not game.player.attack())
 	game.player.attack_cd = 0.0
@@ -93,7 +93,7 @@ func _run() -> void:
 	game.player.level = 1
 	game.player.xp = 0
 	game.pending_upgrades = 0
-	var xp_needed := game.player.xp_required()
+	var xp_needed: int = game.player.xp_required()
 	game.player.gain_xp(xp_needed)
 	_check("experience raises level", game.player.level == 2)
 	_check("level queues upgrade", game.pending_upgrades == 1)
@@ -107,7 +107,7 @@ func _run() -> void:
 
 	var test_item := ItemDB.generate(game.rng, 3, 3, 1)
 	game.player.inventory.append(test_item)
-	var equip_index := game.player.inventory.size() - 1
+	var equip_index: int = game.player.inventory.size() - 1
 	var equip_slot: String = test_item.slot
 	var old_equipped_id: String = game.player.equipment[equip_slot].id
 	_check("equip swaps selected item in", game.player.equip(equip_index) and game.player.equipment[equip_slot].id == test_item.id)
