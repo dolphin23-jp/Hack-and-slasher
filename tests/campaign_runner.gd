@@ -12,6 +12,7 @@ var attacks = 0
 var blessings = 0
 var last_cleared_count = 1
 var failures: Array[String] = []
+var locked_target = null
 
 func _ready() -> void:
 	call_deferred("_run")
@@ -74,8 +75,12 @@ func _run() -> void:
 		failures.append("player died before campaign completion")
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts"))
-	var summary = "CAMPAIGN mode=%s simulated=%.1fs attacks=%d blessings=%d kills=%d visited=%s failures=%d\n" % [
-		game.mode, simulated, attacks, blessings, game.kills, str(unique_visited), failures.size()
+	var survivors := []
+	for enemy in game.enemies:
+		if is_instance_valid(enemy) and not enemy.dead:
+			survivors.append("%s@%s hp=%.1f state=%s" % [enemy.kind, str(enemy.position.round()), enemy.hp, enemy.state])
+	var summary = "CAMPAIGN mode=%s simulated=%.1fs attacks=%d blessings=%d kills=%d visited=%s active=%d pos=%s survivors=%s failures=%d\n" % [
+		game.mode, simulated, attacks, blessings, game.kills, str(unique_visited), game.dungeon.active, str(game.player.position.round()), str(survivors), failures.size()
 	]
 	for failure in failures:
 		summary += "FAIL: " + failure + "\n"
@@ -101,7 +106,7 @@ func _drive_player() -> void:
 	if not is_instance_valid(player):
 		return
 
-	var target = _nearest_live_enemy()
+	var target = _combat_target()
 	if target != null:
 		var to_enemy: Vector2 = target.position - player.position
 		var distance = to_enemy.length()
@@ -136,26 +141,69 @@ func _drive_player() -> void:
 
 func _navigate_toward(target_position: Vector2) -> Vector2:
 	var origin: Vector2 = game.player.position
-	var delta: Vector2 = target_position - origin
+	if origin.distance_to(target_position) < 0.001:
+		return Vector2.ZERO
+	var goal := target_position
+	if not game.dungeon.line_clear(origin, target_position):
+		var waypoint = _one_bend_waypoint(origin, target_position)
+		if waypoint != null:
+			goal = waypoint
+		elif game.dungeon.active >= 0:
+			goal = game.dungeon.rooms[game.dungeon.active].center
+	var delta: Vector2 = goal - origin
 	if delta.length() < 0.001:
 		return Vector2.ZERO
-	var direct: Vector2 = delta.normalized()
+	var direct := delta.normalized()
+	if game.dungeon.line_clear(origin, goal):
+		return direct
 	var best: Vector2 = direct
 	var best_score: float = INF
-	var phase_sign: float = 1.0 if int(simulated / 3.0) % 2 == 0 else -1.0
-	for angle in [0.0, 0.45 * phase_sign, -0.45 * phase_sign, 0.9 * phase_sign, -0.9 * phase_sign, 1.3 * phase_sign, -1.3 * phase_sign]:
+	var phase_sign: float = 1.0 if int(simulated / 2.0) % 2 == 0 else -1.0
+	for angle in [0.0, 0.35 * phase_sign, -0.35 * phase_sign, 0.7 * phase_sign, -0.7 * phase_sign, 1.1 * phase_sign, -1.1 * phase_sign, 1.55 * phase_sign, -1.55 * phase_sign, 2.1 * phase_sign, -2.1 * phase_sign]:
 		var candidate: Vector2 = direct.rotated(float(angle))
-		var next: Vector2 = game.dungeon.move_body(origin, candidate * 82.0, 18.0)
+		var next: Vector2 = game.dungeon.move_body(origin, candidate * 96.0, 18.0)
 		var progress: float = next.distance_to(origin)
-		if progress < 8.0:
+		if progress < 6.0:
 			continue
-		var score: float = next.distance_to(target_position) + absf(float(angle)) * 8.0
-		if game.dungeon.line_clear(next, target_position):
-			score -= 260.0
+		var score: float = next.distance_to(goal) + absf(float(angle)) * 5.0
+		if game.dungeon.line_clear(next, goal):
+			score -= 320.0
 		if score < best_score:
 			best_score = score
 			best = candidate
 	return best
+
+func _one_bend_waypoint(origin: Vector2, target_position: Vector2):
+	var best = null
+	var best_cost := INF
+	for obstacle in game.dungeon.obstacles:
+		if game.dungeon.active >= 0 and not game.dungeon.rooms[game.dungeon.active].rect.grow(90.0).intersects(obstacle):
+			continue
+		var grown: Rect2 = obstacle.grow(58.0)
+		var points = [
+			grown.position,
+			Vector2(grown.end.x, grown.position.y),
+			grown.end,
+			Vector2(grown.position.x, grown.end.y)
+		]
+		for point in points:
+			if not game.dungeon.walkable(point, 18.0, false):
+				continue
+			if not game.dungeon.line_clear(origin, point):
+				continue
+			if not game.dungeon.line_clear(point, target_position):
+				continue
+			var cost := origin.distance_to(point) + point.distance_to(target_position)
+			if cost < best_cost:
+				best_cost = cost
+				best = point
+	return best
+
+func _combat_target():
+	if is_instance_valid(locked_target) and not locked_target.dead and locked_target.state != "spawn":
+		return locked_target
+	locked_target = _nearest_live_enemy()
+	return locked_target
 
 func _nearest_live_enemy():
 	var nearest = null
