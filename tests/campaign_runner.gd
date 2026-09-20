@@ -213,6 +213,11 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 				return side
 	if boss.state == "charge":
 		return side
+	# Radial projectiles and delayed ground effects can outlive the boss's
+	# animation. Never dive back in while those hazards are still crossing.
+	var lingering := _danger_move(boss)
+	if lingering.length() > 0.05:
+		return lingering
 	# During recovery, close just long enough for basic attacks.
 	if boss.state == "recover":
 		if distance > 104.0:
