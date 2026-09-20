@@ -31,4 +31,12 @@ func silence()->void:
  if is_instance_valid(music):music.stop();music.stream=null
  for v in voices:
   if is_instance_valid(v):v.stop();v.stream=null
+ effects.clear();last_sound.clear();music_name=""
+func dispose()->void:
+ silence()
+ for v in voices.duplicate():
+  if is_instance_valid(v):v.queue_free()
+ voices.clear()
+ if is_instance_valid(music):music.queue_free()
+ music=null
 func _exit_tree()->void:silence()
