@@ -1,4 +1,5 @@
 extends Node
+# Frozen end-to-end regression harness for the vertical slice.
 
 const DT = 1.0 / 60.0
 const SUBSTEPS_PER_FRAME = 120
