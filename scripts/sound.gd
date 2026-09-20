@@ -35,8 +35,8 @@ func silence()->void:
 func dispose()->void:
  silence()
  for v in voices.duplicate():
-  if is_instance_valid(v):v.queue_free()
+  if is_instance_valid(v):v.free()
  voices.clear()
- if is_instance_valid(music):music.queue_free()
+ if is_instance_valid(music):music.free()
  music=null
 func _exit_tree()->void:silence()
