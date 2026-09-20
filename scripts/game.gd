@@ -234,7 +234,7 @@ func enemy_died(e,proc:bool=false)->void:
    if other.dead or other.position.distance_to(e.position)>235:continue
    fx.lightning(e.position,other.position);other.take_damage(player.stats.attack*.9,Vector2.ZERO,false,true);count+=1
    if count>=3:break
- var tier=dungeon.rooms[e.room_id].tier+ascension*2
+ var tier=maxi(1,dungeon.rooms[e.room_id].tier+ascension*2)
  if e.kind=="boss":
   for i in range(4):
    var reward=ItemDB.generate(rng,tier,3,i);reward.boss_reward=true;spawn_drop(e.position+Vector2.from_angle(i*TAU/4)*70,reward)
@@ -313,7 +313,14 @@ func _notification(what:int)->void:
  if what==NOTIFICATION_WM_CLOSE_REQUEST:shutdown()
  if what==NOTIFICATION_APPLICATION_FOCUS_OUT and mode=="play" and not test_mode:mode="pause"
 func shutdown(code:int=0)->void:
- save_run();profile.write_save();mode="title";sound.silence();await get_tree().create_timer(.12).timeout;get_tree().quit(code)
+ save_run();profile.write_save();mode="title"
+ if is_instance_valid(sound):
+  sound.dispose()
+  sound.free()
+  sound=null
+  for i in range(3):await get_tree().process_frame
+ await get_tree().create_timer(.25).timeout
+ get_tree().quit(code)
 func next_passage(id:int)->Dictionary:
  if id<0:return {}
  var target=-1
