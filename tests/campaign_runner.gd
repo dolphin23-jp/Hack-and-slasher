@@ -24,9 +24,6 @@ func _run() -> void:
 	game.set_process(false)
 	game.player.controlled_by_test = true
 	game.player.test_move = Vector2.ZERO
-	# This regression proves room connectivity and normal-attack encounter completion.
-	# Damage immunity keeps combat difficulty/balance from making the route test flaky.
-	game.player.invulnerable = MAX_SIM_SECONDS + 60.0
 	print("CAMPAIGN START seed=", game.run_seed)
 
 	while simulated < MAX_SIM_SECONDS and game.mode not in ["victory", "dead"]:
@@ -112,7 +109,10 @@ func _drive_player() -> void:
 		var distance = to_enemy.length()
 		if distance > 0.001:
 			player.facing = to_enemy / distance
-		if not game.dungeon.line_clear(player.position, target.position):
+		var evade := _danger_move(target)
+		if evade.length() > 0.05:
+			player.test_move = evade
+		elif not game.dungeon.line_clear(player.position, target.position):
 			player.test_move = _navigate_toward(target.position)
 		elif distance > 96.0:
 			player.test_move = to_enemy.normalized()
@@ -217,52 +217,123 @@ func _nearest_live_enemy():
 			nearest = enemy
 	return nearest
 
-func _danger_vector(primary) -> Vector2:
+func _danger_move(primary) -> Vector2:
 	var player = game.player
-	var avoid = Vector2.ZERO
-
+	var immediate := false
 	for hazard in game.hazards:
-		var delta: Vector2 = player.position - hazard.p
-		var safe_radius = float(hazard.radius) + 85.0
-		if delta.length() < safe_radius:
-			avoid += delta.normalized() * (3.0 if hazard.delay <= 0.35 else 1.8)
+		if hazard.delay <= 0.65 and player.position.distance_to(hazard.p) < float(hazard.radius) + 135.0:
+			immediate = true
+			break
+	if not immediate:
+		for projectile in game.projectiles:
+			if is_instance_valid(projectile) and not projectile.dead and not projectile.friendly and projectile.position.distance_to(player.position) < 190.0:
+				immediate = true
+				break
+	if not immediate:
+		for enemy in game.enemies:
+			if not is_instance_valid(enemy) or enemy.dead or enemy.state == "spawn":
+				continue
+			if enemy.state == "windup":
+				var reach := float(enemy.spec.get("reach", 100.0))
+				if enemy.kind == "boss":
+					reach = 700.0 if enemy.pattern % 4 in [1, 2, 3] else 260.0
+				if enemy.position.distance_to(player.position) < reach + 150.0:
+					immediate = true
+					break
+			elif enemy.state == "charge" and enemy.position.distance_to(player.position) < 300.0:
+				immediate = true
+				break
+	if not immediate:
+		return Vector2.ZERO
 
+	var best_dir := Vector2.ZERO
+	var best_score := -INF
+	var preferred := Vector2.RIGHT
+	if primary != null:
+		preferred = (player.position - primary.position).normalized()
+	var candidates := [preferred, preferred.orthogonal(), -preferred.orthogonal()]
+	for i in range(16):
+		candidates.append(Vector2.from_angle(i * TAU / 16.0))
+	for candidate in candidates:
+		if candidate.length() < 0.1:
+			continue
+		var dir: Vector2 = candidate.normalized()
+		var projected: Vector2 = game.dungeon.move_body(player.position, dir * 105.0, 18.0)
+		if projected.distance_to(player.position) < 18.0:
+			continue
+		var score := _safety_score(projected)
+		if primary != null:
+			score += minf(projected.distance_to(primary.position), 320.0) * 0.015
+		if score > best_score:
+			best_score = score
+			best_dir = dir
+	return best_dir
+
+func _safety_score(point: Vector2) -> float:
+	var score := 0.0
+	for hazard in game.hazards:
+		var margin := point.distance_to(hazard.p) - float(hazard.radius)
+		if hazard.delay <= 0.8:
+			if margin < 28.0:
+				score -= 1600.0
+			else:
+				score += minf(margin, 220.0) * 0.025
 	for projectile in game.projectiles:
 		if not is_instance_valid(projectile) or projectile.dead or projectile.friendly:
 			continue
-		var delta: Vector2 = player.position - projectile.position
-		if delta.length() < 155.0:
-			var side = projectile.velocity.orthogonal().normalized()
-			if side.dot(delta) < 0:
-				side = -side
-			avoid += side * 2.4
-
+		var future: Vector2 = projectile.position + projectile.velocity * 0.32
+		var miss := Geometry2D.get_closest_point_to_segment(point, projectile.position, future).distance_to(point)
+		if miss < 54.0:
+			score -= 1100.0
+		else:
+			score += minf(miss, 180.0) * 0.012
 	for enemy in game.enemies:
 		if not is_instance_valid(enemy) or enemy.dead or enemy.state == "spawn":
 			continue
-		var delta: Vector2 = player.position - enemy.position
-		var distance = delta.length()
-		if enemy.state == "windup":
-			var reach = float(enemy.spec.get("reach", 100.0))
-			if enemy.kind == "boss":
-				reach = 280.0
-			if distance < reach + 115.0:
-				var side = enemy.aim.orthogonal().normalized()
-				if side.dot(delta) < 0:
-					side = -side
-				avoid += side * 3.2 + delta.normalized() * 1.2
-		if enemy.state == "charge" and distance < 230.0:
-			var side = enemy.aim.orthogonal().normalized()
-			if side.dot(delta) < 0:
-				side = -side
-			avoid += side * 3.6
-
-
-	if primary != null and primary.kind in ["elite", "boss"] and primary.state == "windup":
-		var delta: Vector2 = player.position - primary.position
-		avoid += delta.normalized() * 1.4
-
-	return avoid
+		var delta: Vector2 = point - enemy.position
+		var distance := delta.length()
+		if enemy.state == "charge":
+			var charge_end: Vector2 = enemy.position + enemy.aim * 340.0
+			var miss := Geometry2D.get_closest_point_to_segment(point, enemy.position, charge_end).distance_to(point)
+			if miss < enemy.radius + 42.0:
+				score -= 1800.0
+			continue
+		if enemy.state != "windup":
+			continue
+		match enemy.kind:
+			"cantor":
+				var beam_end: Vector2 = enemy.position + enemy.aim * 470.0
+				var miss := Geometry2D.get_closest_point_to_segment(point, enemy.position, beam_end).distance_to(point)
+				if miss < 62.0:
+					score -= 1500.0
+			"hound":
+				var charge_end: Vector2 = enemy.position + enemy.aim * 330.0
+				var miss := Geometry2D.get_closest_point_to_segment(point, enemy.position, charge_end).distance_to(point)
+				if miss < enemy.radius + 46.0:
+					score -= 1700.0
+			"warden":
+				if distance < 145.0:
+					score -= 1600.0
+			"boss":
+				match enemy.pattern % 4:
+					0:
+						if distance < 255.0 and absf(enemy.aim.angle_to(delta)) < 1.62:
+							score -= 2000.0
+					1:
+						score += minf(distance, 420.0) * 0.01
+					2:
+						if distance < 270.0:
+							score -= 1400.0
+					3:
+						var charge_end: Vector2 = enemy.position + enemy.aim * 520.0
+						var miss := Geometry2D.get_closest_point_to_segment(point, enemy.position, charge_end).distance_to(point)
+						if miss < enemy.radius + 55.0:
+							score -= 1900.0
+			_:
+				var reach := float(enemy.spec.get("reach", 90.0)) + 35.0
+				if distance < reach and absf(enemy.aim.angle_to(delta)) < 1.25:
+					score -= 1450.0
+	return score
 
 func _choose_survival_blessing() -> void:
 	if game.upgrade_choices.is_empty():
