@@ -108,7 +108,10 @@ func _drive_player() -> void:
 		var distance = to_enemy.length()
 		if distance > 0.001:
 			player.facing = to_enemy / distance
-		var evade := _danger_move(target)
+		var primary_evade := Vector2.ZERO
+		if target.state == "windup":
+			primary_evade = _windup_dodge(target, player.position - target.position, distance)
+		var evade: Vector2 = primary_evade if primary_evade.length() > 0.05 else _danger_move(target)
 		if evade.length() > 0.05:
 			player.test_move = evade
 		elif not game.dungeon.line_clear(player.position, target.position):
@@ -277,19 +280,27 @@ func _windup_dodge(enemy, delta: Vector2, distance: float) -> Vector2:
 		side = -side
 	match enemy.kind:
 		"cantor":
-			return side if distance < 430.0 else Vector2.ZERO
+			if distance < 430.0:
+				var inward := -delta.normalized() * (0.42 if distance > 125.0 else 0.0)
+				return (side * 1.25 + inward).normalized()
 		"hound":
 			return side if distance < 320.0 else Vector2.ZERO
 		"warden":
 			return delta.normalized() if distance < 160.0 else Vector2.ZERO
 		"elite":
 			if distance < 225.0 and absf(enemy.aim.angle_to(delta)) < 1.6:
-				return (side * 1.45 - delta.normalized() * 0.55).normalized()
+				var radial := Vector2.ZERO
+				if distance > 112.0:radial = -delta.normalized() * 0.42
+				elif distance < 90.0:radial = delta.normalized() * 0.25
+				return (side * 1.45 + radial).normalized()
 		"boss":
 			match enemy.pattern % 4:
 				0:
 					if distance < 285.0 and absf(enemy.aim.angle_to(delta)) < 1.7:
-						return (side * 1.45 - delta.normalized() * 0.45).normalized()
+						var radial := Vector2.ZERO
+						if distance > 112.0:radial = -delta.normalized() * 0.40
+						elif distance < 92.0:radial = delta.normalized() * 0.25
+						return (side * 1.5 + radial).normalized()
 				1:
 					return side
 				2:
