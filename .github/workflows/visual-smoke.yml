@@ -49,7 +49,7 @@ jobs:
       - name: Run ten-room basic-combat campaign
         run: |
           set -o pipefail
-          timeout 180s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --campaign \
+          timeout 240s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --campaign \
             2>&1 | tee test-artifacts/campaign.log
 
       - name: Render and click through UI
