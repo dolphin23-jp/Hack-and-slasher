@@ -2,7 +2,7 @@ extends Node
 
 const DT = 1.0 / 30.0
 const SUBSTEPS_PER_FRAME = 30
-const MAX_SIM_SECONDS = 1200.0
+const MAX_SIM_SECONDS = 2400.0
 const ROUTE = [1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
 
 var game
@@ -148,6 +148,10 @@ func _navigate_toward(target_position: Vector2) -> Vector2:
 	if delta.length() < 0.001:
 		return Vector2.ZERO
 	var direct: Vector2 = delta.normalized()
+	if game.dungeon.active >= 0 and not game.dungeon.line_clear(origin, target_position):
+		var waypoint = _corner_waypoint(origin, target_position)
+		if waypoint != null:
+			return (waypoint - origin).normalized()
 	var best: Vector2 = direct
 	var best_score: float = INF
 	var phase_sign: float = 1.0 if int(simulated / 3.0) % 2 == 0 else -1.0
@@ -163,6 +167,33 @@ func _navigate_toward(target_position: Vector2) -> Vector2:
 		if score < best_score:
 			best_score = score
 			best = candidate
+	return best
+
+func _corner_waypoint(origin: Vector2, target_position: Vector2):
+	var room: Dictionary = game.dungeon.rooms[game.dungeon.active]
+	var best = null
+	var best_cost: float = INF
+	for obstacle in game.dungeon.obstacles:
+		if not room.rect.grow(80.0).intersects(obstacle):
+			continue
+		var grown: Rect2 = obstacle.grow(62.0)
+		var corners: Array[Vector2] = [
+			grown.position,
+			Vector2(grown.end.x, grown.position.y),
+			grown.end,
+			Vector2(grown.position.x, grown.end.y)
+		]
+		for point: Vector2 in corners:
+			if not game.dungeon.walkable(point, 18.0):
+				continue
+			if not game.dungeon.line_clear(origin, point):
+				continue
+			if not game.dungeon.line_clear(point, target_position):
+				continue
+			var cost: float = origin.distance_to(point) + point.distance_to(target_position)
+			if cost < best_cost:
+				best_cost = cost
+				best = point
 	return best
 
 func _nearest_live_enemy():
