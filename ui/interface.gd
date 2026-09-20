@@ -256,7 +256,7 @@ func draw_hud()->void:
  var id=game.dungeon.room_at(p.position);var room=game.dungeon.rooms[id] if id>=0 else null
  text(room.name if room!=null else "THE CONNECTING DARK",Vector2(720,47),19,TEXT,true,true)
  var status="Explore. Follow the next unbroken seal."
- if game.dungeon.active>=0:status="WAVE %d / %d | %d REMAIN"%[game.wave,game.dungeon.rooms[game.dungeon.active].waves,game.enemies.size()]
+ if game.dungeon.active>=0:\n  var active_room=game.dungeon.rooms[game.dungeon.active];status="%s | WAVE %d / %d | %d REMAIN"%[active_room.encounter,game.wave,active_room.waves,game.enemies.size()]
  elif room!=null and id in game.dungeon.cleared:
   var next=game.next_passage(id);status=next.heading+" / "+next.name if not next.is_empty() else "THE CATHEDRAL IS SILENT"
   if id==1 and 3 not in game.dungeon.cleared:status+=" - OPTIONAL RELIC: NORTH"
