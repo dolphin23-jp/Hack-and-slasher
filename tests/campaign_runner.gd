@@ -14,6 +14,8 @@ var blessings = 0
 var last_cleared_count = 1
 var next_report = 120.0
 var retreat_until = 0.0
+var projectile_dodge_until = 0.0
+var projectile_dodge_cache := Vector2.ZERO
 var last_hp = 0.0
 var failures: Array[String] = []
 
@@ -232,7 +234,15 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 		return _boss_safe_direction(volley_move, room)
 
 	if boss.state == "windup":
-		match boss.pattern % 4:
+		var pattern_id: int = boss.pattern % 4
+		var attack_cutoff: float = [0.58, 0.65, 0.80, 0.85][pattern_id]
+		if boss.timer > attack_cutoff:
+			if distance > 112.0:
+				return _boss_safe_direction(to_enemy.normalized(), room)
+			if player.attack():
+				attacks += 1
+			return _boss_safe_direction(side, room)
+		match pattern_id:
 			0:
 				return _boss_safe_direction(away if distance < 285.0 else side, room)
 			1:
@@ -364,15 +374,19 @@ func _incoming_projectile_dodge() -> Vector2:
 		if is_instance_valid(projectile) and not projectile.dead and not projectile.friendly:
 			hostile.append(projectile)
 	if hostile.is_empty():
+		projectile_dodge_cache = Vector2.ZERO
+		projectile_dodge_until = simulated
 		return Vector2.ZERO
+	if simulated < projectile_dodge_until and projectile_dodge_cache.length() > 0.05:
+		return projectile_dodge_cache
 	var room: Dictionary = game.dungeon.rooms[9]
 	var safe_rect: Rect2 = room.rect.grow(-125.0)
 	var move_speed: float = 235.0 * (1.0 + float(player.stats.speed))
 	var best: Vector2 = Vector2.ZERO
 	var best_score: float = -INF
-	for i in range(16):
-		var candidate: Vector2 = Vector2.from_angle(float(i) * TAU / 16.0)
-		var projected: Vector2 = game.dungeon.move_body(player.position, candidate * 190.0, 18.0)
+	for i in range(8):
+		var candidate: Vector2 = Vector2.from_angle(float(i) * TAU / 8.0)
+		var projected: Vector2 = game.dungeon.move_body(player.position, candidate * 170.0, 18.0)
 		var progress: float = projected.distance_to(player.position)
 		if progress < 20.0:
 			continue
@@ -392,6 +406,8 @@ func _incoming_projectile_dodge() -> Vector2:
 		if score > best_score:
 			best_score = score
 			best = candidate
+	projectile_dodge_cache = best
+	projectile_dodge_until = simulated + 0.12
 	return best
 
 
