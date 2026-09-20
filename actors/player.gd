@@ -43,6 +43,26 @@ func calculated(loadout:Dictionary=equipment)->Dictionary:
   if s.has(k):s[k]+=upgrades[k]
  s.haste=clampf(s.haste,0,1.8);s.crit=clampf(s.crit,0,.8);s.speed=clampf(s.speed,0,.65);s.cdr=clampf(s.cdr,0,.55)
  return s
+func build_score(loadout:Dictionary=equipment)->float:
+ var s:Dictionary=calculated(loadout)
+ var dps:float=float(s.attack)*(1.0+float(s.haste))
+ dps*=1.0+float(s.crit)*float(s.crit_damage)
+ var score:float=dps+float(s.hp)*.018+float(s.armor)*.10+float(s.speed)*5.0
+ for slot in ItemDB.SLOTS:
+  match String(loadout[slot].effect):
+   "echo":score+=dps*.28
+   "crit_blast":score+=dps*.16
+   "chain":score+=dps*.12
+ return score
+func item_upgrade_ratio(item:Dictionary)->float:
+ if not ItemDB.valid(item):return 0.0
+ var slot:String=String(item.slot)
+ if slot not in ItemDB.SLOTS:return 0.0
+ var current:float=build_score(equipment)
+ if current<=0.001:return 0.0
+ var loadout:Dictionary=equipment.duplicate(true)
+ loadout[slot]=item
+ return build_score(loadout)/current-1.0
 func rebuild_stats()->void:stats=calculated();hp=minf(hp,stats.hp)
 func has_effect(effect:String)->bool:
  for slot in ItemDB.SLOTS:
