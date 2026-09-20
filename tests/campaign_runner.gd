@@ -12,6 +12,7 @@ var attacks = 0
 var blessings = 0
 var last_cleared_count = 1
 var next_report = 120.0
+var retreat_until = 0.0
 var failures: Array[String] = []
 
 func _ready() -> void:
@@ -111,7 +112,19 @@ func _drive_player() -> void:
 		var evade := _danger_move(target)
 		if evade.length() > 0.05:
 			player.test_move = evade
-		elif not game.dungeon.line_clear(player.position, target.position):
+		else:
+			var healing = _nearest_health_drop()
+			if player.hp < player.stats.hp * 0.42 and healing != null:
+				player.test_move = _navigate_toward(healing.position)
+				return
+			if simulated < retreat_until and target.kind in ["elite", "boss"]:
+				var away: Vector2 = -to_enemy.normalized()
+				var flank: Vector2 = to_enemy.orthogonal().normalized()
+				if flank.dot(player.last_move) < 0.0:
+					flank = -flank
+				player.test_move = (away * 1.35 + flank * 0.35).normalized()
+				return
+		if not game.dungeon.line_clear(player.position, target.position):
 			player.test_move = _navigate_toward(target.position)
 		elif distance > 96.0:
 			player.test_move = to_enemy.normalized()
@@ -120,6 +133,10 @@ func _drive_player() -> void:
 		if distance <= 112.0 and target.state != "spawn":
 			if player.attack():
 				attacks += 1
+				if target.kind == "elite":
+					retreat_until = simulated + 1.05
+				elif target.kind == "boss":
+					retreat_until = simulated + 0.75
 		return
 
 	if game.dungeon.active >= 0:
@@ -160,6 +177,18 @@ func _navigate_toward(target_position: Vector2) -> Vector2:
 			best_score = score
 			best = candidate
 	return best
+
+func _nearest_health_drop():
+	var nearest = null
+	var best: float = INF
+	for drop in game.drops:
+		if not is_instance_valid(drop) or drop.taken or drop.kind != "health":
+			continue
+		var distance: float = drop.position.distance_squared_to(game.player.position)
+		if distance < best:
+			best = distance
+			nearest = drop
+	return nearest
 
 func _nearest_live_enemy():
 	var nearest = null
