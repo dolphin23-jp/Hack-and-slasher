@@ -26,12 +26,38 @@ var texture:Texture2D
 var charge_hit=false
 var spawn_fx=false
 var summon_timer=12.0
-func setup(g,type:String,p:Vector2,tier:int,room:int)->void:
+var affix=""
+const ELITE_AFFIXES={
+ "frenzied":{"name":"FRENZIED","hint":"FASTER MOVEMENT / SHORTER WINDUPS","color":Color("df756f")},
+ "bulwark":{"name":"BULWARK","hint":"HEAVY ARMOR / RESISTS KNOCKBACK","color":Color("d3b06f")},
+ "volatile":{"name":"VOLATILE","hint":"EXPLODES AFTER DEATH","color":Color("c98bd8")}}
+func setup(g,type:String,p:Vector2,tier:int,room:int,forced_affix:String="")->void:
  game=g;kind=type;position=p;room_id=room;spec=game.enemy_data[kind];radius=spec.radius
  max_hp=spec.hp*(1+maxi(0,tier-1)*.25+game.ascension*.45);hp=max_hp
  damage=spec.damage*(1+maxi(0,tier-1)*.085+game.ascension*.15);speed=spec.speed;xp=int(spec.xp*(1+maxi(0,tier-1)*.12))
  texture=load("res://assets/characters/"+kind+".svg");windup=spec.windup
+ if kind=="elite":
+  affix=forced_affix if forced_affix in ELITE_AFFIXES else ELITE_AFFIXES.keys()[game.rng.randi_range(0,ELITE_AFFIXES.size()-1)]
+  apply_elite_affix()
  if kind=="boss":max_hp=spec.hp*(1+game.ascension*.55);hp=max_hp;timer=1.5
+func apply_elite_affix()->void:
+ match affix:
+  "frenzied":
+   speed*=1.18
+   damage*=1.05
+  "bulwark":
+   max_hp*=1.32
+   hp=max_hp
+   speed*=.88
+   radius+=2
+  "volatile":
+   damage*=1.08
+func affix_name()->String:
+ return ELITE_AFFIXES.get(affix,{}).get("name","")
+func affix_hint()->String:
+ return ELITE_AFFIXES.get(affix,{}).get("hint","")
+func affix_color()->Color:
+ return ELITE_AFFIXES.get(affix,{}).get("color",Color("d3a281"))
 func tick(dt:float)->void:
  if dead:return
  age+=dt;flash=maxf(0,flash-dt);slow_time=maxf(0,slow_time-dt);timer-=dt
@@ -81,6 +107,7 @@ func move_with_steering(motion:Vector2)->void:
  position=next
 func start_windup()->void:
  state="windup";aim=(game.player.position-position).normalized();target=game.player.position;windup=spec.windup
+ if kind=="elite" and affix=="frenzied":windup*=.78
  if kind=="boss":windup=[1.1,1.35,1.3,1.35][pattern%4]*(.85 if phase==2 else 1)
  timer=windup
  if kind=="boss" and pattern%4==1:
@@ -117,15 +144,26 @@ func hit_cone(reach:float,angle:float,amount:float)->void:
  if to.length()<reach and absf(aim.angle_to(to))<angle and game.dungeon.line_clear(position,game.player.position):game.player.take_damage(amount,aim*170)
 func take_damage(amount:float,knock:Vector2,crit:bool=false,proc:bool=false)->void:
  if dead or state=="spawn":return
- hp-=amount;flash=.095;velocity+=knock*(.13 if kind=="boss" else (.35 if kind=="warden" else .8))
+ hp-=amount;flash=.095
+ var knock_scale=.13 if kind=="boss" else (.35 if kind=="warden" else (.28 if kind=="elite" and affix=="bulwark" else .8))
+ velocity+=knock*knock_scale
  game.fx.number(position,str(ceili(amount)),Color("ffe6a0") if crit else Color("e1e7db"),crit)
  game.fx.burst(position,Color("edaf84") if crit else Color("a0d1c7"),14 if crit else 6,180 if crit else 100)
  game.metrics.damage_dealt+=amount
- if hp<=0:dead=true;game.enemy_died(self,proc);queue_free()
+ if hp<=0:
+  dead=true
+  if kind=="elite" and affix=="volatile":
+   game.add_hazard(position,118,.12,damage*.9,false,.9)
+   game.fx.ring(position,118,affix_color(),.9)
+   game.toast("VOLATILE OATH / CLEAR THE BLAST")
+  game.enemy_died(self,proc);queue_free()
 func _draw()->void:
  var size=145 if kind=="boss" else (104 if kind in ["elite","warden"] else (77 if kind=="hound" else 79))
  draw_set_transform(Vector2(0,8),0,Vector2(1,.4));draw_circle(Vector2.ZERO,radius*1.3,Color(0,0,0,.4));draw_set_transform(Vector2.ZERO)
- if kind in ["boss","elite"]:draw_arc(Vector2.ZERO,radius+8,0,TAU,48,Color(.9,.62,.35,.45),2,true)
+ if kind=="boss":draw_arc(Vector2.ZERO,radius+8,0,TAU,48,Color(.9,.62,.35,.45),2,true)
+ elif kind=="elite":
+  draw_arc(Vector2.ZERO,radius+9,0,TAU,48,Color(affix_color(),.72),3,true)
+  draw_arc(Vector2.ZERO,radius+14,age*.7,age*.7+PI*1.15,32,Color(affix_color(),.34),2,true)
  var tint=Color(2.7,2.7,2.7) if flash>0 else Color.WHITE
  if state=="spawn":tint.a=clampf(1-timer/(1.5 if kind=="boss" else .65),.15,1)
  if slow_time>0 and flash<=0:tint=Color(.65,1,1.12)
