@@ -112,8 +112,11 @@ await touchPage.waitForTimeout(5000);
 const touchCanvas = await touchPage.locator("canvas").boundingBox();
 if (!touchCanvas) throw new Error("Touch smoke canvas has no bounds");
 const tapBase = async (x, y) => {
-  const sx = touchCanvas.x + (x / 1440) * touchCanvas.width;
-  const sy = touchCanvas.y + (y / 900) * touchCanvas.height;
+  const scale = Math.min(touchCanvas.width / 1440, touchCanvas.height / 900);
+  const offsetX = (touchCanvas.width - 1440 * scale) * 0.5;
+  const offsetY = (touchCanvas.height - 900 * scale) * 0.5;
+  const sx = touchCanvas.x + offsetX + x * scale;
+  const sy = touchCanvas.y + offsetY + y * scale;
   await touchPage.touchscreen.tap(sx, sy);
 };
 
