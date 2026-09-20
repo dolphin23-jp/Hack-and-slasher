@@ -92,7 +92,6 @@ func _run() -> void:
 
 	game.player.level = 1
 	game.player.xp = 0
-	game.player.pending_upgrades = 0 if "pending_upgrades" in game.player else 0
 	game.pending_upgrades = 0
 	var xp_needed := game.player.xp_required()
 	game.player.gain_xp(xp_needed)
