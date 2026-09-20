@@ -1,7 +1,7 @@
 extends Node
 
 const DT = 1.0 / 60.0
-const SUBSTEPS_PER_FRAME = 30
+const SUBSTEPS_PER_FRAME = 120
 const MAX_SIM_SECONDS = 2400.0
 const ROUTE = [1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
 
