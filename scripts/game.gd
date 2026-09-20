@@ -316,8 +316,10 @@ func shutdown(code:int=0)->void:
  save_run();profile.write_save();mode="title"
  if is_instance_valid(sound):
   sound.dispose()
-  await get_tree().process_frame
- await get_tree().create_timer(.12).timeout
+  sound.free()
+  sound=null
+  for i in range(3):await get_tree().process_frame
+ await get_tree().create_timer(.25).timeout
  get_tree().quit(code)
 func next_passage(id:int)->Dictionary:
  if id<0:return {}
