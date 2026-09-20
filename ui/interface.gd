@@ -127,9 +127,19 @@ func act(action:String)->void:
 func _draw()->void:
  buttons.clear()
  draw_set_transform(Vector2.ZERO)
- draw_rect(Rect2(Vector2.ZERO,get_viewport_rect().size),INK)
+ var viewport_size=get_viewport_rect().size
  var s=layout_scale()
- draw_set_transform(layout_offset(),0,Vector2(s,s))
+ var offset=layout_offset()
+ var content_size=BASE*s
+ # Keep only the letterbox outside the 1440x900 design area opaque.
+ # The content area must remain transparent so the world renders beneath HUD.
+ if offset.y>0.5:
+  draw_rect(Rect2(0,0,viewport_size.x,offset.y),INK)
+  draw_rect(Rect2(0,offset.y+content_size.y,viewport_size.x,viewport_size.y-(offset.y+content_size.y)),INK)
+ if offset.x>0.5:
+  draw_rect(Rect2(0,0,offset.x,viewport_size.y),INK)
+  draw_rect(Rect2(offset.x+content_size.x,0,viewport_size.x-(offset.x+content_size.x),viewport_size.y),INK)
+ draw_set_transform(offset,0,Vector2(s,s))
  if game.mode=="title":draw_title();return
  if is_instance_valid(game.player):draw_hud()
  match game.mode:
