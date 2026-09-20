@@ -205,60 +205,73 @@ func _navigate_toward(target_position: Vector2) -> Vector2:
 
 func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 	var player = game.player
-	var away := -to_enemy.normalized()
-	var side := to_enemy.orthogonal().normalized()
+	var away: Vector2 = -to_enemy.normalized()
+	var side: Vector2 = to_enemy.orthogonal().normalized()
 	if side.dot(player.last_move) < 0.0:
 		side = -side
-	var projectile_dodge := _incoming_projectile_dodge()
-	if projectile_dodge.length() > 0.05:
-		return projectile_dodge
+	var charge_side: Vector2 = boss.aim.orthogonal().normalized()
+	var rel: Vector2 = player.position - boss.position
+	if charge_side.dot(rel) < 0.0:
+		charge_side = -charge_side
+	var hostile_count := _hostile_projectile_count()
 
-	if boss.state == "windup":
-		# The boss cannot deal damage until release_attack(). Use the early half
-		# of the telegraph for basic swings, then evacuate before the release.
-		var attack_window := 0.58 if boss.phase == 1 else 0.48
-		if boss.timer > attack_window:
-			if distance > 112.0:
-				return to_enemy.normalized()
-			if player.attack():
-				attacks += 1
-			return side
-		match boss.pattern % 4:
-			0:
-				return (side * 1.55 + away * 0.9).normalized()
-			1:
-				return (side * 0.8 + away * 1.0).normalized()
-			2:
-				return away if distance < 330.0 else side
-			3:
-				return (side * 0.8 + away * 1.2).normalized()
-
-	if boss.state == "charge":
+	# A radial volley lives for several seconds after release. Do not cut back
+	# through it just because the boss has already entered the next animation.
+	if hostile_count > 0:
+		if boss.state == "charge":
+			return charge_side
+		if distance < 500.0:
+			return (side + away * 0.55).normalized()
 		return side
 
-	# Projectiles and delayed ground effects may persist into recovery.
-	var lingering := _danger_move(boss)
-	if lingering.length() > 0.05:
-		return lingering
+	if boss.state == "windup":
+		match boss.pattern % 4:
+			0:
+				# The cone reaches 220 px. Pure radial retreat guarantees we leave it.
+				return away if distance < 285.0 else side
+			1:
+				# Ground markers snapshot our position when windup begins.
+				return (side + away * 0.8).normalized()
+			2:
+				# Create room before the 18-way radial volley is emitted.
+				return away if distance < 480.0 else side
+			3:
+				# The charge keeps the aim captured at windup start.
+				return charge_side
 
+	if boss.state == "charge":
+		return charge_side
+
+	# Recovery is the only deliberate damage window. Stay in sword range and
+	# orbit while repeatedly using the normal attack.
 	if boss.state == "recover":
-		# Recovery is the main damage window: stay just inside sword range and
-		# keep strafing while repeatedly using only the normal attack.
-		if distance > 110.0:
+		if distance > 118.0:
 			return to_enemy.normalized()
 		if player.attack():
 			attacks += 1
 		if distance < 76.0:
-			return (side + away * 0.45).normalized()
-		return (side + to_enemy.normalized() * 0.12).normalized()
+			return (side + away * 0.4).normalized()
+		if distance > 106.0:
+			return (side + to_enemy.normalized() * 0.18).normalized()
+		return side
 
-	# After recovery the boss has only 0.18 s before it can start the next
-	# telegraph. Stay close enough that all four patterns trigger in sword range.
-	if distance > 112.0:
+	# Pattern 0 only commits inside 175 px. Enter its trigger range, then the
+	# windup branch above immediately evacuates. The other patterns trigger from
+	# much farther away and therefore need no special chase behavior.
+	if boss.pattern % 4 == 0:
+		if distance > 155.0:
+			return to_enemy.normalized()
+		return side
+	if distance > 280.0:
 		return to_enemy.normalized()
-	if player.attack():
-		attacks += 1
 	return side
+
+func _hostile_projectile_count() -> int:
+	var count := 0
+	for projectile in game.projectiles:
+		if is_instance_valid(projectile) and not projectile.dead and not projectile.friendly:
+			count += 1
+	return count
 
 func _boss_enemy():
 	for enemy in game.enemies:
