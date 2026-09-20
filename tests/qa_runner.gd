@@ -31,18 +31,18 @@ func _run() -> void:
 	_expect("starter gift and chest are present", game.drops.size() >= 2)
 
 	game.player.controlled_by_test = true
-	var before_move := game.player.position
+	var before_move: Vector2 = game.player.position
 	game.player.test_move = Vector2.RIGHT
 	game.player.tick(0.20)
 	game.player.test_move = Vector2.ZERO
 	_expect("test-controlled normal movement advances the player", game.player.position.x > before_move.x)
 
-	var enemy_count := game.enemies.size()
+	var enemy_count: int = game.enemies.size()
 	var enemy = game.spawn_enemy("hollow", game.player.position + Vector2(88, 0), 1, 0)
 	enemy.state = "approach"
 	enemy.timer = 1.0
 	game.player.facing = Vector2.RIGHT
-	var enemy_hp := enemy.hp
+	var enemy_hp: float = float(enemy.hp)
 	_expect("enemy spawn enters the encounter list", game.enemies.size() == enemy_count + 1)
 	_expect("normal attack can start", game.player.attack())
 	_expect("attack cooldown rejects immediate repeat", not game.player.attack())
@@ -62,13 +62,13 @@ func _run() -> void:
 	_expect("skill cooldown is applied", game.player.cooldowns[0] > 0.0)
 	_expect("skill cooldown rejects immediate recast", not game.player.cast(0))
 	game.player.dash_time = 0.0
-	var projectiles_before := game.projectiles.size()
+	var projectiles_before: int = game.projectiles.size()
 	_expect("Spirit Lance can cast", game.player.cast(2))
 	_expect("Spirit Lance creates a projectile", game.projectiles.size() > projectiles_before)
 
 	game.player.hp = game.player.stats.hp * 0.35
 	game.player.potions = 3
-	var hp_before := game.player.hp
+	var hp_before: float = float(game.player.hp)
 	_expect("Mend consumes a flask when injured", game.player.drink())
 	_expect("Mend restores life", game.player.hp > hp_before)
 	_expect("Mend decrements flask count", game.player.potions == 2)
@@ -77,7 +77,7 @@ func _run() -> void:
 	var drop_metric := int(game.metrics.drops)
 	var drop = game.spawn_drop(game.player.position + Vector2(30, 0), item)
 	_expect("spawning equipment records a drop", int(game.metrics.drops) == drop_metric + 1)
-	var inventory_before := game.player.inventory.size()
+	var inventory_before: int = game.player.inventory.size()
 	var pickup_metric := int(game.metrics.pickups)
 	_expect("equipment drop can be collected", game.collect(drop))
 	_expect("collecting adds the item to the pack", game.player.inventory.size() == inventory_before + 1)
@@ -97,22 +97,22 @@ func _run() -> void:
 	_expect("equipment swap changes the active slot", game.player.equipment[equip_slot].id != old_equipped_id)
 	_expect("equip metric records the swap", int(game.metrics.equips) == equip_metric + 1)
 
-	var pack_before_salvage := game.player.inventory.size()
+	var pack_before_salvage: int = game.player.inventory.size()
 	game.salvage(0)
 	_expect("salvage removes one packed item", game.player.inventory.size() == pack_before_salvage - 1)
 
-	var level_before := game.player.level
+	var level_before: int = int(game.player.level)
 	game.player.gain_xp(game.player.xp_required() + 5)
 	_expect("enough XP raises the player level", game.player.level > level_before)
 	_expect("level-up queues a blessing choice", game.pending_upgrades > 0)
-	var pending_before := game.pending_upgrades
+	var pending_before: int = int(game.pending_upgrades)
 	game.prepare_upgrade()
 	_expect("growth screen presents three blessings", game.mode == "upgrade" and game.upgrade_choices.size() == 3)
 	game.choose_upgrade(0)
 	_expect("choosing a blessing returns to play and consumes one choice", game.mode == "play" and game.pending_upgrades == pending_before - 1)
 
 	game.save_run()
-	var saved_level := game.player.level
+	var saved_level: int = int(game.player.level)
 	var saved_weapon_id: String = game.player.equipment.weapon.id
 	_expect("current run serializes as a valid save", not game.profile.run.is_empty() and game.profile.valid_run(game.profile.run))
 
