@@ -13,6 +13,7 @@ var blessings = 0
 var last_cleared_count = 1
 var next_report = 120.0
 var retreat_until = 0.0
+var last_hp = 0.0
 var failures: Array[String] = []
 
 func _ready() -> void:
@@ -25,6 +26,7 @@ func _run() -> void:
 	game.set_process(false)
 	game.player.controlled_by_test = true
 	game.player.test_move = Vector2.ZERO
+	last_hp = game.player.hp
 	print("CAMPAIGN START seed=", game.run_seed)
 
 	while simulated < MAX_SIM_SECONDS and game.mode not in ["victory", "dead"]:
@@ -40,6 +42,15 @@ func _run() -> void:
 			_drive_player()
 			game.step(DT)
 			simulated += DT
+			if game.player.hp < last_hp - 0.5:
+				var boss = _boss_enemy()
+				var boss_note := "none" if boss == null else "%s p=%d phase=%d d=%.0f" % [boss.state, boss.pattern, boss.phase, boss.position.distance_to(game.player.position)]
+				var hostile_projectiles := 0
+				for projectile in game.projectiles:
+					if is_instance_valid(projectile) and not projectile.dead and not projectile.friendly:
+						hostile_projectiles += 1
+				print("CAMPAIGN HIT t=", snapped(simulated, 0.1), " hp=", snapped(game.player.hp, 0.1), " boss=", boss_note, " hostile_projectiles=", hostile_projectiles, " hazards=", game.hazards.size())
+			last_hp = game.player.hp
 
 			if game.dungeon.cleared.size() > last_cleared_count:
 				last_cleared_count = game.dungeon.cleared.size()
