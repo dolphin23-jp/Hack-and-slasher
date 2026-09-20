@@ -70,6 +70,24 @@ func _run() -> void:
 			elite.queue_free()
 	game.hazards.clear()
 
+	game.ascension = 1
+	_expect("Ascension I activates Ember Tide", String(game.ascension_vow().id) == "ember_tide")
+	_expect("Ember Tide shortens sanctuary hazard intervals", game.room_modifier_interval(10.0) < 8.0)
+
+	game.ascension = 2
+	var veil_elite = game.spawn_enemy("elite", game.player.position + Vector2(210, 0), 2, 4, "frenzied")
+	var veil_base_hp: float = float(veil_elite.spec.hp) * (1.0 + 0.25 + game.ascension * 0.45)
+	_expect("Thickened Veil strengthens Oathless Knights", String(game.ascension_vow().id) == "thickened_veil" and veil_elite.max_hp > veil_base_hp * 1.27)
+	game.enemies.erase(veil_elite)
+	if is_instance_valid(veil_elite):
+		veil_elite.queue_free()
+
+	game.ascension = 3
+	_expect("Hollow Choir adds one foe to non-boss waves", String(game.ascension_vow().id) == "hollow_choir" and game.ascension_wave_bonus() == 1)
+	game.ascension = 4
+	_expect("Ascension Vows rotate every three tiers", String(game.ascension_vow().id) == "ember_tide")
+	game.ascension = 0
+
 	game.player.attack_cd = 0.0
 	game.player.dash_cd = 0.0
 	game.player.dash_time = 0.0
@@ -168,8 +186,8 @@ func _run() -> void:
 	_expect("finishing the boss encounter enters victory mode", game.mode == "victory")
 	_expect("victory clears the resumable run and increments wins", game.profile.run.is_empty() and int(game.profile.records.wins) == wins_before + 1)
 
-	if checks != 47:
-		failures.append("expected 47 checks, executed %d" % checks)
+	if checks != 52:
+		failures.append("expected 52 checks, executed %d" % checks)
 		printerr("QA FAIL check count: ", checks)
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts"))
