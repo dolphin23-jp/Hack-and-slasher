@@ -313,7 +313,12 @@ func _notification(what:int)->void:
  if what==NOTIFICATION_WM_CLOSE_REQUEST:shutdown()
  if what==NOTIFICATION_APPLICATION_FOCUS_OUT and mode=="play" and not test_mode:mode="pause"
 func shutdown(code:int=0)->void:
- save_run();profile.write_save();mode="title";sound.silence();await get_tree().create_timer(.12).timeout;get_tree().quit(code)
+ save_run();profile.write_save();mode="title"
+ if is_instance_valid(sound):
+  sound.dispose()
+  await get_tree().process_frame
+ await get_tree().create_timer(.12).timeout
+ get_tree().quit(code)
 func next_passage(id:int)->Dictionary:
  if id<0:return {}
  var target=-1
