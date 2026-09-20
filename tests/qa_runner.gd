@@ -150,12 +150,14 @@ func _run() -> void:
 	game.choose_upgrade(0)
 	_expect("choosing a blessing returns to play and consumes one choice", game.mode == "play" and game.pending_upgrades == pending_before - 1)
 
+	var saved_damage: float = float(game.metrics.damage_dealt)
 	game.save_run()
 	if game.profile.run.is_empty() or not game.profile.valid_run(game.profile.run):
 		_print_save_diagnostics()
 	var saved_level: int = int(game.player.level)
 	var saved_weapon_id: String = game.player.equipment.weapon.id
 	_expect("current run serializes as a valid save", not game.profile.run.is_empty() and game.profile.valid_run(game.profile.run))
+	_expect("current run save includes summary metrics", game.profile.run.has("metrics") and is_equal_approx(float(game.profile.run.metrics.damage_dealt), saved_damage))
 
 	var reloaded := ProfileStore.new()
 	reloaded.path = game.profile.path
@@ -164,6 +166,7 @@ func _run() -> void:
 
 	game.start_run(true)
 	_expect("resume restores level and equipment", game.player.level == saved_level and game.player.equipment.weapon.id == saved_weapon_id)
+	_expect("resume restores run summary metrics", is_equal_approx(float(game.metrics.damage_dealt), saved_damage))
 
 	for e in game.enemies.duplicate():
 		if is_instance_valid(e):
@@ -186,8 +189,8 @@ func _run() -> void:
 	_expect("finishing the boss encounter enters victory mode", game.mode == "victory")
 	_expect("victory clears the resumable run and increments wins", game.profile.run.is_empty() and int(game.profile.records.wins) == wins_before + 1)
 
-	if checks != 52:
-		failures.append("expected 52 checks, executed %d" % checks)
+	if checks != 54:
+		failures.append("expected 54 checks, executed %d" % checks)
 		printerr("QA FAIL check count: ", checks)
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts"))
