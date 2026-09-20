@@ -226,6 +226,11 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 		return side
 
 	if boss.state == "windup":
+		# The hit does not pause movement. Land a safe basic swing in the early
+		# telegraph, then keep following the pattern-specific escape vector.
+		if boss.timer > (0.55 if boss.phase == 1 else 0.48) and distance <= 117.0:
+			if player.attack():
+				attacks += 1
 		match boss.pattern % 4:
 			0:
 				# The cone reaches 220 px. Pure radial retreat guarantees we leave it.
@@ -256,6 +261,9 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 			return (side + to_enemy.normalized() * 0.18).normalized()
 		return side
 
+	# Between telegraphs, a basic swing is free if the boss is already in range.
+	if distance <= 117.0 and player.attack():
+		attacks += 1
 	# Pattern 0 only commits inside 175 px. Enter its trigger range, then the
 	# windup branch above immediately evacuates. The other patterns trigger from
 	# much farther away and therefore need no special chase behavior.
@@ -468,8 +476,6 @@ func _choose_survival_blessing() -> void:
 	if game.upgrade_choices.is_empty():
 		return
 	var priorities = ["HEARTWOOD", "SOUL TAKER", "WAYFARER", "OATH OF STEEL", "TEMPERED EDGE", "EXECUTIONER", "QUICKENING", "COLD SUN", "FORKED PROMISE"]
-	if game.player.level >= 8:
-		priorities = ["OATH OF STEEL", "TEMPERED EDGE", "HEARTWOOD", "WAYFARER", "EXECUTIONER", "SOUL TAKER", "QUICKENING", "COLD SUN", "FORKED PROMISE"]
 	var choice = 0
 	var best_rank = priorities.size() + 1
 	for i in range(game.upgrade_choices.size()):
