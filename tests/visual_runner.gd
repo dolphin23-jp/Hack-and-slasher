@@ -136,6 +136,25 @@ func _run() -> void:
 	await _joy(JOY_BUTTON_A)
 	_expect("gamepad A chooses focused blessing", game.mode == "play" and game.pending_upgrades == 0)
 
+	# Elite affixes must be readable both on the enemy and in the combat HUD.
+	game.player.position = game.dungeon.rooms[4].center
+	game.camera.position = game.player.position
+	game.dungeon.active = 4
+	game.wave = 2
+	var elite = game.spawn_enemy("elite", game.player.position + Vector2(230, 0), 4, 4, "volatile")
+	elite.state = "approach"
+	elite.timer = 1.0
+	game.toast_time = 0.0
+	game.banner_time = 0.0
+	await _frames(3)
+	_expect("elite affix metadata is exposed to HUD", elite.affix_name() == "VOLATILE" and not elite.affix_hint().is_empty())
+	await _shot("10b_elite_affix")
+	for enemy in game.enemies.duplicate():
+		if is_instance_valid(enemy):
+			enemy.queue_free()
+	game.enemies.clear()
+	game.hazards.clear()
+
 	game.player.position = game.dungeon.rooms[9].center
 	game.camera.position = game.player.position
 	game.dungeon.active = 9
@@ -254,7 +273,7 @@ func _shot(label: String) -> void:
 	else:
 		shots += 1
 		print("SHOT ", label, " ", image.get_width(), "x", image.get_height())
-		if label in ["04_gameplay", "09b_touch_gameplay", "11_boss_hud", "14_ipad_4x3_touch"]:
+		if label in ["04_gameplay", "09b_touch_gameplay", "10b_elite_affix", "11_boss_hud", "14_ipad_4x3_touch"]:
 			_expect("world visible in " + label, _world_visible(image))
 
 func _world_visible(image: Image) -> bool:
