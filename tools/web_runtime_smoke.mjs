@@ -92,7 +92,63 @@ const summary = {
 };
 fs.writeFileSync(`${outDir}/browser-smoke.json`, JSON.stringify(summary, null, 2) + "\n");
 
+const touchErrors = [];
+const touchPageErrors = [];
+const touchPage = await browser.newPage({
+  viewport: { width: 1024, height: 768 },
+  deviceScaleFactor: 1,
+  isMobile: true,
+  hasTouch: true,
+});
+touchPage.on("console", (message) => {
+  if (message.type() === "error") touchErrors.push(`[error] ${message.text()}`);
+});
+touchPage.on("pageerror", (error) => touchPageErrors.push(String(error)));
+
+await touchPage.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 120_000 });
+await touchPage.waitForSelector("canvas", { state: "visible", timeout: 120_000 });
+await touchPage.waitForTimeout(5000);
+
+const touchCanvas = await touchPage.locator("canvas").boundingBox();
+if (!touchCanvas) throw new Error("Touch smoke canvas has no bounds");
+const tapBase = async (x, y) => {
+  const sx = touchCanvas.x + (x / 1440) * touchCanvas.width;
+  const sy = touchCanvas.y + (y / 900) * touchCanvas.height;
+  await touchPage.touchscreen.tap(sx, sy);
+};
+
+await tapBase(281, 577);
+await touchPage.waitForTimeout(3500);
+await touchPage.screenshot({ path: `${outDir}/04_web_touch_gameplay.png`, fullPage: true });
+
+await tapBase(1128, 698);
+await touchPage.waitForTimeout(800);
+await touchPage.screenshot({ path: `${outDir}/05_web_touch_dash.png`, fullPage: true });
+
+const actionableTouchErrors = touchErrors.filter(
+  (line) => !ignoredConsolePatterns.some((pattern) => pattern.test(line)),
+);
+fs.writeFileSync(
+  `${outDir}/touch-smoke.json`,
+  JSON.stringify(
+    {
+      canvas: touchCanvas,
+      consoleErrors: touchErrors,
+      pageErrors: touchPageErrors,
+      actionableConsoleErrors: actionableTouchErrors,
+    },
+    null,
+    2,
+  ) + "\n",
+);
+
 await browser.close();
+
+if (touchPageErrors.length > 0 || actionableTouchErrors.length > 0) {
+  throw new Error(
+    `Touch browser runtime errors: page=${touchPageErrors.length}, console=${actionableTouchErrors.length}`,
+  );
+}
 
 if (pageErrors.length > 0 || actionableConsoleErrors.length > 0) {
   throw new Error(
