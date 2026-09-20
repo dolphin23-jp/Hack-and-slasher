@@ -252,7 +252,10 @@ func draw_title()->void:
 func draw_hud()->void:
  var p=game.player
  panel(Rect2(24,20,323,69),Color(.045,.08,.12,.94),LINE);icon("crest",Rect2(35,28,47,47))
- text("ASHEN VOW",Vector2(94,51),20,TEXT,false,true);text("OATHBEARER / LEVEL %02d"%p.level,Vector2(94,74),12,GOLD)
+ text("ASHEN VOW",Vector2(94,51),20,TEXT,false,true)
+ var oath_line="OATHBEARER / LEVEL %02d"%p.level
+ if game.ascension>0:oath_line+=" / ASC %02d"%game.ascension
+ text(oath_line,Vector2(94,74),12,GOLD)
  var id=game.dungeon.room_at(p.position);var room=game.dungeon.rooms[id] if id>=0 else null
  text(room.name if room!=null else "THE CONNECTING DARK",Vector2(720,47),19,TEXT,true,true)
  var status="Explore. Follow the next unbroken seal."
@@ -369,11 +372,16 @@ func draw_end(won:bool)->void:
  var seconds=int(game.elapsed);text("LEVEL %d / %d FOES SLAIN / %02d:%02d"%[game.player.level,game.kills,seconds/60,seconds%60],Vector2(720,384),18,GOLD,true)
  if won:
   wrapped_text("Four legendary relics have joined your pack. Inspect them, then descend again with your build. Salvage to 40 items before ascending.",Vector2(454,430),535,17,MUTED,28)
-  button(Rect2(502,541,436,54),"INSPECT THE KING'S RELICS","inspect_victory",true);button(Rect2(502,610,436,54),"ASCEND / DIFFICULTY +1","ascend")
+  var next_asc=game.ascension+1
+  var next_vow=game.ASCENSION_VOWS[(next_asc-1)%game.ASCENSION_VOWS.size()]
+  button(Rect2(502,541,436,54),"INSPECT THE KING'S RELICS","inspect_victory",true)
+  button(Rect2(502,610,436,54),"ASCEND %02d / %s"%[next_asc,next_vow.name],"ascend")
+  text(next_vow.detail,Vector2(720,687),12,GOLD,true)
+  button(Rect2(502,720,436,48),"RETURN TO TITLE","title")
  else:
   wrapped_text("Dodge the bright wind-ups. Use Soul Nova to create space. A flask and a different weapon can change the next fight.",Vector2(454,433),535,17,MUTED,28)
   button(Rect2(502,557,436,54),"BEGIN ANOTHER DESCENT","start",true)
- button(Rect2(502,689,436,48),"RETURN TO TITLE","title")
+  button(Rect2(502,689,436,48),"RETURN TO TITLE","title")
 func draw_settings()->void:
  dim();text("SETTINGS",Vector2(720,162),35,TEXT,true,true)
  var labels={"music":"MUSIC VOLUME","sfx":"SOUND VOLUME","shake":"SCREEN SHAKE","auto_aim":"AUTO AIM","touch":"TOUCH CONTROLS"};var i=0
