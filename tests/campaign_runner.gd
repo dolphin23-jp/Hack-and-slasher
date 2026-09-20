@@ -399,7 +399,7 @@ func _nearest_live_enemy():
 	if phase_two and boss != null and not boss.dead and boss.state != "spawn":
 		# Summons matter only when they are an immediate local threat. Do not
 		# chase them across the arena and starve the boss of damage.
-		if nearest == null or best > 330.0 * 330.0:
+		if nearest == null or best > 205.0 * 205.0:
 			return boss
 	if nearest == null and boss != null and not boss.dead and boss.state != "spawn":
 		return boss
