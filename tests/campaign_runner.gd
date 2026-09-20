@@ -467,7 +467,7 @@ func _windup_dodge(enemy, delta: Vector2, distance: float) -> Vector2:
 func _choose_survival_blessing() -> void:
 	if game.upgrade_choices.is_empty():
 		return
-	var priorities = ["HEARTWOOD", "SOUL TAKER", "WAYFARER", "OATH OF STEEL", "TEMPERED EDGE", "EXECUTIONER", "QUICKENING", "COLD SUN", "FORKED PROMISE"]
+	var priorities = ["OATH OF STEEL", "TEMPERED EDGE", "HEARTWOOD", "WAYFARER", "EXECUTIONER", "SOUL TAKER", "QUICKENING", "COLD SUN", "FORKED PROMISE"]
 	var choice = 0
 	var best_rank = priorities.size() + 1
 	for i in range(game.upgrade_choices.size()):
