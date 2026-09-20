@@ -209,6 +209,9 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 	var side := to_enemy.orthogonal().normalized()
 	if side.dot(player.last_move) < 0.0:
 		side = -side
+	var projectile_dodge := _incoming_projectile_dodge()
+	if projectile_dodge.length() > 0.05:
+		return projectile_dodge
 
 	if boss.state == "windup":
 		# The boss cannot deal damage until release_attack(). Use the early half
@@ -228,7 +231,7 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 			2:
 				return away if distance < 330.0 else side
 			3:
-				return side
+				return (side * 0.8 + away * 1.2).normalized()
 
 	if boss.state == "charge":
 		return side
@@ -276,16 +279,51 @@ func _nearest_health_drop():
 	return nearest
 
 func _nearest_live_enemy():
+	var boss = _boss_enemy()
+	var prioritize_adds := boss != null and boss.phase == 2
 	var nearest = null
 	var best = INF
 	for enemy in game.enemies:
 		if not is_instance_valid(enemy) or enemy.dead or enemy.state == "spawn":
 			continue
+		if prioritize_adds and enemy.kind == "boss":
+			continue
 		var distance = enemy.position.distance_squared_to(game.player.position)
 		if distance < best:
 			best = distance
 			nearest = enemy
+	if nearest == null and boss != null and not boss.dead and boss.state != "spawn":
+		return boss
 	return nearest
+
+func _incoming_projectile_dodge() -> Vector2:
+	var player = game.player
+	var boss = _boss_enemy()
+	var tangent := Vector2.ZERO
+	if boss != null:
+		var radial: Vector2 = player.position - boss.position
+		if radial.length() > 0.01:
+			tangent = radial.orthogonal().normalized()
+			if tangent.dot(player.last_move) < 0.0:
+				tangent = -tangent
+	var threat := false
+	for projectile in game.projectiles:
+		if not is_instance_valid(projectile) or projectile.dead or projectile.friendly:
+			continue
+		var velocity: Vector2 = projectile.velocity
+		var speed_sq := velocity.length_squared()
+		if speed_sq < 1.0:
+			continue
+		var rel: Vector2 = projectile.position - player.position
+		var t := clampf(-rel.dot(velocity) / speed_sq, 0.0, 1.25)
+		var miss := (rel + velocity * t).length()
+		if t > 0.0 and miss < 62.0:
+			threat = true
+			if tangent == Vector2.ZERO:
+				tangent = velocity.orthogonal().normalized()
+	if not threat:
+		return Vector2.ZERO
+	return tangent
 
 func _danger_move(primary) -> Vector2:
 	var player = game.player
