@@ -218,10 +218,17 @@ func _boss_move(boss, to_enemy: Vector2, distance: float) -> Vector2:
 		if player.attack():
 			attacks += 1
 		return (side - to_enemy.normalized() * 0.18).normalized()
-	# Approach state: stay outside the boss's melee cone until it commits.
-	if distance < 250.0:
-		return (side * 0.8 + away * 0.55).normalized()
-	if distance > 340.0:
+	# Pattern 0 only begins inside 175 px. Step into trigger range, then
+	# immediately leave the cone once the windup starts.
+	if boss.pattern % 4 == 0:
+		if distance > 158.0:
+			return to_enemy.normalized()
+		return side
+	# The ranged/charge patterns can commit from far away. Keep a moderate
+	# orbit so recovery windows are reachable without camping in melee.
+	if distance < 210.0:
+		return (side * 0.9 + away * 0.35).normalized()
+	if distance > 300.0:
 		return to_enemy.normalized()
 	return side
 
