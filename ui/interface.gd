@@ -249,8 +249,12 @@ func draw_title()->void:
   button(Rect2(105,y,353,54),continue_label,"continue",true);y+=66
  button(Rect2(105,y,353,54),"BEGIN DESCENT","start",game.profile.run.is_empty());y+=66
  button(Rect2(105,y,170,44),"SETTINGS","settings");button(Rect2(288,y,170,44),"HOW TO PLAY","help")
- text("AN ORIGINAL ACTION RPG  /  VERTICAL SLICE",Vector2(105,839),12,MUTED);text("GODOT 4.5.1",Vector2(1329,859),12,MUTED,true)
- if game.profile.records.wins>0:text("Oaths fulfilled: %d"%game.profile.records.wins,Vector2(105,806),15,GOLD)
+ if game.profile.records.wins>0 or game.profile.records.total_kills>0 or game.profile.records.best_ascension>0:
+  panel(Rect2(105,753,353,73),Color(.035,.065,.09,.86),Color(GOLD,.45))
+  text("CHRONICLE",Vector2(120,776),11,GOLD)
+  text("OATHS %d  /  BEST ASCENSION %02d"%[game.profile.records.wins,game.profile.records.best_ascension],Vector2(120,799),13,TEXT)
+  text("BEST LEVEL %02d  /  %d FOES"%[game.profile.records.best_level,game.profile.records.total_kills],Vector2(120,819),12,MUTED)
+ text("AN ORIGINAL ACTION RPG  /  VERTICAL SLICE",Vector2(105,859),12,MUTED);text("GODOT 4.5.1",Vector2(1329,859),12,MUTED,true)
 func draw_hud()->void:
  var p=game.player
  panel(Rect2(24,20,323,69),Color(.045,.08,.12,.94),LINE);icon("crest",Rect2(35,28,47,47))
