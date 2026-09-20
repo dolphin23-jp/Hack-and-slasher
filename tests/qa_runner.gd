@@ -114,6 +114,21 @@ func _run() -> void:
 	_expect("Mend restores life", game.player.hp > hp_before)
 	_expect("Mend decrements flask count", game.player.potions == 2)
 
+	var baseline_gear_score: float = game.player.build_score()
+	_expect("equipment build score is positive", baseline_gear_score > 0.0)
+	var obvious_upgrade: Dictionary = game.player.equipment.weapon.duplicate(true)
+	obvious_upgrade.id = "qa-upgrade"
+	obvious_upgrade.name = "QA Superior Oathblade"
+	obvious_upgrade.base = {"attack": 120.0}
+	obvious_upgrade.affixes = {}
+	_expect("loot comparison identifies a clear upgrade", game.player.item_upgrade_ratio(obvious_upgrade) > 0.25)
+	var obvious_weaker: Dictionary = game.player.equipment.weapon.duplicate(true)
+	obvious_weaker.id = "qa-weaker"
+	obvious_weaker.name = "QA Blunted Oathblade"
+	obvious_weaker.base = {"attack": 0.0}
+	obvious_weaker.affixes = {}
+	_expect("loot comparison identifies a weaker replacement", game.player.item_upgrade_ratio(obvious_weaker) < -0.02)
+
 	var item := ItemDB.generate(game.rng, 2, 2)
 	var drop_metric := int(game.metrics.drops)
 	var drop = game.spawn_drop(game.player.position + Vector2(30, 0), item)
@@ -202,8 +217,8 @@ func _run() -> void:
 	game.start_run(true)
 	_expect("continue restores the victory screen with rewards intact", game.mode == "victory" and game.player.inventory.size() == victory_pack_size and game.player.equipment.weapon.id == victory_weapon_id)
 
-	if checks != 57:
-		failures.append("expected 57 checks, executed %d" % checks)
+	if checks != 60:
+		failures.append("expected 60 checks, executed %d" % checks)
 		printerr("QA FAIL check count: ", checks)
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts"))
