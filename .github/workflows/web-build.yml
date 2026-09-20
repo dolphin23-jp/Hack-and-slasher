@@ -59,6 +59,14 @@ jobs:
           test -n "$pck"
           test -s "$wasm"
           test -s "$pck"
+          manifest="$(find build/web -maxdepth 1 -type f \( -name '*.manifest.json' -o -name 'manifest.json' \) -print -quit)"
+          service_worker="$(find build/web -maxdepth 1 -type f -name '*.service.worker.js' -print -quit)"
+          test -n "$manifest"
+          test -n "$service_worker"
+          test -s "$manifest"
+          test -s "$service_worker"
+          grep -qi '"display"[[:space:]]*:[[:space:]]*"standalone"' "$manifest"
+          grep -qi '"orientation"[[:space:]]*:[[:space:]]*"landscape"' "$manifest"
 
           {
             echo "ASHEN VOW Web build"

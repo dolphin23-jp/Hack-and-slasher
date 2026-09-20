@@ -47,9 +47,17 @@ await page.keyboard.up("KeyD");
 await page.waitForTimeout(500);
 await page.screenshot({ path: `${outDir}/03_web_movement.png`, fullPage: true });
 
-const runtime = await page.evaluate(() => {
+const runtime = await page.evaluate(async () => {
   const canvas = document.querySelector("canvas");
   const rect = canvas.getBoundingClientRect();
+  const manifest = document.querySelector('link[rel="manifest"]')?.href || "";
+  let serviceWorker = false;
+  if ("serviceWorker" in navigator) {
+    serviceWorker = await Promise.race([
+      navigator.serviceWorker.ready.then(() => true),
+      new Promise((resolve) => setTimeout(() => resolve(false), 10_000)),
+    ]);
+  }
   return {
     title: document.title,
     canvasWidth: canvas.width,
@@ -57,8 +65,14 @@ const runtime = await page.evaluate(() => {
     cssWidth: Math.round(rect.width),
     cssHeight: Math.round(rect.height),
     visibility: document.visibilityState,
+    manifest,
+    serviceWorker,
   };
 });
+
+if (!runtime.manifest || !runtime.serviceWorker) {
+  throw new Error(`PWA registration incomplete: ${JSON.stringify(runtime)}`);
+}
 
 const ignoredConsolePatterns = [
   /AudioContext/i,
@@ -78,7 +92,66 @@ const summary = {
 };
 fs.writeFileSync(`${outDir}/browser-smoke.json`, JSON.stringify(summary, null, 2) + "\n");
 
+const touchErrors = [];
+const touchPageErrors = [];
+const touchPage = await browser.newPage({
+  viewport: { width: 1024, height: 768 },
+  deviceScaleFactor: 1,
+  isMobile: true,
+  hasTouch: true,
+});
+touchPage.on("console", (message) => {
+  if (message.type() === "error") touchErrors.push(`[error] ${message.text()}`);
+});
+touchPage.on("pageerror", (error) => touchPageErrors.push(String(error)));
+
+await touchPage.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 120_000 });
+await touchPage.waitForSelector("canvas", { state: "visible", timeout: 120_000 });
+await touchPage.waitForTimeout(5000);
+
+const touchCanvas = await touchPage.locator("canvas").boundingBox();
+if (!touchCanvas) throw new Error("Touch smoke canvas has no bounds");
+const tapBase = async (x, y) => {
+  const scale = Math.min(touchCanvas.width / 1440, touchCanvas.height / 900);
+  const offsetX = (touchCanvas.width - 1440 * scale) * 0.5;
+  const offsetY = (touchCanvas.height - 900 * scale) * 0.5;
+  const sx = touchCanvas.x + offsetX + x * scale;
+  const sy = touchCanvas.y + offsetY + y * scale;
+  await touchPage.touchscreen.tap(sx, sy);
+};
+
+await tapBase(281, 577);
+await touchPage.waitForTimeout(3500);
+await touchPage.screenshot({ path: `${outDir}/04_web_touch_gameplay.png`, fullPage: true });
+
+await tapBase(1128, 698);
+await touchPage.waitForTimeout(800);
+await touchPage.screenshot({ path: `${outDir}/05_web_touch_dash.png`, fullPage: true });
+
+const actionableTouchErrors = touchErrors.filter(
+  (line) => !ignoredConsolePatterns.some((pattern) => pattern.test(line)),
+);
+fs.writeFileSync(
+  `${outDir}/touch-smoke.json`,
+  JSON.stringify(
+    {
+      canvas: touchCanvas,
+      consoleErrors: touchErrors,
+      pageErrors: touchPageErrors,
+      actionableConsoleErrors: actionableTouchErrors,
+    },
+    null,
+    2,
+  ) + "\n",
+);
+
 await browser.close();
+
+if (touchPageErrors.length > 0 || actionableTouchErrors.length > 0) {
+  throw new Error(
+    `Touch browser runtime errors: page=${touchPageErrors.length}, console=${actionableTouchErrors.length}`,
+  );
+}
 
 if (pageErrors.length > 0 || actionableConsoleErrors.length > 0) {
   throw new Error(
