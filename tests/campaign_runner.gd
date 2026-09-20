@@ -3,7 +3,7 @@ extends Node
 const DT = 1.0 / 30.0
 const SUBSTEPS_PER_FRAME = 30
 const MAX_SIM_SECONDS = 2400.0
-const ROUTE = [1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
+const ROUTE = [1, 2, 4, 5, 6, 7, 6, 5, 4, 2, 1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
 
 var game
 var route_index = 0
