@@ -17,6 +17,14 @@ const UPGRADE_POOL=[
  {"name":"SOUL TAKER","detail":"Restore 2 life on every kill. Advance to recover.","icon":"potion","key":"leech","value":2.0},
  {"name":"OATH OF STEEL","detail":"+9 Attack. Strengthens the sword and all three skills.","icon":"cleave","key":"attack","value":9.0},
  {"name":"WAYFARER","detail":"+10% movement speed and +10 armor.","icon":"dash","key":"speed","value":.1}]
+const ROOM_ENEMY_POOLS={
+ 1:["hollow","hollow","hollow","cantor"],
+ 2:["hollow","hollow","hound","hound","cantor"],
+ 3:["hound","hound","hollow","cantor"],
+ 4:["hollow","hollow","warden","cantor"],
+ 5:["cantor","cantor","hollow","warden"],
+ 6:["hound","hound","hound","hollow","warden"],
+ 8:["hollow","cantor","hound","warden","hollow"]}
 var mode="title"
 var profile=ProfileStore.new()
 var sound:Soundscape
@@ -160,17 +168,26 @@ func check_rooms(dt:float)->void:
 func begin_encounter(id:int)->void:
  dungeon.active=id;encounter_room=id;wave=0;wave_delay=.9
  if id==9:sound.set_music("boss_music");sound.play("boss")
+func encounter_pool(room_id:int,current_wave:int)->Array:
+ var pool=ROOM_ENEMY_POOLS.get(room_id,["hollow","hollow","hollow","cantor"]).duplicate()
+ if current_wave>=2:
+  match room_id:
+   1:pool.append("cantor")
+   2,3:pool.append("hound")
+   4:pool.append("warden")
+   5:pool.append("cantor")
+   6:pool.append_array(["hound","warden"])
+   8:pool.append_array(["cantor","hound","warden"])
+ return pool
 func spawn_wave()->void:
  var room=dungeon.rooms[dungeon.active];wave+=1;wave_delay=3
  if room.id==9:spawn_enemy("boss",room.center+Vector2(200,0),7,9);return
+ var pool=encounter_pool(room.id,wave)
  for i in range(room.count+wave*2):
-  var pool=["hollow","hollow","hollow","cantor"]
-  if room.tier>=2:pool.append_array(["hound","hound"])
-  if room.tier>=3:pool.append_array(["warden","cantor"])
   var kind=pool[rng.randi_range(0,pool.size()-1)]
   if i==0 and wave==room.waves and room.id in [3,4,6,8]:kind="elite"
   spawn_enemy(kind,dungeon.spawn_point(room.id,i),room.tier,room.id)
- if wave>1:toast("Wave %d / %d  -  %s"%[wave,room.waves,room.name])
+ if wave>1:toast("%s  /  WAVE %d OF %d"%[room.encounter,wave,room.waves])
 func spawn_enemy(kind:String,p:Vector2,tier:int,room:int):
  var e=EnemyScript.new();add_child(e);e.setup(self,kind,p,tier,room);enemies.append(e);return e
 func clear_encounter()->void:
