@@ -1,0 +1,64 @@
+name: Deploy Web to Pages
+
+on:
+  workflow_run:
+    workflows:
+      - Web build
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  actions: read
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download verified Web artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: ashen-vow-web
+          path: dist
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Verify deploy payload
+        run: |
+          set -euxo pipefail
+          test -s dist/web/index.html
+          test -s dist/web/index.wasm
+          test -s dist/web/index.pck
+          manifest="$(find dist/web -maxdepth 1 -type f \( -name '*.manifest.json' -o -name 'manifest.json' \) -print -quit)"
+          service_worker="$(find dist/web -maxdepth 1 -type f -name '*.service.worker.js' -print -quit)"
+          test -n "$manifest"
+          test -n "$service_worker"
+          test -s "$manifest"
+          test -s "$service_worker"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
