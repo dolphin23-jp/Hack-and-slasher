@@ -11,6 +11,11 @@ func _initialize() -> void:
 func _run() -> void:
 	DisplayServer.window_set_size(Vector2i(1440, 900))
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts/ui"))
+	# Start the visual regression from a clean title state. Earlier QA/campaign
+	# jobs intentionally share the test profile and may leave a resumable run.
+	var test_save := ProjectSettings.globalize_path("user://ashen_vow_test.json")
+	if FileAccess.file_exists("user://ashen_vow_test.json"):
+		DirAccess.remove_absolute(test_save)
 	game = load("res://main.tscn").instantiate()
 	root.add_child(game)
 	# Each harness must start from a clean profile state even when prior CI steps saved a run.
