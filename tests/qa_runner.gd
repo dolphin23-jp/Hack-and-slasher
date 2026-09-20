@@ -86,6 +86,8 @@ func _run() -> void:
 	_expect("Hollow Choir adds one foe to non-boss waves", String(game.ascension_vow().id) == "hollow_choir" and game.ascension_wave_bonus() == 1)
 	game.ascension = 4
 	_expect("Ascension Vows rotate every three tiers", String(game.ascension_vow().id) == "ember_tide")
+	game.save_run()
+	_expect("Chronicle records the highest saved Ascension", int(game.profile.records.best_ascension) >= 4)
 	game.ascension = 0
 
 	game.player.attack_cd = 0.0
@@ -197,8 +199,8 @@ func _run() -> void:
 	game.start_run(true)
 	_expect("continue restores the victory screen with rewards intact", game.mode == "victory" and game.player.inventory.size() == victory_pack_size and game.player.equipment.weapon.id == victory_weapon_id)
 
-	if checks != 54:
-		failures.append("expected 54 checks, executed %d" % checks)
+	if checks != 55:
+		failures.append("expected 55 checks, executed %d" % checks)
 		printerr("QA FAIL check count: ", checks)
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts"))

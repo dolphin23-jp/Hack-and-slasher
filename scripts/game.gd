@@ -362,7 +362,7 @@ func banner(title:String,subtitle:String)->void:banner_title=title;banner_sub=su
 func toast(message:String)->void:toast_text=message;toast_time=3.7
 func shake(amount:float)->void:shake_amount=maxf(shake_amount,amount)
 func player_died()->void:
- mode="dead";sound.play("death");profile.records.best_level=maxi(profile.records.best_level,player.level);profile.records.total_kills+=kills;profile.run={};profile.write_save();fx.burst(player.position,Color("dfb888"),55,230)
+ mode="dead";sound.play("death");profile.records.best_level=maxi(profile.records.best_level,player.level);profile.records.best_ascension=maxi(profile.records.best_ascension,ascension);profile.records.total_kills+=kills;profile.run={};profile.write_save();fx.burst(player.position,Color("dfb888"),55,230)
 func run_snapshot(victory_ready:bool=false)->Dictionary:
  var pos=player.position;var id=dungeon.room_at(pos)
  if victory_ready:pos=dungeon.rooms[9].center
@@ -375,12 +375,13 @@ func run_snapshot(victory_ready:bool=false)->Dictionary:
 func finish_run()->void:
  victory_pending=false;mode="victory"
  if 9 not in dungeon.cleared:dungeon.cleared.append(9)
- dungeon.active=-1;profile.records.wins+=1;profile.records.best_level=maxi(profile.records.best_level,player.level);profile.records.total_kills+=kills
+ dungeon.active=-1;profile.records.wins+=1;profile.records.best_level=maxi(profile.records.best_level,player.level);profile.records.best_ascension=maxi(profile.records.best_ascension,ascension);profile.records.total_kills+=kills
  for d in drops.duplicate():
   if d.kind=="item" and d.item.get("boss_reward",false):player.inventory.append(d.item.duplicate(true));metrics.pickups+=1;d.take()
  profile.run=run_snapshot(true);profile.write_save();sound.set_music("menu");sound.play("legendary")
 func save_run()->void:
  if not is_instance_valid(player) or player.dead or mode in ["title","dead","victory","victory_inventory"]:return
+ profile.records.best_ascension=maxi(profile.records.best_ascension,ascension)
  profile.run=run_snapshot(false)
  if not profile.write_save():toast("Could not write save. Check user data folder permissions.")
 func return_to_title()->void:save_run();mode="title";sound.set_music("menu")
