@@ -25,6 +25,11 @@ const ROOM_ENEMY_POOLS={
  5:["cantor","cantor","hollow","warden"],
  6:["hound","hound","hound","hollow","warden"],
  8:["hollow","cantor","hound","warden","hollow"]}
+const ROOM_MODIFIER_TEXT={
+ 4:"FORGE VENTS / EMBERS ERUPT BENEATH YOU",
+ 5:"EMBER SCRIPT / SIGILS FORM IN LINES",
+ 6:"CINDER TRAIL / KEEP MOVING",
+ 8:"THORN PROCESSION / CROSS-SIGILS FOLLOW YOU"}
 var mode="title"
 var profile=ProfileStore.new()
 var sound:Soundscape
@@ -49,6 +54,7 @@ var upgrade_choices=[]
 var wave=0
 var wave_delay=0.0
 var encounter_room=-1
+var room_modifier_timer=0.0
 var hitstop=0.0
 var shake_amount=0.0
 var banner_title=""
@@ -88,7 +94,7 @@ func clear_world()->void:
  for child in get_children():
   if child is Node2D:remove_child(child);child.queue_free()
  enemies.clear();projectiles.clear();drops.clear();hazards.clear()
- pending_upgrades=0;victory_pending=false;wave=0;encounter_room=-1;last_room=-1;hitstop=0;shake_amount=0;toast_time=0;banner_time=0
+ pending_upgrades=0;victory_pending=false;wave=0;encounter_room=-1;room_modifier_timer=0;last_room=-1;hitstop=0;shake_amount=0;toast_time=0;banner_time=0
  metrics={"hits_taken":0,"damage_dealt":0.0,"kills":0,"drops":0,"pickups":0,"equips":0,"level_ups":0,"boss_patterns":0}
 func start_run(resume:bool=false,ascend:bool=false)->void:
  if ascend and is_instance_valid(player) and player.inventory.size()>40:
@@ -142,7 +148,7 @@ func step(dt:float)->void:
   if is_instance_valid(p) and not p.dead:p.tick(dt)
  for d in drops.duplicate():
   if is_instance_valid(d) and not d.taken:d.tick(dt)
- tick_hazards(dt);fx.tick(dt)
+ tick_hazards(dt);tick_room_modifier(dt);fx.tick(dt)
  if mode!="play":return
  if Input.is_action_just_pressed("interact") and not test_mode:interact()
  check_rooms(dt)
@@ -166,8 +172,36 @@ func check_rooms(dt:float)->void:
    if wave<dungeon.rooms[dungeon.active].waves:spawn_wave()
    else:clear_encounter()
 func begin_encounter(id:int)->void:
- dungeon.active=id;encounter_room=id;wave=0;wave_delay=.9
+ dungeon.active=id;encounter_room=id;wave=0;wave_delay=.9;room_modifier_timer=4.5
+ if id in ROOM_MODIFIER_TEXT:toast(ROOM_MODIFIER_TEXT[id])
  if id==9:sound.set_music("boss_music");sound.play("boss")
+func room_hazard_point(p:Vector2)->Vector2:
+ var room=dungeon.rooms[dungeon.active];var r=room.rect.grow(-125.0)
+ var q=Vector2(clampf(p.x,r.position.x,r.end.x),clampf(p.y,r.position.y,r.end.y))
+ return q if dungeon.walkable(q,30) else player.position
+func tick_room_modifier(dt:float)->void:
+ if dungeon.active not in ROOM_MODIFIER_TEXT:return
+ room_modifier_timer-=dt
+ if room_modifier_timer>0:return
+ var id=int(dungeon.active);var damage=(9.0+id*.7)*(1+ascension*.15)
+ match id:
+  4:
+   room_modifier_timer=8.6
+   var angle=rng.randf_range(0,TAU)
+   add_hazard(room_hazard_point(player.position),68,.12,damage,false,1.05)
+   add_hazard(room_hazard_point(player.position+Vector2.from_angle(angle)*145),62,.12,damage,false,1.35)
+  5:
+   room_modifier_timer=9.5
+   var line=Vector2.from_angle(rng.randf_range(0,TAU))
+   for i in range(-1,2):add_hazard(room_hazard_point(player.position+line*145*i),72,.12,damage,false,1.05+abs(i)*.18)
+  6:
+   room_modifier_timer=7.8
+   var trail=player.last_move if player.last_move.length()>.1 else player.facing
+   for i in range(3):add_hazard(room_hazard_point(player.position-trail*90*i),58,.12,damage,false,.9+i*.18)
+  8:
+   room_modifier_timer=8.8
+   var offsets=[Vector2.ZERO,Vector2(145,0),Vector2(-145,0),Vector2(0,145),Vector2(0,-145)]
+   for i in range(offsets.size()):add_hazard(room_hazard_point(player.position+offsets[i]),62,.12,damage,false,1.0+i*.08)
 func encounter_pool(room_id:int,current_wave:int)->Array:
  var pool=ROOM_ENEMY_POOLS.get(room_id,["hollow","hollow","hollow","cantor"]).duplicate()
  if current_wave>=2:
