@@ -20,6 +20,10 @@ var big_map=false
 var salvage_confirm=-1
 var settings_return="title"
 var pad_focus=0
+var pad_active=false
+var pad_mode=""
+var pad_axis_x_latched=false
+var pad_axis_y_latched=false
 var touch_id=-1
 var touch_origin=Vector2.ZERO
 var touch_point=Vector2.ZERO
@@ -36,11 +40,14 @@ func layout_offset()->Vector2:
 func point(p:Vector2)->Vector2:return (p-layout_offset())/layout_scale()
 func screen_point(p:Vector2)->Vector2:return layout_offset()+p*layout_scale()
 func _input(event:InputEvent)->void:
- if event is InputEventMouseMotion:hover=point(event.position)
+ if event is InputEventMouseMotion:
+  pad_active=false;hover=point(event.position)
  if event is InputEventMouseButton and event.pressed and event.button_index==MOUSE_BUTTON_LEFT:
+  pad_active=false
   for b in buttons:
    if b.rect.has_point(point(event.position)):act(b.action);get_viewport().set_input_as_handled();return
  if event is InputEventKey and event.pressed and not event.echo:
+  pad_active=false
   if event.keycode==KEY_F11:DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if DisplayServer.window_get_mode()==DisplayServer.WINDOW_MODE_FULLSCREEN else DisplayServer.WINDOW_MODE_FULLSCREEN)
   if event.is_action("inventory") and game.mode in ["play","inventory"]:game.toggle_inventory();salvage_confirm=-1;return
   if event.is_action("pause"):
@@ -57,16 +64,43 @@ func _input(event:InputEvent)->void:
    if event.keycode==KEY_RIGHT:selected=mini(game.player.inventory.size()-1,selected+1)
    if event.keycode==KEY_LEFT:selected=maxi(0,selected-1)
   if game.mode=="title" and event.keycode==KEY_ENTER:game.start_run()
+ if event is InputEventJoypadMotion and game.mode!="play":
+  if event.axis==JOY_AXIS_LEFT_X:
+   if absf(event.axis_value)<.35:pad_axis_x_latched=false
+   elif not pad_axis_x_latched:
+    pad_active=true;pad_axis_x_latched=true;pad_move(Vector2(signf(event.axis_value),0));get_viewport().set_input_as_handled()
+  if event.axis==JOY_AXIS_LEFT_Y:
+   if absf(event.axis_value)<.35:pad_axis_y_latched=false
+   elif not pad_axis_y_latched:
+    pad_active=true;pad_axis_y_latched=true;pad_move(Vector2(0,signf(event.axis_value)));get_viewport().set_input_as_handled()
  if event is InputEventJoypadButton and event.pressed:
-  if event.is_action("inventory") and game.mode in ["play","inventory"]:game.toggle_inventory()
-  elif event.is_action("pause"):
+  pad_active=true
+  if event.is_action("inventory") and game.mode in ["play","inventory"]:
+   game.toggle_inventory();get_viewport().set_input_as_handled();return
+  if event.is_action("pause"):
    if game.mode=="play":game.mode="pause"
-   elif game.mode in ["pause","inventory"]:game.mode="play"
-  elif game.mode!="play" and not buttons.is_empty():
-   if event.button_index in [JOY_BUTTON_DPAD_DOWN,JOY_BUTTON_DPAD_RIGHT]:pad_focus=(pad_focus+1)%buttons.size()
-   if event.button_index in [JOY_BUTTON_DPAD_UP,JOY_BUTTON_DPAD_LEFT]:pad_focus=posmod(pad_focus-1,buttons.size())
-   if event.button_index==JOY_BUTTON_A:act(buttons[pad_focus%buttons.size()].action)
+   elif game.mode in ["pause","inventory"]:game.mode="play";game.save_run()
+   get_viewport().set_input_as_handled();return
+  if game.mode!="play":
+   if event.button_index==JOY_BUTTON_B:
+    if pad_back():get_viewport().set_input_as_handled()
+    return
+   if game.mode in ["inventory","victory_inventory"] and event.button_index==JOY_BUTTON_X:
+    game.player.equip(selected);salvage_confirm=-1;get_viewport().set_input_as_handled();return
+   if game.mode in ["inventory","victory_inventory"] and event.button_index==JOY_BUTTON_Y:
+    act("salvage");get_viewport().set_input_as_handled();return
+   var direction=Vector2.ZERO
+   match event.button_index:
+    JOY_BUTTON_DPAD_LEFT:direction=Vector2.LEFT
+    JOY_BUTTON_DPAD_RIGHT:direction=Vector2.RIGHT
+    JOY_BUTTON_DPAD_UP:direction=Vector2.UP
+    JOY_BUTTON_DPAD_DOWN:direction=Vector2.DOWN
+   if direction!=Vector2.ZERO:
+    pad_move(direction);get_viewport().set_input_as_handled();return
+   if event.button_index==JOY_BUTTON_A and not buttons.is_empty():
+    pad_focus=clampi(pad_focus,0,buttons.size()-1);act(buttons[pad_focus].action);get_viewport().set_input_as_handled();return
  if event is InputEventScreenTouch:
+  pad_active=false
   var p=point(event.position)
   if event.pressed:
    game.profile.settings.touch=true
@@ -84,6 +118,37 @@ func _input(event:InputEvent)->void:
     attack_touch_id=-1
     if is_instance_valid(game.player):game.player.touch_attack=false
  if event is InputEventScreenDrag and event.index==touch_id and is_instance_valid(game.player):touch_point=point(event.position);game.player.touch_move=(touch_point-touch_origin).limit_length(68)/68
+
+func pad_move(direction:Vector2)->void:
+ if buttons.is_empty():return
+ pad_active=true;pad_focus=clampi(pad_focus,0,buttons.size()-1)
+ var from:Vector2=buttons[pad_focus].rect.get_center()
+ var best=-1;var best_score=INF
+ for i in range(buttons.size()):
+  if i==pad_focus:continue
+  var delta:Vector2=buttons[i].rect.get_center()-from
+  if delta.length()<1:continue
+  var alignment=delta.normalized().dot(direction)
+  if alignment<.35:continue
+  var score=delta.length()*(1.0+(1.0-alignment)*2.8)
+  if score<best_score:best_score=score;best=i
+ if best<0:
+  var extreme=-INF
+  for i in range(buttons.size()):
+   if i==pad_focus:continue
+   var projection=buttons[i].rect.get_center().dot(direction)
+   if projection>extreme:extreme=projection;best=i
+ if best>=0:
+  pad_focus=best;hover=Vector2(-10,-10);game.sound.play("ui",.35);queue_redraw()
+
+func pad_back()->bool:
+ match game.mode:
+  "pause":game.mode="play";game.save_run();return true
+  "inventory":game.mode="play";game.save_run();salvage_confirm=-1;return true
+  "victory_inventory":game.mode="victory";salvage_confirm=-1;return true
+  "settings","help":game.mode=settings_return;return true
+ return false
+
 func pointer_blocked()->bool:
  for b in buttons:
   if b.rect.has_point(hover):return true
@@ -125,6 +190,9 @@ func act(action:String)->void:
   "inspect_victory":game.mode="victory_inventory"
   "return_victory":game.mode="victory"
 func _draw()->void:
+ if pad_mode!=game.mode:
+  pad_mode=game.mode
+  pad_focus=1 if game.mode in ["inventory","victory_inventory"] and is_instance_valid(game.player) and not game.player.inventory.is_empty() else 0
  buttons.clear()
  draw_set_transform(Vector2.ZERO)
  var s=layout_scale()
@@ -163,7 +231,7 @@ func rule(x:float,y:float,w:float,c:Color=LINE)->void:draw_line(Vector2(x,y),Vec
 func icon(name:String,r:Rect2)->void:
  if icons.has(name):draw_texture_rect(icons[name],r,false)
 func button(r:Rect2,label:String,action:String,highlight:bool=false)->void:
- var over=r.has_point(hover) or (not Input.get_connected_joypads().is_empty() and buttons.size()==pad_focus)
+ var over=r.has_point(hover) or (pad_active and buttons.size()==pad_focus)
  panel(r,Color("29434b") if over else (Color("344443") if highlight else Color("142630")),GOLD if over or highlight else Color("4c6266"))
  text(label,Vector2(r.get_center().x,r.position.y+r.size.y/2+6),17,TEXT,true);buttons.append({"rect":r,"action":action})
 func dim()->void:draw_rect(Rect2(Vector2.ZERO,BASE),Color(.015,.028,.05,.95));buttons.clear()
@@ -249,10 +317,11 @@ func draw_inventory()->void:
  for i in range(maxi(40,p.inventory.size())):
   var r=Rect2(349+(i%5)*72,195+floori(i/5.0)*(64 if p.inventory.size()>40 else 72),62,62)
   var c=ItemDB.COLORS[int(p.inventory[i].rarity)] if i<p.inventory.size() else Color("344a55")
-  panel(r,Color("1b313b") if i==selected else INK,c)
+  var pad_over=pad_active and buttons.size()==pad_focus
+  panel(r,Color("1b313b") if i==selected or pad_over else INK,c)
   if i<p.inventory.size():
    var it=p.inventory[i];icon("sword" if it.slot=="weapon" else it.slot,r.grow(-7))
-   if i==selected:draw_rect(r.grow(3),Color("f0e3bb"),false,2)
+   if i==selected or pad_over:draw_rect(r.grow(3),GOLD if pad_over else Color("f0e3bb"),false,2)
    text(str(it.tier),r.position+Vector2(48,57),10,c);buttons.append({"rect":r,"action":"item:"+str(i)})
  text("ENTER equip / DELETE salvage",Vector2(351,808),12,MUTED)
  if selected<0 or selected>=p.inventory.size():text("No unclaimed promises.",Vector2(1059,400),27,GOLD,true,true);return
@@ -278,7 +347,7 @@ func item_card(it:Dictionary,r:Rect2,tag:String)->void:
 func draw_upgrades()->void:
  dim();text("AN OATH GROWS STRONGER",Vector2(720,207),37,TEXT,true,true);text("LEVEL %d / CHOOSE ONE BLESSING"%game.player.level,Vector2(720,244),15,GOLD,true)
  for i in range(3):
-  var c=game.upgrade_choices[i];var r=Rect2(221+i*344,299,310,356);panel(r,Color("19313a") if r.has_point(hover) else PANEL,GOLD if r.has_point(hover) else LINE)
+  var c=game.upgrade_choices[i];var r=Rect2(221+i*344,299,310,356);var focused=r.has_point(hover) or (pad_active and buttons.size()==pad_focus);panel(r,Color("19313a") if focused else PANEL,GOLD if focused else LINE)
   icon(c.icon,Rect2(r.get_center().x-49,r.position.y+31,98,98));text(c.name,Vector2(r.get_center().x,r.position.y+177),20,TEXT,true,true);wrapped_text(c.detail,r.position+Vector2(25,220),260,16,MUTED,25)
   text("[ %d ] TAKE THIS OATH"%(i+1),Vector2(r.get_center().x,r.end.y-25),13,GOLD,true);buttons.append({"rect":r,"action":"upgrade:"+str(i)})
  text("Your weapons remain. Your vow changes.",Vector2(720,714),15,MUTED,true)
