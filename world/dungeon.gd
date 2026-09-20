@@ -8,6 +8,7 @@ var connections=[[0,1],[1,2],[1,3],[2,4],[4,5],[5,6],[6,7],[7,8],[8,9]]
 var cleared=[0]
 var visited=[0]
 var active=-1
+var encounter_labels=["SANCTUARY","CONGREGATION","BONE HUNT","RELIC TRIAL","IRON OATH","CANTOR CHOIR","CINDER HUNT","SANCTUARY","LAST PROCESSION","THE LAST TOLL"]
 var crest=preload("res://assets/icons/crest.svg")
 func setup(g)->void:
  game=g
@@ -23,7 +24,7 @@ func setup(g)->void:
  [Vector2(6470,0),Vector2(1160,860),"PROCESSION OF THORNS",6,4,12,"Break the last of the oathbound."],
  [Vector2(7990,0),Vector2(1460,1090),"THRONE OF THE BELLLESS",7,1,1,"No bell will toll for him."]]
  for i in range(specs.size()):
-  var s=specs[i];rooms.append({"id":i,"center":s[0],"rect":Rect2(s[0]-s[1]/2,s[1]),"name":s[2],"tier":s[3],"waves":s[4],"count":s[5],"lore":s[6]})
+  var s=specs[i];rooms.append({"id":i,"center":s[0],"rect":Rect2(s[0]-s[1]/2,s[1]),"name":s[2],"tier":s[3],"waves":s[4],"count":s[5],"lore":s[6],"encounter":encounter_labels[i]})
  for link in connections:
   var a=rooms[link[0]].center;var b=rooms[link[1]].center
   if absf(a.x-b.x)>10:corridors.append(Rect2(Vector2(minf(a.x,b.x),a.y-96),Vector2(absf(a.x-b.x),192)))
