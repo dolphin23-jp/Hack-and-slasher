@@ -133,7 +133,9 @@ func _run() -> void:
 
 	# iPad-class 4:3 window: keep click mapping and legibility under a different aspect ratio.
 	DisplayServer.window_set_size(Vector2i(1024, 768))
+	root.size = Vector2i(1024, 768)
 	await _frames(8)
+	_expect("4:3 viewport resize takes effect", root.size == Vector2i(1024, 768))
 	game.mode = "play"
 	game.ui.big_map = false
 	game.player.position = game.dungeon.rooms[0].center
