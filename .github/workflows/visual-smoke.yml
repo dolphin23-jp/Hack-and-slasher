@@ -16,7 +16,10 @@ jobs:
 
       - name: Install runtime dependencies
         run: |
-          sudo apt-get update
+          # Hosted runners sometimes carry third-party APT feeds that can fail
+          # independently of this project. These packages all come from Ubuntu.
+          grep -rl "packages.microsoft.com" /etc/apt/sources.list.d 2>/dev/null | xargs -r sudo rm -f
+          sudo apt-get update -o Acquire::Retries=3
           sudo apt-get install -y xvfb unzip libgl1 libx11-6 libxcursor1 libxinerama1 libxi6 libxrandr2 libudev1 libfontconfig1
 
       - name: Install Godot 4.5.1
