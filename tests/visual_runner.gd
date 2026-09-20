@@ -10,7 +10,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	DisplayServer.window_set_size(Vector2i(1440, 900))
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://artifacts/ui"))
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts/ui"))
 	game = load("res://main.tscn").instantiate()
 	root.add_child(game)
 	await _frames(5)
@@ -84,6 +84,8 @@ func _run() -> void:
 	game.camera.position = game.player.position
 	game.dungeon.active = 9
 	game.wave = 1
+	game.toast_time = 0.0
+	game.banner_time = 0.0
 	game.spawn_enemy("boss", game.player.position + Vector2(260, 0), 7, 9)
 	await _frames(3)
 	await _shot("11_boss_hud")
@@ -101,7 +103,7 @@ func _run() -> void:
 	var summary := "VISUAL_SMOKE shots=%d failures=%d\n" % [shots, failures.size()]
 	for failure in failures:
 		summary += "FAIL: " + failure + "\n"
-	var file := FileAccess.open("res://artifacts/visual_summary.txt", FileAccess.WRITE)
+	var file := FileAccess.open("res://test-artifacts/visual_summary.txt", FileAccess.WRITE)
 	if file:
 		file.store_string(summary)
 		file.close()
@@ -139,7 +141,7 @@ func _shot(label: String) -> void:
 	game.ui.queue_redraw()
 	await _frames(3)
 	var image := root.get_texture().get_image()
-	var path := ProjectSettings.globalize_path("res://artifacts/ui/%s.png" % label)
+	var path := ProjectSettings.globalize_path("res://test-artifacts/ui/%s.png" % label)
 	var err := image.save_png(path)
 	if err != OK:
 		failures.append("screenshot %s could not be saved: %s" % [label, error_string(err)])
