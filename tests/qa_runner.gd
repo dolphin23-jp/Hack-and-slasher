@@ -184,10 +184,21 @@ func _run() -> void:
 	_expect("boss defeat schedules victory and creates four legendary rewards", game.victory_pending and boss_rewards == 4)
 	game.finish_run()
 	_expect("finishing the boss encounter enters victory mode", game.mode == "victory")
-	_expect("victory clears the resumable run and increments wins", game.profile.run.is_empty() and int(game.profile.records.wins) == wins_before + 1)
+	var victory_pack_size: int = game.player.inventory.size()
+	var victory_weapon_id: String = game.player.equipment.weapon.id
+	_expect("victory persists a resumable checkpoint and increments wins", game.profile.valid_run(game.profile.run) and bool(game.profile.run.get("victory_ready", false)) and int(game.profile.records.wins) == wins_before + 1)
 
-	if checks != 52:
-		failures.append("expected 52 checks, executed %d" % checks)
+	var victory_reload := ProfileStore.new()
+	victory_reload.path = game.profile.path
+	victory_reload.read_save()
+	_expect("victory checkpoint reloads from disk", victory_reload.valid_run(victory_reload.run) and bool(victory_reload.run.get("victory_ready", false)))
+
+	game.return_to_title()
+	game.start_run(true)
+	_expect("continue restores the victory screen with rewards intact", game.mode == "victory" and game.player.inventory.size() == victory_pack_size and game.player.equipment.weapon.id == victory_weapon_id)
+
+	if checks != 54:
+		failures.append("expected 54 checks, executed %d" % checks)
 		printerr("QA FAIL check count: ", checks)
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts"))

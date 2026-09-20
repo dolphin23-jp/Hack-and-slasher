@@ -244,7 +244,9 @@ func draw_title()->void:
  text("ASHEN",Vector2(97,306),79,TEXT,false,true);text("VOW",Vector2(98,390),92,TEXT,false,true);rule(105,425,377,GOLD)
  wrapped_text("Enter with a weathered blade. Leave with a legend.",Vector2(106,469),395,19,MUTED,28)
  var y=550
- if not game.profile.run.is_empty():button(Rect2(105,y,353,54),"CONTINUE THE VOW","continue",true);y+=66
+ if not game.profile.run.is_empty():
+  var continue_label="RETURN TO VICTORY" if bool(game.profile.run.get("victory_ready",false)) else "CONTINUE THE VOW"
+  button(Rect2(105,y,353,54),continue_label,"continue",true);y+=66
  button(Rect2(105,y,353,54),"BEGIN DESCENT","start",game.profile.run.is_empty());y+=66
  button(Rect2(105,y,170,44),"SETTINGS","settings");button(Rect2(288,y,170,44),"HOW TO PLAY","help")
  text("AN ORIGINAL ACTION RPG  /  VERTICAL SLICE",Vector2(105,839),12,MUTED);text("GODOT 4.5.1",Vector2(1329,859),12,MUTED,true)

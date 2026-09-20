@@ -52,6 +52,7 @@ func valid_run(v:Variant)->bool:
  if v.cleared.is_empty() or int(v.cleared[0])!=0:return false
  if not vector_valid(v.position):return false
  if v.has("pending_upgrades") and not (v.pending_upgrades is int or v.pending_upgrades is float):return false
+ if v.has("victory_ready") and not v.victory_ready is bool:return false
  if not v.get("drops",[]) is Array or v.get("drops",[]).size()>1200:return false
  for d in v.get("drops",[]):
   if not d is Dictionary or not vector_valid(d.get("position")):return false
