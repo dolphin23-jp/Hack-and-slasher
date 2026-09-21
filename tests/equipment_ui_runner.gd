@@ -63,7 +63,11 @@ func run()->void:
  check("equipped armor contribution is independently inspectable",contribution.has("armor") or contribution.has("hp"))
  var initial=p.equipment.weapon.duplicate(true)
  check("starter art id follows current weapon family",String(initial.art_id).contains(String(initial.weapon_type)))
- var evolving=ItemDB.initial_items().weapon.duplicate(true);evolving.enhance=10;p.equipment.weapon=evolving;p.materials=9999;p.rebuild_stats()
+ var starter_set=ItemDB.initial_items()
+ check("accessory slots reuse one art identity",starter_set.accessory.art_id==starter_set.accessory2.art_id)
+ var shifted=starter_set.weapon.duplicate(true);shifted.weapon_type="spear";shifted.art_id=ItemDB.default_art_id(shifted)
+ check("weapon family changes can refresh art identity",String(shifted.art_id).contains("weapon_spear"))
+ var evolving=starter_set.weapon.duplicate(true);evolving.enhance=10;p.equipment.weapon=evolving;p.materials=9999;p.rebuild_stats()
  var art_before=String(evolving.art_id);Forge.apply(p,evolving,"evolve")
  check("grade evolution refreshes normal item art identity",String(evolving.art_id)!=art_before and String(evolving.art_id).ends_with("_g2"))
 
