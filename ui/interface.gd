@@ -377,7 +377,7 @@ func draw_inventory()->void:
  for i in range(3):
   var item=p.equipment[ItemDB.SLOTS[i]];var y=179+i*97
   panel(Rect2(57,y,66,66),INK,ItemDB.COLORS[int(item.rarity)]);icon("sword" if item.slot=="weapon" else item.slot,Rect2(63,y+6,54,54))
-  text(item.slot.to_upper(),Vector2(138,y+17),11,MUTED);wrapped_text(item.name,Vector2(138,y+38),165,13,ItemDB.COLORS[int(item.rarity)],19)
+  text(ItemDB.slot_text(String(item.slot)),Vector2(138,y+17),11,MUTED);wrapped_text(item.name,Vector2(138,y+38),165,13,ItemDB.COLORS[int(item.rarity)],19)
  rule(58,477,245);text("現在の装備",Vector2(60,507),13,GOLD)
  var s=p.stats;var rows=[["攻撃力","%.0f"%s.attack],["クリティカル率","%d%%"%roundi(s.crit*100)],["クリティカル威力","%d%%"%roundi((1+s.crit_damage)*100)],["攻撃速度","+%d%%"%roundi(s.haste*100)],["防御力","%.0f"%s.armor],["スキル威力","+%d%%"%roundi(s.skill*100)],["クールダウン","-%d%%"%roundi(s.cdr*100)],["移動速度","+%d%%"%roundi(s.speed*100)]]
  for i in range(rows.size()):text(rows[i][0],Vector2(60,540+i*30),14,MUTED);text(rows[i][1],Vector2(238,540+i*30),14)
@@ -396,7 +396,7 @@ func draw_inventory()->void:
  if selected<0 or selected>=p.inventory.size():text("未回収の装備はありません。",Vector2(1059,400),27,GOLD,true,true);return
  var it=p.inventory[selected];item_card(it,Rect2(746,129,310,487),"所持品");item_card(p.equipment[it.slot],Rect2(1074,129,310,487),"現在の装備")
  var loadout=p.equipment.duplicate(true);loadout[it.slot]=it;var next=p.calculated(loadout)
- panel(Rect2(746,635,638,103),INK);text("IF 装備中",Vector2(762,657),11,GOLD)
+ panel(Rect2(746,635,638,103),INK);text("装備した場合",Vector2(762,657),11,GOLD)
  var comparisons=[["剣DPS",dps(next)/dps(s)-1],["実効耐久",next.hp*(1+next.armor/100)/(s.hp*(1+s.armor/100))-1],["スキル一撃",next.attack*(1+next.skill)/(s.attack*(1+s.skill))-1]]
  for i in range(3):
   var x=762+i*209;var v=comparisons[i][1]*100;text(comparisons[i][0],Vector2(x,682),11,MUTED);text("%+.1f%%"%v,Vector2(x,714),26,TEAL if v>0 else (RED if v<0 else TEXT))
@@ -406,7 +406,7 @@ func dps(s:Dictionary)->float:return s.attack*(1+s.haste)*(1+s.crit*s.crit_damag
 func item_card(it:Dictionary,r:Rect2,tag:String)->void:
  var c=ItemDB.COLORS[int(it.rarity)];panel(r,Color("13252f"),Color(c,.7));draw_rect(Rect2(r.position,Vector2(r.size.x,3)),c)
  var x=r.position.x+19;var y=r.position.y+30;text(tag,Vector2(x,y),11,MUTED);icon("sword" if it.slot=="weapon" else it.slot,Rect2(x,y+13,60,60))
- text(ItemDB.RARITIES[int(it.rarity)],Vector2(x+78,y+38),12,c);text("ティア %d / %s"%[it.tier,it.slot.to_upper()],Vector2(x+78,y+62),10,MUTED)
+ text(ItemDB.RARITIES[int(it.rarity)],Vector2(x+78,y+38),12,c);text("ティア %d / %s"%[it.tier,ItemDB.slot_text(String(it.slot))],Vector2(x+78,y+62),10,MUTED)
  y=wrapped_text(it.name,Vector2(x,y+105),r.size.x-38,20,c,26)+9;rule(x,y,r.size.x-38,Color(c,.3));y+=28
  for key in it.base:text(ItemDB.stat_text(key,it.base[key]),Vector2(x,y),15);y+=25
  if not it.affixes.is_empty():y+=9
