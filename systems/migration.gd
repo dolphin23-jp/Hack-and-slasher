@@ -1,14 +1,24 @@
 class_name SaveMigration
 extends RefCounted
+
 static func item(value:Variant)->Variant:
  if not value is Dictionary:return value
  var it=value.duplicate(true)
- if not ItemDB.valid(it):return it
- if int(it.get("schema",0))>=3:return it
- it.schema=3;it.weapon_type="sword";it.grade=clampi(1+int((it.tier-1)/3.0),1,6);it.tier=clampi(int(it.tier),1,5)
- it.enhance=0;it.fusion=0;it.locked=false;it.favorite=false;it.rolls={};it.unique="wide_chain" if int(it.rarity)>=3 else ""
- it.legacy_effect=it.effect
+ for key in ["id","name","rarity","slot","base","affixes","effect","description","tier"]:
+  if not it.has(key):return it
+ var schema=int(it.get("schema",0))
+ if schema<3:
+  it.schema=3;it.weapon_type=String(it.get("weapon_type","sword"));it.grade=clampi(1+int((it.tier-1)/3.0),1,6);it.tier=clampi(int(it.tier),1,5)
+  it.enhance=0;it.fusion=0;it.locked=false;it.favorite=false;it.rolls={};it.unique="wide_chain" if int(it.rarity)>=3 else ""
+  it.legacy_effect=it.effect
+ if int(it.get("schema",0))<4:
+  it.schema=4
+  if not it.has("weapon_type") or not WeaponDB.TYPES.has(String(it.weapon_type)):it.weapon_type="sword"
+  it.art_id=ItemDB.default_art_id(it);it.art_variant="default"
+ elif String(it.get("art_id","")).is_empty():
+  it.art_id=ItemDB.default_art_id(it);it.art_variant=String(it.get("art_variant","default"))
  return it
+
 static func migrate(data:Dictionary)->Dictionary:
  var out=data.duplicate(true)
  out.oaths=OathBoard.sanitize(out.get("oaths",{}))
@@ -34,6 +44,10 @@ static func migrate(data:Dictionary)->Dictionary:
    active.sort_custom(func(a,b):return families[a]>families[b])
    run.active_oaths=active if not active.is_empty() else ["dance"]
   run.materials=run.get("materials",0);run.active_oaths=run.get("active_oaths",out.oaths.active.duplicate());run.combo=run.get("combo",0)
+ var vault=out.get("vault",[])
+ if vault is Array:
+  for i in range(vault.size()):vault[i]=item(vault[i])
+  out.vault=vault
  if out.get("version",1)==1:
   var legends=out.get("chronicle",{}).get("legends",[]) if out.get("chronicle") is Dictionary else []
   if legends is Array:out.oaths.points+=legends.size()*2
