@@ -89,7 +89,7 @@ func act(u,action:String)->bool:
  if action=="vault_store":
   if u.selected<0 or u.selected>=p.inventory.size():return true
   if g.profile.vault.size()>=120:g.toast("保管庫が満杯です / 120");return true
-  g.profile.vault.append(p.inventory[u.selected]);p.inventory.remove_at(u.selected);u.selected=clampi(u.selected,0,maxi(0,p.inventory.size()-1));g.save_run();g.toast("保管庫へ移動");return true
+  g.profile.vault.append(p.inventory[u.selected]);p.inventory.remove_at(u.selected);u.selected=clampi(u.selected,0,maxi(0,p.inventory.size()-1));focus_detail=false;g.save_run();g.toast("保管庫へ移動");return true
  if action.begins_with("vault_item:"):vault_selected=int(action.get_slice(":",1));return true
  if action=="vault_take":
   if vault_selected<0 or vault_selected>=g.profile.vault.size():return true
@@ -139,7 +139,7 @@ func item_art(u,it:Dictionary,r:Rect2)->void:
  if texture!=null:u.draw_texture_rect(texture,r.grow(-7),false,Color(1,1,1,.92))
  if not ItemDB.art_ready(it):
   u.panel(Rect2(r.position+Vector2(4,r.size.y-22),Vector2(r.size.x-8,18)),Color(0,0,0,.62),Color(0,0,0,0))
-  u.text("画像準備中",r.position+Vector2(r.size.x/2,r.size.y-8),10,u.MUTED,true)
+  u.text("アート準備中",r.position+Vector2(r.size.x/2,r.size.y-8),10,u.MUTED,true)
 func draw_inventory_card(u,it:Dictionary,r:Rect2,action:String,selected:bool)->void:
  u.button(r,"",action,selected)
  item_art(u,it,Rect2(r.position+Vector2(5,5),Vector2(48,r.size.y-10)))
@@ -167,7 +167,7 @@ func draw_compare_panel(u,it:Dictionary,target_slot:String,r:Rect2)->void:
  var card_y=r.position.y+42;var card_w=(r.size.x-46)/2
  draw_compare_item(u,snap.current,Rect2(r.position.x+14,card_y,card_w,130),"現在装備",snap.current_contribution)
  draw_compare_item(u,snap.candidate,Rect2(r.position.x+28+card_w,card_y,card_w,130),"交換候補",snap.candidate_contribution)
- u.text("総ステータス  現在 → 交換後  (差分)",r.position+Vector2(18,194),13,u.MUTED)
+ u.text("全ステータス  現在 → 交換後  (差分)",r.position+Vector2(18,194),13,u.MUTED)
  var keys=EquipmentCompare.key_stats(snap,6);var cell_w=(r.size.x-36)/3
  for i in range(keys.size()):
   var key=String(keys[i]);var col=i%3;var row=int(i/3);var px=r.position.x+18+col*cell_w;var py=r.position.y+221+row*46
@@ -182,7 +182,7 @@ func draw_compare_panel(u,it:Dictionary,target_slot:String,r:Rect2)->void:
  else:u.text("Chain構成は変化しません",Vector2(r.position.x+18,build_y+10),12,u.MUTED)
  var gain=" / ".join(snap.gained_build.slice(0,3));var loss=" / ".join(snap.lost_build.slice(0,3))
  u.text("獲得: "+("なし" if gain.is_empty() else gain),Vector2(r.position.x+r.size.x/2,build_y),11,u.TEAL)
- u.text("喪失: "+("なし" if loss.is_empty() else loss),Vector2(r.position.x+r.size.x/2,build_y+19),11,u.RED if not loss.is_empty() else u.MUTED)
+ u.text("失う: "+("なし" if loss.is_empty() else loss),Vector2(r.position.x+r.size.x/2,build_y+19),11,u.RED if not loss.is_empty() else u.MUTED)
  var ability_y=build_y+50
  var ability_gain=" / ".join(snap.gained_abilities.slice(0,2));var ability_loss=" / ".join(snap.lost_abilities.slice(0,2))
  u.text("能力 + "+("変化なし" if ability_gain.is_empty() else ability_gain),Vector2(r.position.x+18,ability_y),11,u.TEAL if not ability_gain.is_empty() else u.MUTED)
@@ -259,14 +259,14 @@ func draw_focus_detail(u)->void:
  detail(u,snap.candidate,Rect2(715,100,680,625),"交換候補")
  var gained=" / ".join(snap.gained_build);var lost=" / ".join(snap.lost_build)
  u.text("Build獲得: "+("なし" if gained.is_empty() else gained),Vector2(70,760),14,u.TEAL)
- u.text("Build喪失: "+("なし" if lost.is_empty() else lost),Vector2(70,786),14,u.RED if not lost.is_empty() else u.MUTED)
+ u.text("Build失う: "+("なし" if lost.is_empty() else lost),Vector2(70,786),14,u.RED if not lost.is_empty() else u.MUTED)
  u.button(Rect2(920,770,210,48),"保管庫へ","vault_store")
  u.button(Rect2(1150,770,210,48),"ジャンク "+("ON" if it.get("junk",false) else "OFF"),"junk",it.get("junk",false))
 
 func draw_vault(u)->void:
  var g=u.game;var p=g.player;var list=g.profile.vault;var per_page=15
  var max_page=maxi(0,ceili(list.size()/float(per_page))-1);vault_page=mini(vault_page,max_page)
- u.text("保管庫 %d / 120  ・ 画像/比較情報を保持してRunをまたいで保存"%list.size(),Vector2(40,303),16,u.GOLD)
+ u.text("保管庫 %d / 120  ・ アート/比較データを保持してRunをまたいで保存"%list.size(),Vector2(40,303),16,u.GOLD)
  var start=vault_page*per_page;var end=mini(start+per_page,list.size())
  for display_i in range(end-start):
   var index=start+display_i;var it=list[index];var r=Rect2(40+(display_i%3)*195,331+int(display_i/3)*64,185,58)
