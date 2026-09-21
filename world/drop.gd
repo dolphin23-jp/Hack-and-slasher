@@ -45,7 +45,8 @@ func _draw()->void:
   for side in [-1,1]:draw_line(Vector2(side*10,-195),Vector2(0,-205),Color("ffe4a3"),2,true)
  if kind=="item" and (game.player.position.distance_to(position)<170 or (rarity>=2 and game.enemies.is_empty())):
   var near:bool=game.player.position.distance_to(position)<210
-  var detail:String="ティア %d / %s"%[int(item.tier),ItemDB.slot_text(String(item.slot))]
+  var target=game.player.item_upgrade_target(item) if kind=="item" else String(item.slot)
+  var detail:String="ティア %d / %s"%[int(item.tier),ItemDB.slot_text(target if not target.is_empty() else String(item.slot))]
   var detail_color:=Color("9aabb0")
   if near and rarity<3:
    var delta:float=game.player.item_upgrade_ratio(item)
