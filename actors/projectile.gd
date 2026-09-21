@@ -1,6 +1,10 @@
 class_name SpiritProjectile
 extends Node2D
 var game
+var normal_group=-1
+var normal_serial=-1
+var chain_kind=""
+var homing_target=null
 var velocity=Vector2.ZERO
 var damage_types=[]
 var bounces=0
@@ -26,6 +30,8 @@ func tick(dt:float)->void:
  if life<=0:
   if try_return():return
   remove();return
+ if is_instance_valid(homing_target) and not homing_target.dead and game.dungeon.line_clear(position,homing_target.position):
+  velocity=velocity.lerp((homing_target.position-position).normalized()*velocity.length(),minf(1,dt*10)).normalized()*velocity.length()
  var next=position+velocity*dt
  if not game.dungeon.line_clear(position,next):
   game.fx.burst(position,color,5,65)
@@ -45,6 +51,9 @@ func tick(dt:float)->void:
      tier_shield=false;game.player.barrier=minf(game.player.barrier+8,maxf(20,game.player.stats.shield_max));game.player.barrier_time=5
     var crit=not secondary_effect and game.rng.randf()<game.player.stats.crit
     e.take_damage((damage*DamageModel.multiplier(e.kind,damage_types,game.player.stats) if not damage_types.is_empty() else damage)*(1+game.player.stats.crit_damage if crit else 1),velocity.normalized()*100,crit,secondary_effect)
+    if normal_group>=0:
+     WeaponActionResolver.normal_hit(game.player,normal_group,normal_serial)
+     if not chain_kind.is_empty():ChainResolver.mark(e,chain_kind)
     if crit:game.critical_effect(position)
     if slow_on_hit>0:e.slow_time=maxf(e.slow_time,slow_on_hit)
     if chain_on_hit:

@@ -5,7 +5,7 @@ static func accepts(item:Dictionary,slot:String)->bool:
  return (item.slot in WEAPONS and slot in WEAPONS) or (item.slot in ["accessory","accessory2"] and slot in ["accessory","accessory2"]) or item.slot==slot
 static func swap(p,a:int,b:int)->void:
  if a not in range(3) or b not in range(3):return
- var it=p.equipment[WEAPONS[a]];p.equipment[WEAPONS[a]]=p.equipment[WEAPONS[b]];p.equipment[WEAPONS[b]]=it;p.rebuild_stats();p.game.save_run()
+ var it=p.equipment[WEAPONS[a]];p.equipment[WEAPONS[a]]=p.equipment[WEAPONS[b]];p.equipment[WEAPONS[b]]=it;p.reset_chain();p.rebuild_stats();p.game.save_run()
 static func equipped_stats(item:Dictionary)->Dictionary:
  var result={}
  for table in [item.base,item.affixes]:

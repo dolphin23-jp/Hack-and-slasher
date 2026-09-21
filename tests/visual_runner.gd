@@ -356,6 +356,29 @@ func _run() -> void:
 	_expect("vault tab opens after storing an item",game.ui.reliquary.tab=="vault")
 	await _shot("34_vault_ipad")
 
+	# Skill 2.0 controls on the same iPad touch layout used above.
+	game.mode = "play"
+	game.set_physics_process(false)
+	game.player.skill_actions.clear()
+	game.player.cooldowns = [0.0, 0.0, 0.0]
+	game.player.finisher_charge = WeaponActionResolver.FINISHER_COST
+	game.player.dash_time = 0
+	game.player.dead = false
+	for j in range(3):game.player.equipment[Loadout.WEAPONS[j]].weapon_type = ["scythe", "staff", "spear"][j]
+	game.player.combo = 1
+	await _shot("35_skill_ready_ipad")
+	await _click(Vector2(523, 809))
+	_expect("E button starts loadout chain", game.player.cooldowns[1]>0 and game.player.skill_actions.size()==2)
+	WeaponActionResolver.tick(game.player, .4)
+	await _shot("36_chain_cast_ipad")
+	await _click(Vector2(640, 809))
+	_expect("R button consumes ready finisher", game.player.finisher_charge==0 and game.player.cooldowns[2]>0)
+	await _shot("37_finisher_ipad")
+	game.mode = "inventory"
+	game.ui.reliquary.tab = "equipment"
+	game.ui.reliquary.focus_detail = false
+	await _shot("38_skill_recipes_ipad")
+
 	var summary := "VISUAL_SMOKE shots=%d failures=%d\n" % [shots, failures.size()]
 	for failure in failures:
 		summary += "FAIL: " + failure + "\n"

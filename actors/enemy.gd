@@ -1,6 +1,7 @@
 class_name ChapelEnemy
 extends Node2D
 var game
+var chain_marks={}
 var kind="hollow"
 var spec={}
 var hp=50.0

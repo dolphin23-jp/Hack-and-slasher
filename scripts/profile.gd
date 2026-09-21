@@ -78,6 +78,13 @@ func valid_run(v:Variant)->bool:
   if v.has(key):
    if not (v[key] is int or v[key] is float) or not is_finite(float(v[key])) or v[key]<0 or v[key]>10000000:return false
  if v.has("combo") and v.combo>3:return false
+ if v.has("finisher_charge"):
+  var charge=v.finisher_charge
+  if not (charge is int or charge is float) or not is_finite(float(charge)) or charge!=int(charge) or charge<0 or charge>WeaponActionResolver.FINISHER_COST:return false
+ if v.has("skill_cooldowns"):
+  if not v.skill_cooldowns is Array or v.skill_cooldowns.size()!=3:return false
+  for cd in v.skill_cooldowns:
+   if not (cd is int or cd is float) or not is_finite(float(cd)) or cd<0 or cd>60:return false
  if v.has("active_oaths"):
   if not v.active_oaths is Array or v.active_oaths.size()>3:return false
   var seen=[]

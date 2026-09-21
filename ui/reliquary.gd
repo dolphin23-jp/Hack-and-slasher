@@ -130,7 +130,10 @@ func draw(u)->void:
   u.panel(Rect2(x,94,430,105),u.PANEL,ItemDB.COLORS[int(it.rarity)])
   u.button(Rect2(x+10,104,300,48),"%d %s / T%d +%d"%[i+1,WeaponDB.type_name(it),it.tier,it.enhance],"slot:"+slot,target==slot)
   u.button(Rect2(x+321,104,98,48),"順序→","swap:"+str(i))
-  u.text("→ %d   %s"%[(i+1)%3+1,WeaponDB.attributes(it)],Vector2(x+18,182),15,u.TEAL)
+  u.text(WeaponDB.attributes(it)+" / Q: "+WeaponActionResolver.ARTS[it.weapon_type].name,Vector2(x+18,169),12,u.TEAL)
+  var next=p.equipment[Loadout.WEAPONS[(i+1)%3]].weapon_type
+  var recipes=ChainResolver.matches(it.weapon_type,next).map(func(r):return r.name)
+  u.text("→ %d: "%[(i+1)%3+1]+("・".join(recipes) if not recipes.is_empty() else "通常連携"),Vector2(x+18,189),12,u.GOLD)
  for i in range(6):
   var slot=ItemDB.SLOTS[i+3];var it=p.equipment[slot]
   u.button(Rect2(40+i*227,215,215,48),"%s / 階%d T%d +%d"%[ItemDB.slot_text(slot),it.grade,it.tier,it.enhance],"slot:"+slot,target==slot)

@@ -5,6 +5,8 @@
 
 [0.3の仕様・操作・セーブ互換・検証](docs/THREEFOLD_VOW.md)
 
+**Skill 2.0:** Qは現在武器の武技、Eは装備順の三器連携、Rは通常攻撃の3連続命中を4回で蓄積する三連奥義。10種類のChain Recipeと複合属性対応。詳細は[スキル統合仕様](docs/SKILL_2.md)。
+
 以下は維持している0.2基盤の概要です（旧装備セットの炎・雷は0.3で誓印盤へ移行）。
 
 A playable top-down action RPG / hack-and-slasher vertical slice built in Godot 4.5.1.
@@ -14,7 +16,7 @@ Japanese-first, playable cathedral action RPG. **Cathedral Reborn** expands the 
 - Three distinct sword strikes (fast opener, wide sweep, guard-breaking finisher), stagger, weighted hit-stop, and dodge-cancel. Evading an incoming hit grants one counterattack; screen shake and hit-stop are configurable.
 - Seven enemy types: swarm melee, spread shooters, charging hounds, directional shields, interruptible summoners, affixed elites, and the Bellless King.
 - Boss awakening at half health with an altered silhouette and music, telegraphed chained charges, a visible safe sector in the projectile ring, and vulnerable recovery windows.
-- **16 legendary items**, three two-piece synergies (storm / cinder / echo), and three mutually exclusive Spirit Lance paths with follow-up evolutions. Nova, finishers and dodge also receive behavioral blessings.
+- **16 legendary items**, three two-piece synergies (storm / cinder / echo), and loadout-native Weapon Arts / Chain Skills / Finishers. Existing Lance investments migrate to the new skill bonuses.
 - Original ten-room route plus **two optional contract rooms** forming a southern shortcut. Seeded obstacle layouts and encounter variants; blood, danger and equipment-wager decisions have explicit costs and rewards.
 - Persistent legendary discovery, enemy bestiary, five achievements and unlockable starting oaths / blessings. Starting oaths have tradeoffs instead of accumulating permanent stat bonuses.
 - Touch hold-to-attack, simultaneous stick + attack, button feedback, adjustable control size/inset, and touch cancellation on modal changes or focus loss.
@@ -27,10 +29,11 @@ See [the update and design notes](docs/CATHEDRAL_REBORN.md) for rules, controls 
 ## Current regression gates
 
 - 67 existing gameplay/save checks, updated for the twelve-room world.
-- 51 expansion behavior checks covering real combat, skill/equipment interactions, contracts, legacy saves, disk restart and discovery.
+- 50 expansion behavior checks covering real combat, skill/equipment interactions, contracts, legacy saves, disk restart and discovery.
 - Original ten-room campaign, including treasury and boss, using movement and normal attacks for combat.
 - Southern-route campaign using normal attacks, skills, dodge and healing; both paid contracts must complete before the boss.
-- 33 rendered UI captures with click/gamepad/touch checks, including journal, contracts, awakened boss, equipment synergy and simultaneous stick/attack at iPad-class aspect ratio.
+- 53 Skill 2.0 and recipe behavior checks; 108 item / forge / oath / migration checks.
+- 38 rendered UI captures with click/gamepad/touch checks, including journal, contracts, awakened boss, equipment synergy and simultaneous stick/attack at iPad-class aspect ratio.
 - Script errors and resource leaks fail CI. Web export and Chromium / touch / PWA runtime gates remain required before merging.
 
 ## Play locally
@@ -45,9 +48,9 @@ Install Godot 4.5.1 and open this repository as a project, then run `main.tscn`.
 | Aim | Mouse |
 | Normal attack | Hold LMB / J |
 | Dash | Space / Shift |
-| Judgement | Q / RMB |
-| Soul Nova | E |
-| Spirit Lance | R |
+| Current weapon’s Weapon Art | Q / RMB |
+| Equipped three-weapon Chain Skill | E |
+| Charged three-weapon Finisher | R |
 | Mend | F |
 | Open / collect | C |
 | Reliquary | I / Tab |

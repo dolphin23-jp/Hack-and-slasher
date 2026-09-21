@@ -102,13 +102,15 @@ func _run() -> void:
 	game.player.dash_cd = 0.0
 
 	game.player.cooldowns = [0.0, 0.0, 0.0]
-	_expect("Judgement can cast", game.player.cast(0))
+	_expect("Weapon Art can cast", game.player.cast(0))
 	_expect("skill cooldown is applied", game.player.cooldowns[0] > 0.0)
 	_expect("skill cooldown rejects immediate recast", not game.player.cast(0))
 	game.player.dash_time = 0.0
 	var projectiles_before: int = game.projectiles.size()
-	_expect("Spirit Lance can cast", game.player.cast(2))
-	_expect("Spirit Lance creates a projectile", game.projectiles.size() > projectiles_before)
+	game.player.finisher_charge = WeaponActionResolver.FINISHER_COST
+	_expect("charged Finisher can cast", game.player.cast(2))
+	WeaponActionResolver.tick(game.player, .4)
+	_expect("Finisher resolves equipped staff projectile", game.projectiles.size() > projectiles_before)
 
 	game.player.hp = game.player.stats.hp * 0.35
 	game.player.potions = 3

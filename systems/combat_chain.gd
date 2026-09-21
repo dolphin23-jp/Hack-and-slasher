@@ -2,33 +2,7 @@ class_name CombatChain
 extends RefCounted
 
 static func transition_profile(previous_kind:String,current_kind:String,chain_kinds:Array,chain_streak:int,linked:bool)->Dictionary:
- var result={"damage":1.0,"reach":1.0,"knock":1.0,"label":""}
- if linked and WeaponDB.TYPES.has(previous_kind) and WeaponDB.TYPES.has(current_kind):
-  var from_type=String(WeaponDB.TYPES[previous_kind].types[0])
-  var to_type=String(WeaponDB.TYPES[current_kind].types[0])
-  match from_type+">"+to_type:
-   "slash>blunt":
-    result.damage=1.10;result.knock=1.45;result.label="断甲"
-   "blunt>pierce":
-    result.damage=1.18;result.label="破砕貫通"
-   "magic>slash":
-    result.damage=1.15;result.reach=1.08;result.label="魔力纏刃"
-  if previous_kind=="scythe" and current_kind=="staff":
-   result.damage*=1.12;result.reach*=1.18;result.label="収束魔撃"
- if linked and chain_streak>=3 and chain_streak%3==0 and chain_kinds.size()==3:
-  if chain_kinds[0]==chain_kinds[1] and chain_kinds[1]==chain_kinds[2]:
-   result.damage*=1.28
-   result.label=(String(result.label)+"・" if not String(result.label).is_empty() else "")+"同型極撃"
-  else:
-   var attrs=[]
-   for kind in chain_kinds:
-    if not WeaponDB.TYPES.has(kind):continue
-    var attr=String(WeaponDB.TYPES[kind].types[0])
-    if attr not in attrs:attrs.append(attr)
-   if attrs.size()==3:
-    result.damage*=1.16
-    result.label=(String(result.label)+"・" if not String(result.label).is_empty() else "")+"三相連環"
- return result
+ return ChainResolver.profile(previous_kind,current_kind,chain_kinds,chain_streak,linked)
 
 static func strike(p,linked:bool=false)->void:
  var it=p.equipment[Loadout.WEAPONS[p.combo-1]]
@@ -56,7 +30,7 @@ static func strike(p,linked:bool=false)->void:
   amount*=1.75 if p.upgrades.get("riposte",0)>0 else 1.35
   if p.upgrades.get("storm_counter",0)>0:g.chain_lightning(p.position,p.stats.attack*.8,null,2)
   p.counter_time=0
- p.attack_cd=w.cooldown/(1+p.stats.haste);p.attack_time=.2
+ p.attack_cd=w.cooldown/(1+p.stats.haste)/float(transition.haste);p.attack_time=.2
  var tier5_repeat=tier>=5 and p.combo==3 and kind in ["sword","scythe"]
  var mythic_repeat=int(it.rarity)==4 and p.combo==3 and kind in ["sword","scythe"]
  var shield_double=p.has_unique("full_shield_double_magic") and "magic" in w.types and p.stats.shield_max>0 and p.barrier>=p.stats.shield_max-.01
@@ -71,6 +45,8 @@ static func strike(p,linked:bool=false)->void:
     var pierce=4 if tier>=4 and kind in ["staff","spellblade"] else 2
     var bolt=g.fire(p.position+p.facing*20,p.facing.rotated(a)*780,amount/(1.7 if angles.size()>1 else 1),true,pierce,Color("bfabff"))
     bolt.tier_shield=tier>=3 and kind in ["staff","spellblade"];bolt.damage_types=w.types;bolt.life=reach/780;bolt.radius=22 if w.shape=="wave" else 9
+    bolt.normal_group=p.normal_group;bolt.normal_serial=p.normal_serial;bolt.chain_kind=kind
+    if transition.homing:bolt.homing_target=ChainResolver.seek_target(p)
     bolt.bounces=2 if unique=="ricochet" else (1 if tier>=4 and kind=="staff" else 0)
   else:
    var hit_count=int(w.hits)+(1 if int(it.rarity)==4 and kind=="fist" else 0)
@@ -85,7 +61,13 @@ static func strike(p,linked:bool=false)->void:
      var damage=(amount+p.stats.attack if p.combo==3 and p.has_effect("execution") and e.hp/e.max_hp<.3 else amount)*DamageModel.multiplier(e.kind,w.types,p.stats)*(1+p.stats.crit_damage if crit else 1)
      if tier>=3 and kind=="spear" and landed>0:damage*=1.20
      if "blunt" in w.types and e.kind=="warden":e.shield_break=maxf(e.shield_break,2.4 if tier>=3 and kind=="mace" else 1.2)
+     if transition.wound and ChainResolver.marked(e,"slash"):damage*=1.25
+     var was_marked=ChainResolver.marked(e,"magic")
      e.take_damage(damage,delta.normalized()*maxf(strike_knock,350 if tier>=4 and w.shape!="circle" else 0)*(1+p.stats.stagger),crit)
+     WeaponActionResolver.normal_hit(p,p.normal_group,p.normal_serial);ChainResolver.mark(e,kind)
+     if kind=="mace":p.last_mace_impact=e.position;p.last_mace_time=g.elapsed
+     if transition.pull and was_marked and not e.dead:
+      e.position=g.dungeon.move_body(e.position,(p.position-e.position).limit_length(65),e.radius);e.velocity=(p.position-e.position).normalized()*230
      if not e.dead and p.has_effect("ash_edge"):e.ignite(p.stats.attack*(.45 if p.has_effect("flame_cap") else .35),4.2 if p.has_effect("burn_long") else 2.5)
      if crit and p.has_effect("burn_burst"):g.area_damage(e.position,72,p.stats.attack*.24,true)
      if tier>=4 and kind=="scythe" and not e.dead:e.velocity=-delta.normalized()*160
@@ -96,6 +78,8 @@ static func strike(p,linked:bool=false)->void:
    if unique=="split_lance" and w.shape=="line":
     for a in [-.18,.18]:
      var bolt=g.fire(p.position,p.facing.rotated(a)*720,amount*.4,true,3);bolt.damage_types=w.types;bolt.secondary_effect=true;bolt.life=.5
+ if transition.impact and g.elapsed-p.last_mace_time<1.5 and g.dungeon.line_clear(p.position,p.last_mace_impact):
+  g.queue_blast(p.last_mace_impact,110,amount*.40,.16,Color("c4a1ff"));g.fx.ring(p.last_mace_impact,110,Color("c4a1ff"),.25)
  if tier>=3 and kind=="scythe" and landed>=3:
   g.area_damage(p.position,reach,amount*.45,true);g.fx.ring(p.position,reach*.75,Color("c8efe4"),.18)
  if tier>=3 and kind=="fist" and landed>=2:p.barrier=minf(p.barrier+4,maxf(12,p.stats.shield_max));p.barrier_time=4
@@ -146,7 +130,9 @@ static func strike(p,linked:bool=false)->void:
  if w.shape=="circle":g.fx.ring(p.position,reach,Color("d4fff0"),.25);g.fx.slash(p.position,p.facing,reach,Color("b4ecdf"),true,true)
  elif w.shape=="line":g.fx.lightning(p.position,p.position+p.facing*reach)
  else:g.fx.slash(p.position,p.facing,minf(reach,160),Color("b4ecdf"),p.combo==3,true)
- if linked and not String(transition.label).is_empty():g.fx.number(p.position+p.facing*48,String(transition.label),Color("f2d790"),true)
+ if linked and not String(transition.label).is_empty():
+  var recipe_color=WeaponActionResolver.ARTS[kind].color
+  g.fx.number(p.position+p.facing*48,String(transition.label),recipe_color,true);g.sound.play("crit",.25,1.15)
  g.sound.play("slash" if w.shape!="bolt" else "bolt",.8,1.2 if w.cooldown<.25 else .95)
  if landed>0:
   if g.profile.settings.hitstop:g.hitstop=.025

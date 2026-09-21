@@ -74,6 +74,11 @@ jobs:
           set -o pipefail
           timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/v03_runner.gd -- --test 2>&1 | tee test-artifacts/v03.log
 
+      - name: Run Skill 2.0 and chain recipe behavioral regression
+        run: |
+          set -o pipefail
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/skill_runner.gd -- --test 2>&1 | tee test-artifacts/skill.log
+
       - name: Play four weapon chains through the cathedral
         run: |
           set -o pipefail

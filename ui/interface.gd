@@ -55,7 +55,7 @@ func _ready()->void:
   if ResourceLoader.exists(extra_path):fallbacks.append(load(extra_path))
   body.fallbacks=fallbacks
   heading.fallbacks=fallbacks
- for name in ["sword","armor","accessory","cleave","nova","bolt","dash","potion","crest","chest","flame","chain","crit"]:icons[name]=load("res://assets/icons/"+name+".svg")
+ for name in ["sword","armor","accessory","cleave","nova","bolt","dash","potion","crest","chest","flame","chain","crit","scythe","spear","staff","fist","mace","spellblade"]:icons[name]=load("res://assets/icons/"+name+".svg")
 func layout_scale()->float:
  var size=get_viewport_rect().size
  return minf(size.x/BASE.x,size.y/BASE.y)
@@ -369,12 +369,16 @@ func draw_hud()->void:
  text("生命",Vector2(44,793),11,GOLD);text("%d / %d"%[ceili(p.hp),roundi(p.stats.hp)],Vector2(190,793),13)
  bar(Rect2(44,805,286,17),p.hp/p.stats.hp,Color("91bda7") if p.hp/p.stats.hp>.3 else RED)
  text("XP",Vector2(44,848),11,MUTED);bar(Rect2(74,839,256,5),float(p.xp)/p.xp_required(),GOLD);text("%d / %d"%[p.xp,p.xp_required()],Vector2(185,865),11,MUTED,true)
- var names=["断罪","ソウルノヴァ","スピリットランス","回避","治癒"];var pictures=["cleave","nova","bolt","dash","potion"];var touch_mode=game.profile.settings.touch;var controller_mode=pad_active and not touch_mode
+ var current_kind=String(p.equipment[WeaponActionResolver.current_slot(p)].weapon_type)
+ var names=[WeaponActionResolver.ARTS[current_kind].name,"三器連携","三連奥義","回避","治癒"];var pictures=[current_kind,"chain","crit","dash","potion"];var touch_mode=game.profile.settings.touch;var controller_mode=pad_active and not touch_mode
  var keys=["Y","LB","RB","A","B"] if controller_mode else ["Q / RMB","E","R","SPACE","F"]
  for i in range(5):
   var x=375+i*117;var r=Rect2(x,778,62,62);panel(r,Color("182d36"),Color("809184"));icon(pictures[i],r.grow(-6))
   var cd=p.cooldowns[i] if i<3 else (p.dash_cd if i==3 else 0.0)
   if cd>0:draw_rect(r,Color(.02,.04,.07,.67));text("%.1f"%cd,Vector2(x+31,817),19,TEXT,true)
+  if i==2:
+   bar(Rect2(x,835,62,5),float(p.finisher_charge)/WeaponActionResolver.FINISHER_COST,GOLD)
+   if cd<=0:text("READY" if p.finisher_charge>=WeaponActionResolver.FINISHER_COST else "%d / %d"%[p.finisher_charge,WeaponActionResolver.FINISHER_COST],Vector2(x+31,816),13,GOLD,true)
   if i==4:text(str(p.potions),Vector2(x+53,834),20,TEXT,true)
   text("タップ" if touch_mode else keys[i],Vector2(x+31,853),11,GOLD,true);text(names[i],Vector2(x+31,869),10,MUTED,true)
   buttons.append({"rect":r,"action":"skill:"+str(i) if i<3 else ("dash" if i==3 else "heal")})
@@ -397,7 +401,8 @@ func draw_hud()->void:
  if game.mode=="play":
   var chain_names=[]
   for i in range(3):chain_names.append(("【" if p.combo%3==i else "")+WeaponDB.type_name(p.equipment[Loadout.WEAPONS[i]])+("】" if p.combo%3==i else ""))
-  text(" → ".join(chain_names)+" →",Vector2(720,745),16,GOLD,true)
+  text("次撃: "+" → ".join(chain_names)+" →",Vector2(720,745),16,GOLD,true)
+  text("Q: "+WeaponActionResolver.ARTS[current_kind].name+"  /  E: "+WeaponActionResolver.chain_name(p),Vector2(720,762),11,MUTED,true)
   if p.counter_time>0:text("見切り / 次の剣を強化",Vector2(720,715),18,TEAL,true)
  if game.mode=="play":draw_critical_health(p)
 func draw_critical_health(p)->void:
@@ -503,7 +508,7 @@ func draw_settings()->void:
  text("タッチ操作では照準補助も有効。右の設定で配置を調整できます。",Vector2(720,655),14,MUTED,true);button(Rect2(566,711,308,52),"戻る","back",true)
 func draw_help()->void:
  dim();text("操作方法",Vector2(720,145),36,TEXT,true,true)
- var rows=[["WASD / 矢印キー","8方向移動"],["マウス / 右スティック","攻撃方向とスピリットランスを照準"],["LMB / J 長押し","武器1→2→3を自動循環。3番目は範囲拡張。"],["SPACE / SHIFT","短い無敵時間つきの回避。再使用まで1.1秒。"],["Q / RMB","断罪: 広範囲の強力な近接攻撃。CT 5秒。"],["E","ソウルノヴァ: 範囲攻撃＋鈍足。CT 10秒。"],["R","スピリットランス: 貫通する遠距離攻撃。CT 6秒。"],["F","治癒: 3本ある回復薬を1本使用"],["C","近くの宝箱を開く / 装備を回収"],["I / TAB","聖遺物庫で比較・装備・分解"],["M / ESC","マップ / 一時停止・設定"]]
+ var rows=[["WASD / 矢印キー","8方向移動"],["マウス / 右スティック","通常攻撃・武技・連携技の方向を照準"],["LMB / J 長押し","武器1→2→3を自動循環。3番目は範囲拡張。"],["SPACE / SHIFT","短い無敵時間つきの回避。再使用まで1.1秒。"],["Q / RMB","現在武器のWeapon Art。CT 4〜5秒。"],["E","三器連携: 装備順で3つの武技。CT 10秒。"],["R","三連奥義: 通常攻撃3連続命中を4回で発動。"],["F","治癒: 3本ある回復薬を1本使用"],["C","近くの宝箱を開く / 装備を回収"],["I / TAB","聖遺物庫で比較・装備・分解"],["M / ESC","マップ / 一時停止・設定"]]
  for i in range(rows.size()):text(rows[i][0],Vector2(299,221+i*39),14,GOLD);text(rows[i][1],Vector2(535,221+i*39),16)
  text("戦利品は触れると回収。聖遺物庫を開いている間は戦闘が止まります。",Vector2(720,687),14,MUTED,true);text("聖域を解放すると生命と回復薬を補充。宝物庫は任意です。",Vector2(720,715),14,MUTED,true)
  button(Rect2(566,763,308,50),"準備完了","back",true)
