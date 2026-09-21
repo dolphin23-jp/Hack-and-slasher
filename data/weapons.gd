@@ -12,6 +12,13 @@ const TYPES={
 const NAMES={"sword":["ボロの剣","青銅の剣","鉄の剣","鋼の剣","ミスリルの剣","星銀の剣"],"scythe":["欠けた鎌","墓守の鎌","黒鉄の鎌","月弧の鎌","霊樹の大鎌","星を刈る鎌"],"spear":["折れた槍","狩人の槍","鉄翼の槍","城塞の槍","白金の槍","天穿つ槍"],"staff":["枯枝の杖","巡礼の杖","水晶の杖","賢者の杖","月樹の杖","星詠みの杖"],"fist":["古い籠手","革巻の拳","鉄拳","鋼拳","聖銀の拳","流星の拳"],"mace":["朽ちた棍","青銅の棍","鉄のメイス","破城の槌","聖堂の槌","星砕き"],"spellblade":["鈍い魔刃","刻印の魔刃","霊鉄の魔刃","月影の魔刃","虚空の魔刃","黎明の魔刃"]}
 const ATTRIBUTES={"slash":"斬撃","blunt":"打撃","pierce":"貫撃","magic":"魔撃"}
 const TIERS=["基礎性能","攻撃範囲 +15% / 防具は障壁回復","武器固有の中核能力 / 防具は回復強化","武器固有の制圧能力 / 防具は致命撃耐性","武器固有フィニッシュ / 防具はチェイン障壁"]
+const ARMOR_TIER_TEXT={
+ "head":["基礎性能","クリティカル率","スキル威力","クールダウン短縮","魔撃フィニッシュ支援"],
+ "armor":["基礎性能","障壁回復","最大生命","致命撃耐性","3連携で障壁獲得"],
+ "hands":["基礎性能","攻撃速度","クリティカル率","怯ませ性能","3連携で衝撃波"],
+ "feet":["基礎性能","移動速度","回避短縮","押出耐性","3連携で回避再使用短縮"],
+ "accessory":["基礎性能","スキル威力","クールダウン短縮","クリティカル威力","遷移攻撃を増幅"],
+ "accessory2":["基礎性能","回復補正","希少品発見","素材発見","3連携で小回復"]}
 const TIER_TEXT_BY_WEAPON={
  "sword":["基礎性能","間合い +15%","複数命中で障壁","強ノックバックで前線維持","3番目に追い斬り"],
  "scythe":["基礎性能","回転半径 +15%","3体以上を巻き込むと追い薙ぎ","命中敵を中心へ引き寄せ","3番目に追加回転"],
@@ -59,6 +66,6 @@ static func chain_synergy_score(equipment:Dictionary)->int:
  return score
 
 static func tier_text(item:Dictionary,tier:int)->String:
- if item.slot not in Loadout.WEAPONS:return TIERS[clampi(tier,1,5)-1]
+ if item.slot not in Loadout.WEAPONS:return ARMOR_TIER_TEXT.get(String(item.slot),TIERS)[clampi(tier,1,5)-1]
  var kind=String(item.get("weapon_type","sword"))
  return TIER_TEXT_BY_WEAPON.get(kind,TIERS)[clampi(tier,1,5)-1]
