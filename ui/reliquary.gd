@@ -124,69 +124,6 @@ func filtered_inventory(p)->Array:
  return out
 func filter_label()->String:
  return {"all":"すべて","weapon":"武器","armor":"防具・装飾","legendary":"Legendary+","junk":"ジャンク"}.get(filter_mode,"すべて")
-func compact_name(value:String,limit:int=12)->String:
- return value if value.length()<=limit else value.substr(0,limit-1)+"…"
-func compact_contribution(it:Dictionary,limit:int=2)->String:
- var source=EquipmentCompare.item_contribution(it);var parts=[]
- for key in EquipmentCompare.PRIORITY_STATS:
-  if source.has(key) and absf(float(source[key]))>.0001:
-   parts.append(ItemDB.stat_name(key)+" "+ItemDB.stat_value(key,float(source[key])))
-   if parts.size()>=limit:break
- return "基礎性能" if parts.is_empty() else " / ".join(parts)
-func item_art(u,it:Dictionary,r:Rect2)->void:
- u.panel(r,Color("101a22"),ItemDB.COLORS[int(it.rarity)])
- var texture=load(ItemDB.art_path(it))
- if texture!=null:u.draw_texture_rect(texture,r.grow(-7),false,Color(1,1,1,.92))
- if not ItemDB.art_ready(it):
-  u.panel(Rect2(r.position+Vector2(4,r.size.y-22),Vector2(r.size.x-8,18)),Color(0,0,0,.62),Color(0,0,0,0))
-  u.text("アート準備中",r.position+Vector2(r.size.x/2,r.size.y-8),10,u.MUTED,true)
-func draw_inventory_card(u,it:Dictionary,r:Rect2,action:String,selected:bool)->void:
- u.button(r,"",action,selected)
- item_art(u,it,Rect2(r.position+Vector2(5,5),Vector2(48,r.size.y-10)))
- u.text(compact_name(String(it.name),11),r.position+Vector2(60,21),13,ItemDB.COLORS[int(it.rarity)])
- u.text("%s / T%d / %s"%[ItemDB.RARITIES[int(it.rarity)],int(it.tier),compact_contribution(it,1)],r.position+Vector2(60,43),11,u.MUTED)
-func draw_compare_item(u,it:Dictionary,r:Rect2,label:String,contribution:Dictionary)->void:
- u.panel(r,Color("111d26"),ItemDB.COLORS[int(it.rarity)])
- item_art(u,it,Rect2(r.position+Vector2(10,30),Vector2(84,84)))
- var x=r.position.x+106
- u.text(label,Vector2(x,r.position.y+23),12,u.MUTED)
- u.text(compact_name(String(it.name),16),Vector2(x,r.position.y+50),17,ItemDB.COLORS[int(it.rarity)])
- u.text("%s / 階%d / T%d / +%d"%[ItemDB.RARITIES[int(it.rarity)],int(it.grade),int(it.tier),int(it.enhance)],Vector2(x,r.position.y+73),12,u.GOLD)
- var parts=[]
- for key in EquipmentCompare.PRIORITY_STATS:
-  if contribution.has(key) and absf(float(contribution[key]))>.0001:
-   parts.append(ItemDB.stat_name(key)+" "+ItemDB.stat_value(key,float(contribution[key])))
-   if parts.size()>=2:break
- u.text("寄与: "+(" / ".join(parts) if not parts.is_empty() else "基礎性能"),Vector2(x,r.position.y+97),11,u.TEAL)
- if String(it.get("unique",""))!="":u.text("固有: "+compact_name(ItemDB.unique_text(it),18),Vector2(x,r.position.y+119),11,u.MUTED)
-func draw_compare_panel(u,it:Dictionary,target_slot:String,r:Rect2)->void:
- var p=u.game.player;var snap=EquipmentCompare.snapshot(p,it,target_slot)
- if snap.is_empty():detail(u,it,r,"比較対象を選択");return
- u.panel(r,u.PANEL,u.LINE)
- u.text("交換比較 / "+ItemDB.slot_text(target_slot),r.position+Vector2(18,25),17,u.GOLD)
- var card_y=r.position.y+42;var card_w=(r.size.x-46)/2
- draw_compare_item(u,snap.current,Rect2(r.position.x+14,card_y,card_w,130),"現在装備",snap.current_contribution)
- draw_compare_item(u,snap.candidate,Rect2(r.position.x+28+card_w,card_y,card_w,130),"交換候補",snap.candidate_contribution)
- u.text("全ステータス  現在 → 交換後  (差分)",r.position+Vector2(18,194),13,u.MUTED)
- var keys=EquipmentCompare.key_stats(snap,6);var cell_w=(r.size.x-36)/3
- for i in range(keys.size()):
-  var key=String(keys[i]);var col=i%3;var row=int(i/3);var px=r.position.x+18+col*cell_w;var py=r.position.y+221+row*46
-  var before=float(snap.before_stats.get(key,0));var after=float(snap.after_stats.get(key,0));var delta=float(snap.delta.get(key,0))
-  u.text(ItemDB.stat_name(key),Vector2(px,py),11,u.MUTED)
-  u.text("%s → %s"%[ItemDB.stat_value(key,before),ItemDB.stat_value(key,after)],Vector2(px,py+18),13,u.TEXT)
-  u.text(ItemDB.stat_delta(key,delta),Vector2(px+cell_w-54,py+18),12,u.TEAL if delta>0 else (u.RED if delta<0 else u.MUTED))
- var build_y=r.position.y+319
- if target_slot in Loadout.WEAPONS:
-  u.text("Chain: "+String(snap.before_order),Vector2(r.position.x+18,build_y),12,u.MUTED)
-  u.text("  →  "+String(snap.after_order),Vector2(r.position.x+18,build_y+19),12,u.GOLD)
- else:u.text("Chain構成は変化しません",Vector2(r.position.x+18,build_y+10),12,u.MUTED)
- var gain=" / ".join(snap.gained_build.slice(0,3));var loss=" / ".join(snap.lost_build.slice(0,3))
- u.text("獲得: "+("なし" if gain.is_empty() else gain),Vector2(r.position.x+r.size.x/2,build_y),11,u.TEAL)
- u.text("失う: "+("なし" if loss.is_empty() else loss),Vector2(r.position.x+r.size.x/2,build_y+19),11,u.RED if not loss.is_empty() else u.MUTED)
- var ability_y=build_y+50
- var ability_gain=" / ".join(snap.gained_abilities.slice(0,2));var ability_loss=" / ".join(snap.lost_abilities.slice(0,2))
- u.text("能力 + "+("変化なし" if ability_gain.is_empty() else ability_gain),Vector2(r.position.x+18,ability_y),11,u.TEAL if not ability_gain.is_empty() else u.MUTED)
- u.text("能力 - "+("変化なし" if ability_loss.is_empty() else ability_loss),Vector2(r.position.x+18,ability_y+18),11,u.RED if not ability_loss.is_empty() else u.MUTED)
 var art_cache={}
 func art_texture(it:Dictionary):
  var path=ItemDB.art_path(it)
