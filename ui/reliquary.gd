@@ -409,38 +409,108 @@ func draw_forge(u)->void:
  u.text("全Affixを保持。選択した1つはさらに8%強化。",Vector2(45,859),15,u.MUTED)
 func draw_oaths(u)->void:
  u.dim();var b=u.game.profile.oaths
- u.text("誓印盤 / 分岐する永続ビルド",Vector2(60,60),30)
- u.text("誓片 %d / 主誓印1・副誓印2。ノードは永続解放。"%b.points,Vector2(60,98),17,u.GOLD)
- u.button(Rect2(1160,35,230,50),"戻る","oath_back")
+ u.text("誓印盤 / Build管理 2.0",Vector2(60,55),30)
+ u.text("誓片 %d / 使用 %d / 総量 %d"%[b.points,OathBoard.spent_points(b),OathBoard.total_points(b)],Vector2(60,91),15,u.GOLD)
+ u.button(Rect2(880,28,135,46),"誓印ツリー","oath_section:tree",oath_section=="tree")
+ u.button(Rect2(1028,28,135,46),"Build管理","oath_section:build",oath_section=="build")
+ u.button(Rect2(1178,28,210,46),"戻る","oath_back")
+ if oath_section=="build":draw_build_manager(u);return
+ draw_oath_tree(u)
+func draw_oath_tree(u)->void:
+ var g=u.game;var b=g.profile.oaths;var editable=oath_editable()
  var keys=OathBoard.PATHS.keys()
  for i in range(keys.size()):
   var key=String(keys[i]);var active_index=b.active.find(key)
-  u.button(Rect2(55+i*220,125,205,48),OathBoard.PATHS[key].name+(" / 主" if active_index==0 else (" / 副" if active_index>0 else "")),"oath_view:"+key,oath_view==key)
+  u.button(Rect2(55+i*220,118,205,46),OathBoard.PATHS[key].name+(" / 主" if active_index==0 else (" / 副" if active_index>0 else "")),"oath_view:"+key,oath_view==key)
  var path=oath_view
  if not OathBoard.PATHS.has(path):path="dance";oath_view=path
  var info=OathBoard.PATHS[path];var active_index=b.active.find(path)
- u.panel(Rect2(60,205,300,610),u.PANEL,u.GOLD if active_index>=0 else u.LINE)
- u.text(info.name,Vector2(85,252),30,u.TEAL)
- u.wrapped_text(info.text,Vector2(85,290),250,17,u.TEXT,27)
- u.text("状態: "+("主誓印" if active_index==0 else ("副誓印" if active_index>0 else "未選択")),Vector2(85,382),17,u.GOLD)
- u.button(Rect2(85,415,250,48),"選択を解除" if active_index>=0 else "副誓印として選択","oath:"+path,active_index>=0)
- u.button(Rect2(85,475,250,48),"主誓印にする","oath_main:"+path,active_index==0)
- u.text("解放済み %d / 7"%OathBoard.TREES[path].filter(func(n):return n.id in b.nodes).size(),Vector2(85,555),15,u.MUTED)
- u.wrapped_text("中央の枝は二者択一です。片方を選ぶと反対側はその探索者では解放できません。最下段がCapstone。",Vector2(85,600),250,14,u.MUTED,22)
+ u.panel(Rect2(60,190,300,625),u.PANEL,u.GOLD if active_index>=0 else u.LINE)
+ u.text(info.name,Vector2(85,236),29,u.TEAL)
+ u.wrapped_text(info.text,Vector2(85,272),250,16,u.TEXT,25)
+ u.text("状態: "+("主誓印" if active_index==0 else ("副誓印" if active_index>0 else "未選択")),Vector2(85,360),16,u.GOLD)
+ u.button(Rect2(85,390,250,44),"選択を解除" if active_index>=0 else "副誓印として選択","oath:"+path,active_index>=0)
+ u.button(Rect2(85,444,250,44),"主誓印にする","oath_main:"+path,active_index==0)
+ var owned_count=OathBoard.TREES[path].filter(func(n):return n.id in b.nodes).size()
+ u.text("解放済み %d / 7"%owned_count,Vector2(85,520),14,u.MUTED)
+ u.wrapped_text("排他分岐は反対側を押すと切替。旧側の枝と依存ノードだけ誓片へ戻ります。",Vector2(85,550),250,13,u.MUTED,21)
+ u.button(Rect2(85,650,250,42),"%sをリスペック"%info.name,"respec_path:"+path,editable and owned_count>0)
+ u.button(Rect2(85,703,250,42),"全誓印をリスペック","respec_all",editable and not b.nodes.is_empty())
+ u.text("出発後は閲覧のみ" if not editable else "出発前は自由に組み替え可能",Vector2(210,780),12,u.MUTED,true)
  var positions=[
-  Vector2(615,220),Vector2(615,310),
-  Vector2(430,420),Vector2(800,420),
-  Vector2(430,530),Vector2(800,530),
-  Vector2(615,665)]
+  Vector2(615,205),Vector2(615,295),
+  Vector2(430,405),Vector2(800,405),
+  Vector2(430,515),Vector2(800,515),
+  Vector2(615,650)]
  var nodes=OathBoard.TREES[path]
  for pair in [[0,1],[1,2],[1,3],[2,4],[3,5],[4,6],[5,6]]:
   u.draw_line(positions[pair[0]]+Vector2(130,30),positions[pair[1]]+Vector2(130,30),u.LINE,3)
  for i in range(nodes.size()):
   var node=nodes[i];var owned=node.id in b.nodes;var available=OathBoard.node_available(b,path,node.id)
-  var label=("✓ " if owned else ("◆ " if available else "◇ "))+node.name+" / "+str(node.cost)
+  var conflict=OathBoard.branch_conflict(b,path,node.id)
+  var can_switch=not conflict.is_empty() and OathBoard._prerequisites_met(b,node)
+  var marker="✓ " if owned else ("↔ " if can_switch else ("◆ " if available else "◇ "))
+  var label=marker+node.name+" / "+str(node.cost)
   u.button(Rect2(positions[i],Vector2(260,60)),label,"node:"+path+":"+node.id,owned)
   var detail=[]
   for stat in node.get("stats",{}):detail.append(ItemDB.stat_text(stat,node.stats[stat]))
   for effect in node.get("effects",[]):detail.append(NODE_EFFECT_TEXT.get(String(effect),"固有効果"))
   if not detail.is_empty():u.text(" / ".join(detail),positions[i]+Vector2(130,82),11,u.TEAL if owned else u.MUTED,true)
- u.text("◆ 解放可能   ✓ 解放済み   ◇ 前提不足・排他",Vector2(850,820),14,u.MUTED,true)
+ u.text("◆ 解放可能   ↔ 分岐切替   ✓ 解放済み   ◇ 前提不足",Vector2(850,817),13,u.MUTED,true)
+func draw_build_manager(u)->void:
+ var g=u.game;var b=g.profile.oaths;var editable=oath_editable()
+ u.panel(Rect2(60,125,615,310),u.PANEL,u.LINE)
+ u.text("現在のBuild",Vector2(85,160),22,u.GOLD)
+ u.text(active_oath_line(b),Vector2(85,194),17,u.TEAL)
+ u.text("3武器: "+weapon_line(current_weapon_types(g)),Vector2(85,226),17,u.TEXT)
+ var starter_names={"blade":"灰の刃","lance":"巡礼槍","ember":"残火"}
+ u.text("出発誓い: "+starter_names.get(g.profile.chronicle.start,"灰の刃"),Vector2(85,258),15,u.MUTED)
+ u.text("誓印ノード: %d / 使用誓片 %d / 未使用 %d"%[b.nodes.size(),OathBoard.spent_points(b),b.points],Vector2(85,290),14,u.MUTED)
+ var blessings=[]
+ if is_instance_valid(g.player):blessings=BuildDB.blessing_labels(g.player.upgrades,7)
+ elif g.profile.valid_run(g.profile.run):blessings=BuildDB.blessing_labels(g.profile.run.upgrades,7)
+ u.text("Run祝福",Vector2(85,330),13,u.GOLD)
+ u.wrapped_text("探索開始後に獲得" if blessings.is_empty() else " / ".join(blessings),Vector2(85,352),560,13,u.TEXT,20)
+ u.wrapped_text("Preset読込は誓印・主副・出発誓いを復元します。記録した3武器列はBuildの目印で、装備そのものは置き換えません。",Vector2(85,395),560,11,u.MUTED,17)
+ u.panel(Rect2(710,125,680,590),u.PANEL,u.LINE)
+ u.text("Build Preset / 最大5件",Vector2(735,160),22,u.GOLD)
+ if g.profile.build_presets.is_empty():
+  u.text("まだPresetがありません。現在構成を保存できます。",Vector2(735,215),16,u.MUTED)
+ else:
+  preset_selected=clampi(preset_selected,0,g.profile.build_presets.size()-1)
+  for i in range(g.profile.build_presets.size()):
+   var preset=g.profile.build_presets[i];var y=188+i*82
+   u.button(Rect2(735,y,625,68),String(preset.name),"preset_select:"+str(i),preset_selected==i)
+   u.text(active_oath_line({"active":preset.active}),Vector2(755,y+44),11,u.MUTED)
+   u.text(weapon_line(preset.weapon_types),Vector2(1080,y+44),11,u.MUTED,true)
+ u.button(Rect2(60,465,290,46),"現在構成を新規保存","preset_new",editable and g.profile.build_presets.size()<5)
+ u.button(Rect2(365,465,310,46),"誓印ツリーへ","oath_section:tree")
+ if not g.profile.build_presets.is_empty():
+  u.button(Rect2(735,735,145,44),"読込","preset_load",editable)
+  u.button(Rect2(892,735,145,44),"上書き","preset_overwrite",editable)
+  u.button(Rect2(1049,735,145,44),"名称→","preset_rename",editable)
+  u.button(Rect2(1206,735,154,44),"削除","preset_delete",editable)
+  var selected=g.profile.build_presets[preset_selected]
+  u.text("選択: "+String(selected.name)+" / 必要誓片 "+str(OathBoard.preset_cost(selected)),Vector2(735,808),13,u.TEAL)
+ u.text("Run中はPreset操作・誓印変更とも不可。閲覧はいつでも可能です。",Vector2(720,858),12,u.MUTED,true)
+func draw_build_confirm(u)->void:
+ var g=u.game;var b=g.profile.oaths;u.dim()
+ u.text("出発前のBuild確認",Vector2(720,130),38,u.TEXT,true,true)
+ u.text("この構成で新しい探索を開始します。",Vector2(720,171),16,u.MUTED,true)
+ u.panel(Rect2(250,220,940,390),u.PANEL,u.GOLD)
+ u.text("誓印",Vector2(300,270),14,u.GOLD)
+ u.text(active_oath_line(b),Vector2(300,304),22,u.TEAL)
+ u.text("誓印ノード %d / 使用 %d / 未使用 %d"%[b.nodes.size(),OathBoard.spent_points(b),b.points],Vector2(300,339),14,u.MUTED)
+ u.rule(300,365,840)
+ u.text("開始時の3武器",Vector2(300,403),14,u.GOLD)
+ u.text(weapon_line(departure_weapon_types(g)),Vector2(300,439),23,u.TEXT)
+ var starter_names={"blade":"灰の刃","lance":"巡礼槍","ember":"残火"}
+ u.text("出発誓い: "+starter_names.get(g.profile.chronicle.start,"灰の刃"),Vector2(300,477),15,u.MUTED)
+ u.rule(300,505,840)
+ u.text("Run祝福",Vector2(300,544),14,u.GOLD)
+ u.text("探索中に選択。装備3武器と誓印に合わせて候補が変化します。",Vector2(300,576),15,u.TEXT)
+ u.button(Rect2(250,650,280,55),"誓印・Presetを調整","oaths")
+ u.button(Rect2(580,650,280,55),"この構成で出発","confirm_start",true)
+ u.button(Rect2(910,650,280,55),"タイトルへ戻る","cancel_start")
+ u.text("誓印は出発後固定。次の探索前には無料で再構成できます。",Vector2(720,754),14,u.MUTED,true)
+
