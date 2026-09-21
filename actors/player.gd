@@ -192,7 +192,7 @@ func attack()->bool:
  combo=combo%3+1
  if skip_next_weapon:
   combo=combo%3+1;skip_next_weapon=false
-  game.fx.number(position+facing*38,"跳躍連環",Color("bfe9ff"))
+  game.fx.number(position+facing*38,"回避連環",Color("bfe9ff"))
  combo_expire=1.25;swing_count+=1
  CombatChain.strike(self)
  var amount=stats.attack
