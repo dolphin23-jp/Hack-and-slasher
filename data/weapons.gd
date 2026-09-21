@@ -39,3 +39,13 @@ static func distinct_primary_chain(equipment:Dictionary)->bool:
   if key.is_empty() or key in seen:return false
   seen.append(key)
  return seen.size()==3
+
+static func chain_synergy_score(equipment:Dictionary)->int:
+ var score=0
+ for i in range(3):
+  var from_item=equipment[Loadout.WEAPONS[i]]
+  var to_item=equipment[Loadout.WEAPONS[(i+1)%3]]
+  if not String(transition(from_item,to_item).id).is_empty():score+=1
+ if same_family_chain(equipment):score+=2
+ if distinct_primary_chain(equipment):score+=2
+ return score
