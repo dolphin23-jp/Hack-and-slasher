@@ -205,7 +205,7 @@ func draw_inventory_card(u,it:Dictionary,index:int,r:Rect2,selected:bool,action_
  var title=WeaponDB.type_name(it) if String(it.slot) in Loadout.WEAPONS else ItemDB.slot_text(String(it.slot))
  u.text(title,Vector2(r.position.x+53,r.position.y+21),11,ItemDB.COLORS[int(it.rarity)])
  u.text("階%d T%d +%d"%[it.grade,it.tier,it.enhance],Vector2(r.position.x+53,r.position.y+39),10,u.TEXT)
- var mark=("★" if it.get("favorite",false) else "")+("🔒" if it.get("locked",false) else "")+(" J" if it.get("junk",false) else "")
+ var mark=(" F" if it.get("favorite",false) else "")+(" L" if it.get("locked",false) else "")+(" J" if it.get("junk",false) else "")
  if not mark.is_empty():u.text(mark,Vector2(r.position.x+53,r.position.y+57),9,u.GOLD)
 func comparison_target(p,it:Dictionary)->String:
  if Loadout.accepts(it,target):return target
