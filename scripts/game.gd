@@ -125,8 +125,8 @@ func clear_world()->void:
  pending_upgrades=0;victory_pending=false;wave=0;encounter_room=-1;room_modifier_timer=0;last_room=-1;hitstop=0;shake_amount=0;toast_time=0;banner_time=0
  metrics=ProfileStore.empty_run_metrics()
 func start_run(resume:bool=false,ascend:bool=false)->void:
- if ascend and is_instance_valid(player) and player.inventory.size()>40:
-  toast("所持品を40個以下に分解してから次へ進んでください。");return
+ if ascend and is_instance_valid(player) and player.inventory.size()>80:
+  toast("所持品を80個以下に整理してから次へ進んでください。");return
  var carry={}
  if ascend and is_instance_valid(player):carry={"materials":player.materials,"active_oaths":player.active_oaths.duplicate(),"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"level":player.level,"upgrades":player.upgrades.duplicate(true),"ascension":ascension+1}
  clear_world();rng.randomize();run_seed=20260920 if OS.get_cmdline_user_args().has("--campaign") else rng.randi();rng.seed=run_seed
@@ -465,8 +465,10 @@ func spawn_chest(p:Vector2,tier:int,gilded:bool)->void:
  var d=DropScript.new();add_child(d);d.setup(self,p,{"tier":tier,"gilded":gilded},"chest");d.z_index=1400;drops.append(d)
 func collect(d)->bool:
  if d.taken or d.kind!="item":return false
- if player.inventory.size()>=40:
-  if toast_time<.3:toast("所持品が満杯です。[I] 不要な装備を比較・分解してください。")
+ if profile.settings.get("auto_salvage_rare",false) and int(d.item.rarity)<=1:
+  player.materials+=Forge.yield_for(d.item,player.stats);metrics.pickups+=1;sound.play("equip",.45);toast("自動分解: "+d.item.name);d.take();save_run();return true
+ if player.inventory.size()>=80:
+  if toast_time<.3:toast("所持品が満杯です。[I] フィルタ・保管庫・分解で整理してください。")
   return false
  player.inventory.append(d.item.duplicate(true));record_item(d.item);metrics.pickups+=1;sound.play("loot",.65);toast("回収: "+d.item.name+"  [I] 比較");d.take();return true
 func interact()->void:
