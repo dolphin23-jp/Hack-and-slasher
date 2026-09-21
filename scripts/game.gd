@@ -89,7 +89,7 @@ func configure_input()->void:
    var ev=InputEventKey.new();ev.physical_keycode=k;InputMap.action_add_event(action,ev)
  for spec in [["attack",MOUSE_BUTTON_LEFT],["skill_0",MOUSE_BUTTON_RIGHT]]:
   var ev=InputEventMouseButton.new();ev.button_index=spec[1];InputMap.action_add_event(spec[0],ev)
- var pad={"attack":JOY_BUTTON_X,"dash":JOY_BUTTON_A,"skill_0":JOY_BUTTON_Y,"skill_1":JOY_BUTTON_LEFT_SHOULDER,"skill_2":JOY_BUTTON_RIGHT_SHOULDER,"heal":JOY_BUTTON_B,"inventory":JOY_BUTTON_BACK,"pause":JOY_BUTTON_START,"interact":JOY_BUTTON_DPAD_UP}
+ var pad={"attack":JOY_BUTTON_X,"dash":JOY_BUTTON_A,"skill_0":JOY_BUTTON_Y,"skill_1":JOY_BUTTON_LEFT_SHOULDER,"skill_2":JOY_BUTTON_RIGHT_SHOULDER,"heal":JOY_BUTTON_B,"inventory":JOY_BUTTON_BACK,"pause":JOY_BUTTON_START,"interact":JOY_BUTTON_DPAD_UP,"map":JOY_BUTTON_DPAD_DOWN}
  for action in pad:
   var ev=InputEventJoypadButton.new();ev.button_index=pad[action];InputMap.action_add_event(action,ev)
  for spec in [["move_left",JOY_AXIS_LEFT_X,-1.0],["move_right",JOY_AXIS_LEFT_X,1.0],["move_up",JOY_AXIS_LEFT_Y,-1.0],["move_down",JOY_AXIS_LEFT_Y,1.0]]:
