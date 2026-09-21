@@ -1,10 +1,44 @@
 class_name CombatChain
 extends RefCounted
-static func strike(p)->void:
+
+static func transition_profile(previous_kind:String,current_kind:String,chain_kinds:Array,chain_streak:int,linked:bool)->Dictionary:
+ var result={"damage":1.0,"reach":1.0,"knock":1.0,"label":""}
+ if linked and WeaponDB.TYPES.has(previous_kind) and WeaponDB.TYPES.has(current_kind):
+  var from_type=String(WeaponDB.TYPES[previous_kind].types[0])
+  var to_type=String(WeaponDB.TYPES[current_kind].types[0])
+  match from_type+">"+to_type:
+   "slash>blunt":
+    result.damage=1.10;result.knock=1.45;result.label="断甲"
+   "blunt>pierce":
+    result.damage=1.18;result.label="破砕貫通"
+   "magic>slash":
+    result.damage=1.15;result.reach=1.08;result.label="魔力纏刃"
+  if previous_kind=="scythe" and current_kind=="staff":
+   result.damage*=1.12;result.reach*=1.18;result.label="収束魔撃"
+ if linked and chain_streak>=3 and chain_streak%3==0 and chain_kinds.size()==3:
+  if chain_kinds[0]==chain_kinds[1] and chain_kinds[1]==chain_kinds[2]:
+   result.damage*=1.28
+   result.label=(String(result.label)+"・" if not String(result.label).is_empty() else "")+"同型極撃"
+  else:
+   var attrs=[]
+   for kind in chain_kinds:
+    if not WeaponDB.TYPES.has(kind):continue
+    var attr=String(WeaponDB.TYPES[kind].types[0])
+    if attr not in attrs:attrs.append(attr)
+   if attrs.size()==3:
+    result.damage*=1.16
+    result.label=(String(result.label)+"・" if not String(result.label).is_empty() else "")+"三相連環"
+ return result
+
+static func strike(p,linked:bool=false)->void:
  var it=p.equipment[Loadout.WEAPONS[p.combo-1]]
  var w=WeaponDB.get_weapon(it);var g=p.game
- var amount=(p.stats.attack-p.average_weapon_power()+p.weapon_power(it))*w.damage
- var reach=w.reach*(1.15 if int(it.tier)>=2 else 1.0)*(1.15 if p.combo==3 else 1.0)
+ var chain_kinds=[]
+ for slot in Loadout.WEAPONS:chain_kinds.append(String(p.equipment[slot].get("weapon_type","sword")))
+ var transition=transition_profile(p.last_chain_weapon,String(it.get("weapon_type","sword")),chain_kinds,p.chain_streak,linked)
+ var amount=(p.stats.attack-p.average_weapon_power()+p.weapon_power(it))*w.damage*float(transition.damage)
+ var reach=w.reach*(1.15 if int(it.tier)>=2 else 1.0)*(1.15 if p.combo==3 else 1.0)*float(transition.reach)
+ var strike_knock=w.knock*float(transition.knock)
  if p.dash_attack_time>0 and p.upgrades.get("dash_hunter",0)>0:reach+=35
  var unique=String(it.get("unique",""))
  if unique=="shield_reach" and p.barrier>=5:p.barrier-=5;reach*=1.3
@@ -34,7 +68,7 @@ static func strike(p)->void:
      var crit=g.rng.randf()<p.stats.crit
      var damage=(amount+p.stats.attack if p.combo==3 and p.has_effect("execution") and e.hp/e.max_hp<.3 else amount)*DamageModel.multiplier(e.kind,w.types,p.stats)*(1+p.stats.crit_damage if crit else 1)
      if "blunt" in w.types and e.kind=="warden":e.shield_break=maxf(e.shield_break,1.2)
-     e.take_damage(damage,delta.normalized()*maxf(w.knock,350 if int(it.tier)>=4 and w.shape!="circle" else 0)*(1+p.stats.stagger),crit)
+     e.take_damage(damage,delta.normalized()*maxf(strike_knock,350 if int(it.tier)>=4 and w.shape!="circle" else 0)*(1+p.stats.stagger),crit)
      if not e.dead and p.has_effect("ash_edge"):e.ignite(p.stats.attack*.35,2.5)
      if int(it.tier)>=4 and w.shape=="circle" and not e.dead:e.velocity=-delta.normalized()*160
      if crit:g.critical_effect(e.position)
@@ -51,7 +85,9 @@ static func strike(p)->void:
  if w.shape=="circle":g.fx.ring(p.position,reach,Color("d4fff0"),.25);g.fx.slash(p.position,p.facing,reach,Color("b4ecdf"),true,true)
  elif w.shape=="line":g.fx.lightning(p.position,p.position+p.facing*reach)
  else:g.fx.slash(p.position,p.facing,minf(reach,160),Color("b4ecdf"),p.combo==3,true)
+ if linked and not String(transition.label).is_empty():g.fx.number(p.position+p.facing*48,String(transition.label),Color("f2d790"),true)
  g.sound.play("slash" if w.shape!="bolt" else "bolt",.8,1.2 if w.cooldown<.25 else .95)
  if landed>0:
   if g.profile.settings.hitstop:g.hitstop=.025
   g.sound.play("hit",.65);g.shake(2)
+ p.last_chain_weapon=String(it.get("weapon_type","sword"))
