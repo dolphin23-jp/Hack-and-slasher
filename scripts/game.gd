@@ -271,6 +271,26 @@ func encounter_pool(room_id:int,current_wave:int)->Array:
    6:pool.append_array(["hound","warden"])
    8:pool.append_array(["cantor","hound","warden"])
  return pool
+func encounter_spawn_point(room,index:int,total:int,kind:String)->Vector2:
+ var fallback=dungeon.spawn_point(room.id,index)
+ var toward=(player.position-room.center).normalized()
+ if toward.length()<.1:toward=Vector2.LEFT
+ var side=toward.orthogonal();var pos=fallback
+ match int(room.id):
+  2:
+   pos=room.center+toward*(95 if kind=="hound" else -110)+side*((index%2)*2-1)*70
+  4:
+   if kind=="warden":pos=room.center+toward*80+side*((index%2)*2-1)*72
+   elif kind=="summoner":pos=room.center-toward*145
+  5:
+   pos=room.center-toward*(120 if kind=="summoner" else 45)+side*((index%2)*2-1)*115
+  6:
+   var angle=toward.angle()+float(index)*TAU/maxi(3,mini(total,5))
+   pos=room.center+Vector2.from_angle(angle)*(145 if kind=="hound" else 75)
+  8:
+   if kind in ["summoner","cantor"]:pos=room.center-toward*125+side*((index%2)*2-1)*95
+   else:pos=room.center+toward*70+side*((index%2)*2-1)*80
+ return pos if dungeon.walkable(pos,24,false) else fallback
 func spawn_wave()->void:
  var room=dungeon.rooms[dungeon.active];wave+=1;wave_delay=3
  if room.id==9:spawn_enemy("boss",room.center+Vector2(200,0),7,9);return
@@ -282,7 +302,7 @@ func spawn_wave()->void:
   if i==1 and room.tier>=3:kind="warden"
   if i==2 and room.tier>=3:kind="summoner" if wave%2==0 else "cantor"
   if i==0 and wave==room.waves and room.id in [3,4,6,8]:kind="elite"
-  spawn_enemy(kind,dungeon.spawn_point(room.id,i),room.tier,room.id)
+  spawn_enemy(kind,encounter_spawn_point(room,i,enemy_total,kind),room.tier,room.id)
  if wave>1:toast("%s  /  ウェーブ %d / %d"%[room.encounter,wave,room.waves])
 func spawn_enemy(kind:String,p:Vector2,tier:int,room:int,affix:String=""):
  var e=EnemyScript.new();add_child(e);e.setup(self,kind,p,tier,room,affix);enemies.append(e);return e
