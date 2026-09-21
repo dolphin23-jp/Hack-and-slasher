@@ -38,6 +38,9 @@ func close_modal()->void:
  forge_screen.opened=false;forge_screen.pending={};forge_screen.selected={}
  salvage_screen.opened=false;salvage_screen.preview=[]
 func oath_editable()->bool:return back in ["title","build_confirm"]
+func visible_oath_board(g)->Dictionary:
+ if not oath_editable() and is_instance_valid(g.player) and not g.player.oath_board.is_empty():return g.player.oath_board
+ return g.profile.oaths
 func current_weapon_types(g)->Array:
  var out=[]
  if is_instance_valid(g.player):
@@ -408,7 +411,7 @@ func draw_forge(u)->void:
   u.button(Rect2(850,670+i*45,540,40),ItemDB.stat_text(key,it.affixes[key]),"inherit:"+key,inheritance==key);i+=1
  u.text("全Affixを保持。選択した1つはさらに8%強化。",Vector2(45,859),15,u.MUTED)
 func draw_oaths(u)->void:
- u.dim();var b=u.game.profile.oaths
+ u.dim();var b=visible_oath_board(u.game)
  u.text("誓印盤 / Build管理 2.0",Vector2(60,55),30)
  u.text("誓片 %d / 使用 %d / 合計 %d"%[b.points,OathBoard.spent_points(b),OathBoard.total_points(b)],Vector2(60,91),15,u.GOLD)
  u.button(Rect2(880,28,135,46),"誓印 TREE","oath_section:tree",oath_section=="tree")
@@ -417,7 +420,7 @@ func draw_oaths(u)->void:
  if oath_section=="build":draw_build_manager(u);return
  draw_oath_tree(u)
 func draw_oath_tree(u)->void:
- var g=u.game;var b=g.profile.oaths;var editable=oath_editable()
+ var g=u.game;var b=visible_oath_board(g);var editable=oath_editable()
  var keys=OathBoard.PATHS.keys()
  for i in range(keys.size()):
   var key=String(keys[i]);var active_index=b.active.find(key)
@@ -458,7 +461,7 @@ func draw_oath_tree(u)->void:
   if not detail.is_empty():u.text(" / ".join(detail),positions[i]+Vector2(130,82),11,u.TEAL if owned else u.MUTED,true)
  u.text("◆ 解放可能   ↔ 分岐切替   ✓ 解放済み   ◇ 前提不足",Vector2(850,817),13,u.MUTED,true)
 func draw_build_manager(u)->void:
- var g=u.game;var b=g.profile.oaths;var editable=oath_editable()
+ var g=u.game;var b=visible_oath_board(g);var editable=oath_editable()
  u.panel(Rect2(60,125,615,310),u.PANEL,u.LINE)
  u.text("現在のBuild",Vector2(85,160),22,u.GOLD)
  u.text(active_oath_line(b),Vector2(85,194),17,u.TEAL)
