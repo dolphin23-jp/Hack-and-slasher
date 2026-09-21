@@ -58,3 +58,7 @@ It shows:
 - the role of Run blessings
 
 The player can return to Build Management, adjust the build, or confirm departure. Once the run starts, oath selection and respec are frozen until the next departure.
+
+## Run snapshot compatibility
+
+Each saved Run stores its own oath-board snapshot in addition to active oath order. Continuing an older Run therefore restores the node allocation that Run started with, even if the profile has since been respecced for a future Run. Existing version 2 saves without this field are backfilled from their saved profile oath board during migration.
