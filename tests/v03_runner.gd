@@ -59,8 +59,9 @@ func run()->void:
  check("magic advantage",DamageModel.multiplier("cantor",["magic"],{})>1)
  p.dash_cd=0;check("dodge cancels any weapon",p.dash() and p.attack_time==0 and p.attack_cd<=.12)
  p.dash_time=0;p.attack_cd=0;check("attack resumes after dodge",p.attack())
- clear();var it=weapon("scythe");it.tier=3;p.rebuild_stats();foe(Vector2(70,0));foe(Vector2(-70,0));p.attack()
- check("T3 multi hit grants shield",p.barrier>0)
+ clear();var it=weapon("scythe");it.tier=3;p.rebuild_stats();var t3=foe(Vector2(70,0));foe(Vector2(-70,0));foe(Vector2(0,70));p.attack();var t3_damage=10000-t3.hp
+ clear();it.tier=1;p.rebuild_stats();var t1=foe(Vector2(70,0));foe(Vector2(-70,0));foe(Vector2(0,70));p.attack()
+ check("T3 scythe rewards catching three targets",t3_damage>(10000-t1.hp)*1.2)
  clear();it=weapon("scythe");it.tier=4;p.rebuild_stats();var e=foe(Vector2(90,0));p.attack()
  check("T4 scythe attracts",e.velocity.x<0)
  clear();it=weapon("scythe","weapon3");it.tier=5;p.rebuild_stats();p.combo=2;e=foe(Vector2(90,0));p.attack();var tier_damage=10000-e.hp
@@ -89,9 +90,11 @@ func run()->void:
  var donor=it.duplicate(true);donor.id="donor";donor.enhance=0;p.inventory.append(donor)
  Forge.apply(p,it,"fuse");check("fusion consumes compatible donor",p.inventory.is_empty() and it.fusion>0)
  Forge.apply(p,it,"tier");check("tier unlock consumes progress",it.tier==2 and it.fusion==0)
- it.affixes={"crit":.1};Forge.apply(p,it,"evolve","crit")
+ var old_crit_range=ItemDB.affix_range("crit",it.grade,it.rarity);it.rolls.crit=old_crit_range;it.affixes={"crit":lerpf(old_crit_range[0],old_crit_range[1],.75)}
+ var next_crit_range=ItemDB.affix_range("crit",it.grade+1,it.rarity);var expected_crit=lerpf(next_crit_range[0],next_crit_range[1],.75)*1.08
+ Forge.apply(p,it,"evolve","crit")
  check("grade evolution resets enhancement",it.grade==2 and it.enhance==0)
- check("chosen affix inherited",is_equal_approx(it.affixes.crit,.108) and it.inherited=="crit")
+ check("chosen affix keeps roll quality and heirloom bonus",is_equal_approx(it.affixes.crit,expected_crit) and it.inherited=="crit")
  check("evolution refreshes inherited affix roll bounds",it.rolls.has("crit") and it.rolls.crit[1]>=it.affixes.crit)
  var before=p.materials;donor.locked=true;p.inventory=[donor];game.salvage(0)
  check("lock protects salvage",p.inventory.size()==1 and p.materials==before)
