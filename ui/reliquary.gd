@@ -14,7 +14,9 @@ func act(u,action:String)->bool:
  if action.begins_with("oath:"):
   if back!="title":g.toast("誓印の選択は次の探索の出発前に行えます");return true
   var key=action.get_slice(":",1);var active=g.profile.oaths.active
-  if key in active:active.erase(key)
+  if key in active:
+   if active.size()<=1:g.toast("主誓印は1つ以上必要です");return true
+   active.erase(key)
   elif active.size()<3:active.append(key)
   else:g.toast("主誓印1・副誓印2までです")
   g.profile.write_save();return true
