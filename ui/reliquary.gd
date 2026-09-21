@@ -80,9 +80,7 @@ func draw(u)->void:
  detail(u,it,Rect2(640,283,748,410),"所持品 → "+ItemDB.slot_text(target))
  var valid=Loadout.accepts(it,target)
  if valid:
-  var loadout=p.equipment.duplicate(true);loadout[target]=it
-  var next=p.calculated(loadout)
-  u.text("変更: 攻撃 %+.1f / HP %+.0f / 防御 %+.1f"%[p.weapon_power(it)-p.weapon_power(p.equipment[target]) if target in Loadout.WEAPONS else next.attack-p.stats.attack,next.hp-p.stats.hp,next.armor-p.stats.armor],Vector2(660,722),17,u.TEAL)
+  u.text("比較: "+p.item_comparison_text(it),Vector2(660,722),17,u.TEAL)
  u.button(Rect2(640,748,350,48),"この枠へ装備" if valid else "上で適合する部位を選択","equip_target",valid)
  u.button(Rect2(1000,748,388,48),"分解して素材獲得","salvage")
  u.button(Rect2(640,813,350,48),"ロック / "+("有効" if it.locked else "無効"),"lock")
