@@ -97,12 +97,12 @@ func act(u,action:String)->bool:
   g.toast(OathBoard.switch_branch(g.profile.oaths,path,id) if not conflict.is_empty() else OathBoard.unlock_node(g.profile.oaths,path,id))
   g.profile.write_save();return true
  if action.begins_with("respec_path:"):
-  if not oath_editable():g.toast("リスペックは出発前のみ可能です");return true
+  if not oath_editable():g.toast("再構成は出発前のみ可能です");return true
   var path=action.get_slice(":",1);var refund=OathBoard.respec_path(g.profile.oaths,path)
-  g.profile.write_save();g.toast("リスペック / %s / 誓片 %d返還"%[OathBoard.PATHS[path].name,refund]);return true
+  g.profile.write_save();g.toast("再構成 / %s / 誓片 %d返還"%[OathBoard.PATHS[path].name,refund]);return true
  if action=="respec_all":
-  if not oath_editable():g.toast("リスペックは出発前のみ可能です");return true
-  var refund=OathBoard.respec_all(g.profile.oaths);g.profile.write_save();g.toast("全リスペック / 誓片 %d返還"%refund);return true
+  if not oath_editable():g.toast("再構成は出発前のみ可能です");return true
+  var refund=OathBoard.respec_all(g.profile.oaths);g.profile.write_save();g.toast("全再構成 / 誓片 %d返還"%refund);return true
  if action.begins_with("preset_select:"):
   preset_selected=clampi(int(action.get_slice(":",1)),0,maxi(0,g.profile.build_presets.size()-1));return true
  if action=="preset_new":
@@ -112,12 +112,12 @@ func act(u,action:String)->bool:
   g.profile.build_presets.append(OathBoard.make_preset(g.profile.oaths,name,g.profile.chronicle.start,current_weapon_types(g)))
   preset_selected=g.profile.build_presets.size()-1;g.profile.write_save();g.toast("Preset保存 / "+name);return true
  if action=="preset_load":
-  if not oath_editable():g.toast("Preset読込は出発前のみ可能です");return true
+  if not oath_editable():g.toast("Preset LOADは出発前のみ可能です");return true
   if g.profile.build_presets.is_empty():return true
   preset_selected=clampi(preset_selected,0,g.profile.build_presets.size()-1)
   var preset=g.profile.build_presets[preset_selected]
   var result=OathBoard.apply_preset(g.profile.oaths,preset)
-  if result.begins_with("Preset読込"):g.profile.chronicle.start=String(preset.starter)
+  if result.begins_with("Preset LOAD"):g.profile.chronicle.start=String(preset.starter)
   g.profile.write_save();g.toast(result);return true
  if action=="preset_overwrite":
   if not oath_editable() or g.profile.build_presets.is_empty():return true
@@ -128,7 +128,7 @@ func act(u,action:String)->bool:
  if action=="preset_rename":
   if not oath_editable() or g.profile.build_presets.is_empty():return true
   preset_selected=clampi(preset_selected,0,g.profile.build_presets.size()-1)
-  var labels=["汎用","火力","耐久","探索","対王","周回"];var preset=g.profile.build_presets[preset_selected]
+  var labels=["BASE","DAMAGE","DEFENSE","LOOT","BOSS","FARM"];var preset=g.profile.build_presets[preset_selected]
   var current=String(preset.name);var next=0
   for i in range(labels.size()):
    if current.ends_with(labels[i]):next=(i+1)%labels.size()
@@ -137,7 +137,7 @@ func act(u,action:String)->bool:
  if action=="preset_delete":
   if not oath_editable() or g.profile.build_presets.is_empty():return true
   g.profile.build_presets.remove_at(clampi(preset_selected,0,g.profile.build_presets.size()-1))
-  preset_selected=clampi(preset_selected,0,maxi(0,g.profile.build_presets.size()-1));g.profile.write_save();g.toast("Presetを削除しました");return true
+  preset_selected=clampi(preset_selected,0,maxi(0,g.profile.build_presets.size()-1));g.profile.write_save();g.toast("PresetをDELETEしました");return true
  if action.begins_with("tab:"):
   tab=action.get_slice(":",1);focus_detail=false;return true
  if action=="filter":
@@ -410,8 +410,8 @@ func draw_forge(u)->void:
 func draw_oaths(u)->void:
  u.dim();var b=u.game.profile.oaths
  u.text("誓印盤 / Build管理 2.0",Vector2(60,55),30)
- u.text("誓片 %d / 使用 %d / 総量 %d"%[b.points,OathBoard.spent_points(b),OathBoard.total_points(b)],Vector2(60,91),15,u.GOLD)
- u.button(Rect2(880,28,135,46),"誓印ツリー","oath_section:tree",oath_section=="tree")
+ u.text("誓片 %d / 使用 %d / 合計 %d"%[b.points,OathBoard.spent_points(b),OathBoard.total_points(b)],Vector2(60,91),15,u.GOLD)
+ u.button(Rect2(880,28,135,46),"誓印 TREE","oath_section:tree",oath_section=="tree")
  u.button(Rect2(1028,28,135,46),"Build管理","oath_section:build",oath_section=="build")
  u.button(Rect2(1178,28,210,46),"戻る","oath_back")
  if oath_section=="build":draw_build_manager(u);return
@@ -433,10 +433,10 @@ func draw_oath_tree(u)->void:
  u.button(Rect2(85,444,250,44),"主誓印にする","oath_main:"+path,active_index==0)
  var owned_count=OathBoard.TREES[path].filter(func(n):return n.id in b.nodes).size()
  u.text("解放済み %d / 7"%owned_count,Vector2(85,520),14,u.MUTED)
- u.wrapped_text("排他分岐は反対側を押すと切替。旧側の枝と依存ノードだけ誓片へ戻ります。",Vector2(85,550),250,13,u.MUTED,21)
- u.button(Rect2(85,650,250,42),"%sをリスペック"%info.name,"respec_path:"+path,editable and owned_count>0)
- u.button(Rect2(85,703,250,42),"全誓印をリスペック","respec_all",editable and not b.nodes.is_empty())
- u.text("出発後は閲覧のみ" if not editable else "出発前は自由に組み替え可能",Vector2(210,780),12,u.MUTED,true)
+ u.wrapped_text("排他分岐は反対側を押すと切替。旧側の枝と後続ノードだけ誓片へ戻ります。",Vector2(85,550),250,13,u.MUTED,21)
+ u.button(Rect2(85,650,250,42),"%sを再構成"%info.name,"respec_path:"+path,editable and owned_count>0)
+ u.button(Rect2(85,703,250,42),"全誓印を再構成","respec_all",editable and not b.nodes.is_empty())
+ u.text("出発後は確認のみ" if not editable else "出発前は自由に組み替え可能",Vector2(210,780),12,u.MUTED,true)
  var positions=[
   Vector2(615,205),Vector2(615,295),
   Vector2(430,405),Vector2(800,405),
@@ -471,7 +471,7 @@ func draw_build_manager(u)->void:
  elif g.profile.valid_run(g.profile.run):blessings=BuildDB.blessing_labels(g.profile.run.upgrades,7)
  u.text("Run祝福",Vector2(85,330),13,u.GOLD)
  u.wrapped_text("探索開始後に獲得" if blessings.is_empty() else " / ".join(blessings),Vector2(85,352),560,13,u.TEXT,20)
- u.wrapped_text("Preset読込は誓印・主副・出発誓いを復元します。記録した3武器列はBuildの目印で、装備そのものは置き換えません。",Vector2(85,395),560,11,u.MUTED,17)
+ u.wrapped_text("Preset LOADは誓印・主副・出発誓いを復元します。記録した3武器列はBuildの目印で、装備そのものは置き換えません。",Vector2(85,395),560,11,u.MUTED,17)
  u.panel(Rect2(710,125,680,590),u.PANEL,u.LINE)
  u.text("Build Preset / 最大5件",Vector2(735,160),22,u.GOLD)
  if g.profile.build_presets.is_empty():
@@ -483,16 +483,16 @@ func draw_build_manager(u)->void:
    u.button(Rect2(735,y,625,68),String(preset.name),"preset_select:"+str(i),preset_selected==i)
    u.text(active_oath_line({"active":preset.active}),Vector2(755,y+44),11,u.MUTED)
    u.text(weapon_line(preset.weapon_types),Vector2(1080,y+44),11,u.MUTED,true)
- u.button(Rect2(60,465,290,46),"現在構成を新規保存","preset_new",editable and g.profile.build_presets.size()<5)
- u.button(Rect2(365,465,310,46),"誓印ツリーへ","oath_section:tree")
+ u.button(Rect2(60,465,290,46),"現在構成を追加保存","preset_new",editable and g.profile.build_presets.size()<5)
+ u.button(Rect2(365,465,310,46),"誓印 TREEへ","oath_section:tree")
  if not g.profile.build_presets.is_empty():
-  u.button(Rect2(735,735,145,44),"読込","preset_load",editable)
+  u.button(Rect2(735,735,145,44),"LOAD","preset_load",editable)
   u.button(Rect2(892,735,145,44),"上書き","preset_overwrite",editable)
-  u.button(Rect2(1049,735,145,44),"名称→","preset_rename",editable)
-  u.button(Rect2(1206,735,154,44),"削除","preset_delete",editable)
+  u.button(Rect2(1049,735,145,44),"名前→","preset_rename",editable)
+  u.button(Rect2(1206,735,154,44),"DELETE","preset_delete",editable)
   var selected=g.profile.build_presets[preset_selected]
   u.text("選択: "+String(selected.name)+" / 必要誓片 "+str(OathBoard.preset_cost(selected)),Vector2(735,808),13,u.TEAL)
- u.text("Run中はPreset操作・誓印変更とも不可。閲覧はいつでも可能です。",Vector2(720,858),12,u.MUTED,true)
+ u.text("Run中はPreset操作・誓印変更とも不可。確認はいつでも可能です。",Vector2(720,858),12,u.MUTED,true)
 func draw_build_confirm(u)->void:
  var g=u.game;var b=g.profile.oaths;u.dim()
  u.text("出発前のBuild確認",Vector2(720,130),38,u.TEXT,true,true)
@@ -512,5 +512,5 @@ func draw_build_confirm(u)->void:
  u.button(Rect2(250,650,280,55),"誓印・Presetを調整","oaths")
  u.button(Rect2(580,650,280,55),"この構成で出発","confirm_start",true)
  u.button(Rect2(910,650,280,55),"タイトルへ戻る","cancel_start")
- u.text("誓印は出発後固定。次の探索前には無料で再構成できます。",Vector2(720,754),14,u.MUTED,true)
+ u.text("誓印は出発後固定。次の探索前にはFREEで再構成できます。",Vector2(720,754),14,u.MUTED,true)
 
