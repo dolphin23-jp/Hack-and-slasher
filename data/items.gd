@@ -5,6 +5,20 @@ const COLORS=[Color("b6c5c8"),Color("78b5ed"),Color("dcacd9"),Color("f4be68"),Co
 const SLOTS=["weapon","weapon2","weapon3","head","armor","hands","feet","accessory","accessory2"]
 const SLOT_LABELS={"weapon":"武器1","weapon2":"武器2","weapon3":"武器3","head":"頭","armor":"胴","hands":"手","feet":"足","accessory":"装飾1","accessory2":"装飾2"}
 const AFFIXES={"attack":["攻撃力",3.0,7.0],"haste":["攻撃速度",.04,.09],"crit":["クリティカル率",.025,.05],"crit_damage":["クリティカル威力",.12,.25],"hp":["最大生命",13.0,27.0],"speed":["移動速度",.025,.055],"cdr":["クールダウン短縮",.025,.055],"armor":["防御力",4.0,10.0],"skill":["スキル威力",.06,.12],"slash":["斬撃威力",.04,.12],"blunt":["打撃威力",.04,.12],"pierce":["貫撃威力",.04,.12],"magic":["魔撃威力",.04,.12],"penetration":["防御貫通",.03,.1],"stagger":["怯ませ性能",.05,.15],"shield_max":["障壁最大値",5,15],"shield_regen":["障壁回復",1,3],"fatal_resist":["致命撃耐性",.03,.1],"knock_resist":["押出耐性",.05,.15],"healing":["回復補正",.04,.12],"dodge_cdr":["回避短縮",.03,.09],"dodge_distance":["回避距離",.04,.12],"drop_rate":["ドロップ率",.05,.15],"rarity_find":["希少品発見",.05,.15],"material_find":["素材発見",.05,.15],"salvage":["分解効率",.05,.15]}
+const AFFIX_PROFILES={
+ "sword":{"slash":6.0,"crit":4.0,"crit_damage":3.0,"haste":2.5,"attack":2.0},
+ "scythe":{"slash":6.0,"haste":3.0,"stagger":3.0,"crit":2.5,"attack":2.0},
+ "spear":{"pierce":7.0,"penetration":4.5,"crit":3.0,"attack":2.0,"stagger":2.0},
+ "staff":{"magic":7.0,"skill":4.5,"cdr":3.5,"crit":2.5},
+ "fist":{"blunt":7.0,"haste":5.0,"crit":3.5,"stagger":3.0},
+ "mace":{"blunt":7.0,"stagger":5.0,"penetration":3.0,"armor":2.0},
+ "spellblade":{"magic":5.0,"slash":5.0,"skill":3.5,"crit":3.0},
+ "head":{"crit":5.0,"crit_damage":4.0,"skill":3.5,"cdr":2.5,"hp":2.0},
+ "armor":{"hp":6.0,"armor":6.0,"shield_max":4.5,"shield_regen":3.5,"fatal_resist":3.0},
+ "hands":{"haste":6.0,"crit":4.5,"blunt":2.5,"slash":2.5,"pierce":2.5,"magic":2.5},
+ "feet":{"speed":6.0,"dodge_cdr":5.0,"dodge_distance":5.0,"knock_resist":2.5},
+ "accessory":{"skill":4.0,"crit":3.5,"cdr":3.0,"rarity_find":2.5,"drop_rate":2.5,"material_find":2.0},
+ "accessory2":{"skill":4.0,"crit":3.5,"cdr":3.0,"rarity_find":2.5,"drop_rate":2.5,"material_find":2.0}}
 const LEGENDS=[
  {"name":"サンダー・テスタメント","slot":"weapon","effect":"chain","set":"storm","text":"撃破時に最大3体へ攻撃力90%の雷撃。雷撃は再連鎖しない。"},
  {"name":"シンダーウェイク","slot":"armor","effect":"fire_dash","set":"cinder","text":"回避に3秒の炎。毎秒攻撃力110%。同じ場所の炎は重複しない。"},
@@ -63,11 +77,24 @@ static func generate(rng:RandomNumberGenerator,depth:int,rarity:int=-1,legend:in
  var affixes={};var keys=AFFIXES.keys().filter(func(k):return not base.has(k))
  if tier<4:keys=keys.filter(func(k):return k not in ["penetration","fatal_resist","shield_regen"])
  for i in range([0,1,2,3,4][rarity]):
-  var key=keys.pop_at(rng.randi_range(0,keys.size()-1));var def=AFFIXES[key]
-  var scale=power if key in ["attack","hp","armor","shield_max","shield_regen"] else 1.0
-  ranges[key]=[def[1]*scale*ROLLS[rarity][0],def[2]*scale*ROLLS[rarity][1]]
+  var key=weighted_affix(rng,keys,slot,kind);keys.erase(key)
+  ranges[key]=affix_range(key,grade,rarity)
   affixes[key]=snappedf(rng.randf_range(ranges[key][0],ranges[key][1]),.001)
  return {"schema":3,"id":str(rng.randi())+"-"+str(rng.randi()),"name":name,"rarity":rarity,"slot":slot,"weapon_type":kind,"grade":grade,"tier":tier,"enhance":0,"fusion":0,"base":base,"affixes":affixes,"rolls":ranges,"effect":effect,"unique":(UNIQUE[WeaponDB.TYPES.keys().find(kind)] if slot=="weapon" else "chain_guard") if rarity>=3 else "","description":description,"locked":false,"favorite":false}
+static func affix_range(key:String,grade:int,rarity:int)->Array:
+ var def=AFFIXES[key]
+ var scale=GRADES[clampi(grade,1,6)-1] if key in ["attack","hp","armor","shield_max","shield_regen"] else 1.0
+ return [def[1]*scale*ROLLS[clampi(rarity,0,4)][0],def[2]*scale*ROLLS[clampi(rarity,0,4)][1]]
+static func weighted_affix(rng:RandomNumberGenerator,keys:Array,slot:String,kind:String)->String:
+ var profile_key=kind if slot=="weapon" else slot
+ var profile:Dictionary=AFFIX_PROFILES.get(profile_key,{})
+ var total=0.0
+ for key in keys:total+=float(profile.get(key,.35))
+ var roll=rng.randf()*total
+ for key in keys:
+  roll-=float(profile.get(key,.35))
+  if roll<=0:return String(key)
+ return String(keys[-1])
 static func roll_rarity(rng:RandomNumberGenerator,find:float)->int:
  var weights=[55.0,28.0,13.0,3.6,.4];var bonus=1+clampf(find,0,2)
  var total=weights[0]
