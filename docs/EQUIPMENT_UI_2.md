@@ -42,4 +42,4 @@ The same art is reused in equipped cards, Inventory cards, expanded item detail,
 
 ## iPad layout
 
-The base UI remains 1440×900 and scales to the existing iPad-class 1024×768 visual test. Inventory and Vault use 15 larger cards per page instead of dense tiny cells. Destructive Forge/Salvage confirmation flows remain modal and unchanged in safety behavior.
+The base UI remains 1440×900 and scales to the existing iPad-class 1024×768 visual test. Inventory uses 20 larger cards per page and Vault uses 24 larger cards per page instead of dense tiny cells. Destructive Forge/Salvage confirmation flows remain modal and unchanged in safety behavior.
