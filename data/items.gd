@@ -44,10 +44,10 @@ const LEGENDS=[
  {"name":"城塞を拓く槌","slot":"weapon","effect":"weapon_mace","set":"","weapon_type":"mace","text":"障壁消費で範囲拡大"},
  {"name":"巡る守護の魔刃","slot":"weapon","effect":"weapon_spellblade","set":"","weapon_type":"spellblade","text":"チェイン完了で障壁"},
  {"name":"満ちる星冠","slot":"head","effect":"threefold_crown","set":"","text":"障壁最大時、魔撃武器が二重化する。"},
- {"name":"尽きぬ城壁","slot":"armor","effect":"threefold_armor","set":"","text":"3番目の攻撃で障壁を消費して威力へ変換する。"},
- {"name":"反奏の籠手","slot":"hands","effect":"threefold_hands","set":"","text":"武器遷移中のクリティカル率を高める。"},
- {"name":"跳躍の脚甲","slot":"feet","effect":"threefold_feet","set":"","text":"回避後、次の武器を1つ飛ばして順番を変える。"},
- {"name":"連環の環","slot":"accessory","effect":"threefold_ring","set":"","text":"武器遷移攻撃の威力を増幅する。"}]
+ {"name":"不落の城壁","slot":"armor","effect":"threefold_armor","set":"","text":"3番目の攻撃で障壁を消費して威力へ変換する。"},
+ {"name":"反撃の籠手","slot":"hands","effect":"threefold_hands","set":"","text":"武器連携中のクリティカル率を高める。"},
+ {"name":"回避の足甲","slot":"feet","effect":"threefold_feet","set":"","text":"回避後、次の武器を1つ先へ進めて順番を変える。"},
+ {"name":"連環の環","slot":"accessory","effect":"threefold_ring","set":"","text":"武器連携攻撃の威力を増幅する。"}]
 static func legend_info(effect:String)->Dictionary:
  for l in LEGENDS:
   if l.effect==effect:return l
@@ -59,11 +59,11 @@ const ROLLS=[[.88,1.12],[1.05,1.25],[1.20,1.45],[1.40,1.70],[1.70,2.05]]
 const UNIQUE=["wide_chain","double_spin","split_lance","ricochet","fist_nova","shield_reach","chain_guard"]
 const NONWEAPON_UNIQUES={"head":"full_shield_magic_double","armor":"shield_spend_power","hands":"transition_crit","feet":"dodge_skip","accessory":"transition_echo","accessory2":"transition_echo"}
 const UNIQUE_TEXT={
- "full_shield_magic_double":"障壁がほぼ最大なら魔撃武器の攻撃回数 +1",
+ "full_shield_magic_double":"障壁が最大なら魔撃武器の攻撃回数 +1",
  "shield_spend_power":"3番目で障壁10を消費し威力 +25%",
- "transition_crit":"武器遷移中のクリティカル率 +8%",
- "dodge_skip":"回避後の次攻撃は武器を1枠飛ばす",
- "transition_echo":"武器遷移攻撃の威力 +12%"}
+ "transition_crit":"武器連携中のクリティカル率 +8%",
+ "dodge_skip":"回避後の次攻撃は武器を1枠先へ進める",
+ "transition_echo":"武器連携攻撃の威力 +12%"}
 static func unique_text(item:Dictionary)->String:
  var key=String(item.get("unique",""))
  return WeaponDB.UNIQUE_TEXT.get(key,UNIQUE_TEXT.get(key,"継承された固有能力"))
