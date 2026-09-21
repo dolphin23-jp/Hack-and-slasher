@@ -1,5 +1,22 @@
 class_name ReliquaryUI
 extends RefCounted
+const NODE_EFFECT_TEXT={
+ "flow_chain":"連携速度を強化",
+ "impact_chain":"連携の怯ませを強化",
+ "weapon_echo":"3連携で追撃",
+ "arcane_pierce":"魔撃の貫通を強化",
+ "arcane_echo":"魔撃が帰還",
+ "arcane_cap":"魔撃連携を強化",
+ "shield_sustain":"障壁回復を強化",
+ "shield_burst":"障壁を攻撃へ変換",
+ "fortress_cap":"3連携で障壁",
+ "burn_long":"炎上時間を延長",
+ "burn_burst":"炎上クリティカルで爆発",
+ "flame_cap":"炎上威力を強化",
+ "high_voltage":"雷撃威力を強化",
+ "wide_lightning":"連鎖数を強化",
+ "storm_cap":"雷撃連携を強化"
+}
 var tab="equipment"
 var target="weapon"
 var forge_slot="weapon"
@@ -107,6 +124,7 @@ func draw(u)->void:
  u.button(Rect2(940,24,140,48),"装備","tab:equipment",tab=="equipment")
  u.button(Rect2(1090,24,140,48),"鍛冶","tab:forge",tab=="forge")
  u.button(Rect2(1240,24,150,48),"戻る","return_victory" if u.game.mode=="victory_inventory" else "inventory")
+ if focus_detail and tab=="equipment":draw_focus_detail(u);return
  for i in range(3):
   var slot=Loadout.WEAPONS[i];var it=p.equipment[slot];var x=40+i*455
   u.panel(Rect2(x,94,430,105),u.PANEL,ItemDB.COLORS[int(it.rarity)])
@@ -118,8 +136,6 @@ func draw(u)->void:
   u.button(Rect2(40+i*227,215,215,48),"%s / 階%d T%d +%d"%[ItemDB.slot_text(slot),it.grade,it.tier,it.enhance],"slot:"+slot,target==slot)
  if tab=="forge":draw_forge(u);return
  if tab=="vault":draw_vault(u);return
- if focus_detail:
-  draw_focus_detail(u);return
  var visible=filtered_inventory(p);var max_page=maxi(0,ceili(visible.size()/40.0)-1);inventory_page=mini(inventory_page,max_page)
  u.text("所持品 %d / 80  ・ 表示 %d"%[p.inventory.size(),visible.size()],Vector2(40,303),16,u.GOLD)
  u.button(Rect2(40,274,150,42),"表示: "+filter_label(),"filter")
@@ -160,12 +176,12 @@ func draw_focus_detail(u)->void:
  var p=u.game.player
  if u.selected<0 or u.selected>=p.inventory.size():focus_detail=false;return
  var it=p.inventory[u.selected]
- u.button(Rect2(1170,92,200,46),"一覧へ戻る","detail_toggle")
- detail(u,it,Rect2(90,105,1280,635),"拡大詳細 / "+ItemDB.slot_text(String(it.slot)))
+ detail(u,it,Rect2(60,95,1320,650),"拡大詳細 / "+ItemDB.slot_text(String(it.slot)))
+ u.button(Rect2(1160,108,195,42),"一覧へ戻る","detail_toggle")
  var target_slot=p.item_upgrade_target(it);var signals=p.item_comparison(it,target_slot)
- u.text("装備候補: "+ItemDB.slot_text(target_slot)+"   /   "+" / ".join(signals),Vector2(120,785),19,u.TEAL)
- u.button(Rect2(930,770,210,48),"保管庫へ","vault_store")
- u.button(Rect2(1160,770,210,48),"ジャンク "+("ON" if it.get("junk",false) else "OFF"),"junk",it.get("junk",false))
+ u.text("装備候補: "+ItemDB.slot_text(target_slot)+"   /   "+" / ".join(signals),Vector2(90,790),19,u.TEAL)
+ u.button(Rect2(920,770,210,48),"保管庫へ","vault_store")
+ u.button(Rect2(1150,770,210,48),"ジャンク "+("ON" if it.get("junk",false) else "OFF"),"junk",it.get("junk",false))
 func draw_vault(u)->void:
  var g=u.game;var list=g.profile.vault;var per_page=48
  var max_page=maxi(0,ceili(list.size()/float(per_page))-1);vault_page=mini(vault_page,max_page)
@@ -245,6 +261,6 @@ func draw_oaths(u)->void:
   u.button(Rect2(positions[i],Vector2(260,60)),label,"node:"+path+":"+node.id,owned)
   var detail=[]
   for stat in node.get("stats",{}):detail.append(ItemDB.stat_text(stat,node.stats[stat]))
-  for effect in node.get("effects",[]):detail.append(String(effect))
+  for effect in node.get("effects",[]):detail.append(NODE_EFFECT_TEXT.get(String(effect),"固有効果"))
   if not detail.is_empty():u.text(" / ".join(detail),positions[i]+Vector2(130,82),11,u.TEAL if owned else u.MUTED,true)
  u.text("◆ 解放可能   ✓ 解放済み   ◇ 前提不足・排他",Vector2(850,820),14,u.MUTED,true)
