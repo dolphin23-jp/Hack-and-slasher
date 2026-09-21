@@ -537,7 +537,7 @@ func draw_journal()->void:
    panel(Rect2(pos,Vector2(630,126)),PANEL,GOLD if found else LINE)
    text(entry.name if found else "未発見 / "+ItemDB.slot_text(entry.slot),pos+Vector2(19,29),19,GOLD if found else MUTED)
    text("三連の聖遺物",pos+Vector2(455,29),14,TEAL)
-   wrapped_text((ReliquaryUI.UNIQUE_TEXT[ItemDB.UNIQUE[WeaponDB.TYPES.keys().find(entry.get("weapon_type",WeaponDB.TYPES.keys()[idx%7]))]] if entry.slot=="weapon" else "3連携完了で障壁を獲得。旧属性能力は誓印盤へ移行。") if found else "宝箱、精鋭、危険な契約、王の戦利品から発見できる。",pos+Vector2(19,62),590,15,TEXT if found else MUTED,24)
+   wrapped_text(entry.text if found else "宝箱、精鋭、危険な契約、王の戦利品から発見できる。",pos+Vector2(19,62),590,15,TEXT if found else MUTED,24)
   button(Rect2(566,806,308,48),"次の頁" if journal_page==0 else "前の頁","journal_next")
  elif journal_tab=="enemies":
   var i=0
@@ -553,4 +553,4 @@ func draw_journal()->void:
    var entry=ChronicleDB.ACHIEVEMENTS[id];var done=id in history.achievements;var y=222+i*110
    panel(Rect2(105,y-26,1230,96));text(("達成 / " if done else "未達成 / ")+entry[0],Vector2(125,y+2),21,TEAL if done else GOLD)
    text(entry[1],Vector2(125,y+40),16,TEXT);i+=1
-  text("見切り %d / 5  ・  契約達成 %d  ・  発見 %d / 23"%[history.evades,history.contracts,history.legends.size()],Vector2(720,820),17,GOLD,true)
+  text("見切り %d / 5  ・  契約達成 %d  ・  発見 %d / %d"%[history.evades,history.contracts,history.legends.size(),ItemDB.LEGENDS.size()],Vector2(720,820),17,GOLD,true)
