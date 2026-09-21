@@ -11,7 +11,11 @@ func setup(g,p:Vector2,value:Dictionary,type:String="item")->void:
  game=g;position=p;item=value;kind=type
  if font.fallbacks.is_empty():
   var jp_path="res://assets/fonts/NotoSansJP-Regular.subset.ttf"
-  if ResourceLoader.exists(jp_path):font.fallbacks=[load(jp_path)]
+  var extra_path="res://assets/fonts/NotoSansJP-Extra.ttf"
+  var fallbacks=[]
+  if ResourceLoader.exists(jp_path):fallbacks.append(load(jp_path))
+  if ResourceLoader.exists(extra_path):fallbacks.append(load(extra_path))
+  if not fallbacks.is_empty():font.fallbacks=fallbacks
  icon=load("res://assets/icons/"+("potion" if kind=="health" else ("chest" if kind=="chest" else ("sword" if item.slot in Loadout.WEAPONS else ("accessory" if item.slot in ["accessory","accessory2"] else "armor"))))+".svg")
 func tick(dt:float)->void:
  age+=dt
@@ -45,16 +49,14 @@ func _draw()->void:
   for side in [-1,1]:draw_line(Vector2(side*10,-195),Vector2(0,-205),Color("ffe4a3"),2,true)
  if kind=="item" and (game.player.position.distance_to(position)<170 or (rarity>=2 and game.enemies.is_empty())):
   var near:bool=game.player.position.distance_to(position)<210
-  var detail:String="ティア %d / %s"%[int(item.tier),ItemDB.slot_text(String(item.slot))]
+  var target=game.player.item_upgrade_target(item) if kind=="item" else String(item.slot)
+  var detail:String="ティア %d / %s"%[int(item.tier),ItemDB.slot_text(target if not target.is_empty() else String(item.slot))]
   var detail_color:=Color("9aabb0")
-  if near and rarity<3:
-   var delta:float=game.player.item_upgrade_ratio(item)
-   if delta>.035:
-    detail+="  /  ▲ 強化 +%d%%"%maxi(1,roundi(delta*100.0));detail_color=Color("91d7b8")
-   elif delta<-.035:
-    detail+="  /  ▼ 弱体 %d%%"%roundi(delta*100.0);detail_color=Color("dc8f84")
-   else:
-    detail+="  /  ≈ 同等";detail_color=Color("c9c3a5")
+  if near:
+   var signals=game.player.item_comparison(item,target)
+   if not signals.is_empty():
+    detail+="  /  "+" · ".join(signals.slice(0,3))
+    detail_color=Color("91d7b8") if signals.any(func(v):return String(v).ends_with("↑") or String(v)=="固有能力") else Color("c9c3a5")
   if rarity>=3:detail+=" / "+BuildDB.SET_NAMES.get(ItemDB.set_of(item),"固有効果")
   var name_w:float=font.get_string_size(item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,13).x
   var detail_w:float=font.get_string_size(detail,HORIZONTAL_ALIGNMENT_LEFT,-1,11).x

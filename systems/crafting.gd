@@ -8,6 +8,12 @@ static func cost(it:Dictionary,action:String,active:Array)->int:
 static func compatible(a:Dictionary,b:Dictionary)->bool:
  if a.id==b.id or protected(b):return false
  return (a.get("weapon_type","")==b.get("weapon_type","") if a.slot in Loadout.WEAPONS and b.slot in Loadout.WEAPONS else a.slot==b.slot) and int(a.get("grade",1))==int(b.get("grade",1))
+static func remap_roll(value:float,limits:Array,ratio:float)->Dictionary:
+ if limits.size()!=2:return {"value":value*ratio,"limits":[value*ratio,value*ratio]}
+ var low=float(limits[0]);var high=float(limits[1])
+ var quality=.5 if high<=low else clampf((value-low)/(high-low),0,1)
+ var next_limits=[low*ratio,high*ratio]
+ return {"value":lerpf(next_limits[0],next_limits[1],quality),"limits":next_limits}
 static func apply(p,it:Dictionary,action:String,inherit:String="")->String:
  var price=cost(it,action,p.active_oaths)
  if p.materials<price:return "素材が足りません / 必要 %d"%price
@@ -30,11 +36,15 @@ static func apply(p,it:Dictionary,action:String,inherit:String="")->String:
    if int(it.enhance)<10:return "+10強化が必要です"
    if not it.affixes.is_empty() and not it.affixes.has(inherit):return "継承するAffixを選んでください"
    var ratio=ItemDB.GRADES[int(it.grade)]/ItemDB.GRADES[int(it.grade)-1]
-   for key in it.base:it.base[key]*=ratio
-   for key in it.rolls:
-    if it.base.has(key):it.rolls[key]=[it.rolls[key][0]*ratio,it.rolls[key][1]*ratio]
-   # Preserve all earned affixes; the selected one gains an explicit heirloom bonus.
-   if it.affixes.has(inherit):it.affixes[inherit]*=1.08;it.inherited=inherit
+   for key in it.base:
+    var mapped=remap_roll(float(it.base[key]),it.rolls.get(key,[it.base[key],it.base[key]]),ratio)
+    it.base[key]=mapped.value;it.rolls[key]=mapped.limits
+   for key in it.affixes:
+    var mapped_affix=remap_roll(float(it.affixes[key]),it.rolls.get(key,[it.affixes[key],it.affixes[key]]),ratio)
+    it.affixes[key]=mapped_affix.value;it.rolls[key]=mapped_affix.limits
+   # Preserve roll percentile across the whole item; the chosen heirloom affix gains an extra 8%.
+   if it.affixes.has(inherit):
+    it.affixes[inherit]*=1.08;it.rolls[inherit][1]*=1.08;it.inherited=inherit
    it.grade+=1;it.enhance=0
    if it.slot in Loadout.WEAPONS and int(it.rarity)<3:it.name=WeaponDB.NAMES[it.weapon_type][int(it.grade)-1]
   _:return "不明な操作"

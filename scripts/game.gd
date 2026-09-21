@@ -30,6 +30,13 @@ const ROOM_MODIFIER_TEXT={
  5:"炎の刻印 / 直線状に危険地帯が出現",
  6:"火の軌跡 / 立ち止まるな",
  8:"いばらの行進 / 十字の危険地帯が追ってくる"}
+const ENCOUNTER_PATTERN_TEXT={
+ "lane":"縦列進軍 / 奥へ重なった敵を貫け",
+ "surround":"円形包囲 / 周囲をまとめて崩せ",
+ "shield_line":"盾陣と後衛 / 前衛を崩して射線を開け",
+ "arcane_court":"遠隔散開 / 距離のある詠唱者を連続で捉えろ",
+ "rush_cross":"交差突撃 / 直線突進を避けて群れを束ねろ",
+ "combined":"混成陣 / 盾・突撃・後衛を三連で処理しろ"}
 const ASCENSION_VOWS=[
  {"id":"ember_tide","name":"炎の波","detail":"聖域のギミック発生間隔が22%短くなる。"},
  {"id":"thickened_veil","name":"厚い帳","detail":"誓いなき騎士の生命 +28%、攻撃 +8%。"},
@@ -118,8 +125,8 @@ func clear_world()->void:
  pending_upgrades=0;victory_pending=false;wave=0;encounter_room=-1;room_modifier_timer=0;last_room=-1;hitstop=0;shake_amount=0;toast_time=0;banner_time=0
  metrics=ProfileStore.empty_run_metrics()
 func start_run(resume:bool=false,ascend:bool=false)->void:
- if ascend and is_instance_valid(player) and player.inventory.size()>40:
-  toast("所持品を40個以下に分解してから次へ進んでください。");return
+ if ascend and is_instance_valid(player) and player.inventory.size()>80:
+  toast("所持品を80個以下に整理してから次へ進んでください。");return
  var carry={}
  if ascend and is_instance_valid(player):carry={"materials":player.materials,"active_oaths":player.active_oaths.duplicate(),"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"level":player.level,"upgrades":player.upgrades.duplicate(true),"ascension":ascension+1}
  clear_world();rng.randomize();run_seed=20260920 if OS.get_cmdline_user_args().has("--campaign") else rng.randi();rng.seed=run_seed
@@ -265,18 +272,74 @@ func encounter_pool(room_id:int,current_wave:int)->Array:
    6:pool.append_array(["hound","warden"])
    8:pool.append_array(["cantor","hound","warden"])
  return pool
+func encounter_pattern(room_id:int,current_wave:int)->String:
+ match room_id:
+  1:return "lane" if current_wave%2==1 else "surround"
+  2,3:return "surround" if current_wave%2==1 else "lane"
+  4:return "shield_line"
+  5:return "arcane_court"
+  6:return "rush_cross"
+  8:return "combined"
+  10:return "surround"
+  11:return "shield_line"
+ return ""
+func formation_point(room:Dictionary,offset:Vector2,index:int)->Vector2:
+ var p=room.center+offset
+ if dungeon.walkable(p,35) and p.distance_to(player.position)>170:return p
+ return dungeon.spawn_point(room.id,index)
+func encounter_plan(room:Dictionary,current_wave:int,total:int)->Array:
+ var pattern=encounter_pattern(int(room.id),current_wave);var plan=[];var center=room.center
+ var inward=(center-player.position).normalized()
+ if inward.length()<.1:inward=Vector2.RIGHT
+ var side=inward.orthogonal()
+ match pattern:
+  "lane":
+   var kinds=["hollow","hound","hollow","cantor","hound","hollow"]
+   for i in range(mini(total,6)):
+    var depth=-220+i*92
+    plan.append({"kind":kinds[i%kinds.size()],"p":formation_point(room,inward*depth+side*((i%2)*28-14),i)})
+  "surround":
+   var kinds=["hollow","hound","hollow","hound","cantor","hollow","hound","cantor"]
+   for i in range(mini(total,8)):
+    var radius=175+(i%2)*55;var a=i*TAU/maxi(1,mini(total,8))+.22*current_wave
+    plan.append({"kind":kinds[i%kinds.size()],"p":formation_point(room,Vector2.from_angle(a)*radius,i)})
+  "shield_line":
+   var front_count=mini(3,total)
+   for i in range(front_count):
+    plan.append({"kind":"warden","p":formation_point(room,inward*-65+side*((i-(front_count-1)/2.0)*120),i)})
+   var back_kinds=["cantor","summoner","cantor"]
+   for i in range(front_count,total):
+    var j=i-front_count
+    plan.append({"kind":back_kinds[j%back_kinds.size()],"p":formation_point(room,inward*185+side*((j%3)-1)*170,i)})
+  "arcane_court":
+   var offsets=[Vector2(-260,-190),Vector2(260,-190),Vector2(-260,190),Vector2(260,190),Vector2(0,-250),Vector2(0,250)]
+   for i in range(mini(total,offsets.size())):
+    plan.append({"kind":"summoner" if i==0 and current_wave>1 else "cantor","p":formation_point(room,offsets[i],i)})
+  "rush_cross":
+   var offsets=[Vector2(-250,0),Vector2(250,0),Vector2(0,-230),Vector2(0,230),Vector2(-170,-170),Vector2(170,170)]
+   for i in range(mini(total,offsets.size())):
+    plan.append({"kind":"hound" if i<4 else "hollow","p":formation_point(room,offsets[i],i)})
+  "combined":
+   var specs=[
+    ["warden",inward*-90+side*-105],["warden",inward*-90+side*105],
+    ["summoner",inward*220],["cantor",inward*170+side*230],
+    ["hound",side*-270],["hound",side*270]]
+   for i in range(mini(total,specs.size())):
+    plan.append({"kind":specs[i][0],"p":formation_point(room,specs[i][1],i)})
+ return plan
 func spawn_wave()->void:
  var room=dungeon.rooms[dungeon.active];wave+=1;wave_delay=3
  if room.id==9:spawn_enemy("boss",room.center+Vector2(200,0),7,9);return
  var pool=encounter_pool(room.id,wave)
  var enemy_total=room.count+wave*2+ascension_wave_bonus()
+ var pattern=encounter_pattern(room.id,wave);var plan=encounter_plan(room,wave,enemy_total)
  for i in range(enemy_total):
-  var kind=pool[rng.randi_range(0,pool.size()-1)]
-  if i==1 and room.tier>=3:kind="warden"
-  if i==2 and room.tier>=3:kind="summoner" if wave%2==0 else "cantor"
+  var kind=String(plan[i].kind) if i<plan.size() else String(pool[rng.randi_range(0,pool.size()-1)])
+  var spawn_at=plan[i].p if i<plan.size() else dungeon.spawn_point(room.id,i)
   if i==0 and wave==room.waves and room.id in [3,4,6,8]:kind="elite"
-  spawn_enemy(kind,dungeon.spawn_point(room.id,i),room.tier,room.id)
- if wave>1:toast("%s  /  ウェーブ %d / %d"%[room.encounter,wave,room.waves])
+  spawn_enemy(kind,spawn_at,room.tier,room.id)
+ if not pattern.is_empty():toast(ENCOUNTER_PATTERN_TEXT[pattern]+"  /  %d-%d"%[wave,room.waves])
+ elif wave>1:toast("%s  /  ウェーブ %d / %d"%[room.encounter,wave,room.waves])
 func spawn_enemy(kind:String,p:Vector2,tier:int,room:int,affix:String=""):
  var e=EnemyScript.new();add_child(e);e.setup(self,kind,p,tier,room,affix);enemies.append(e);return e
 func clear_encounter()->void:
@@ -331,6 +394,9 @@ func tick_delayed_blasts(dt:float)->void:
 func chain_lightning(p:Vector2,amount:float,source=null,limit:int=3)->void:
  var count=0
  if player.synergy("storm"):limit+=2
+ if player.has_effect("wide_lightning"):limit+=2
+ if player.has_effect("storm_cap"):limit+=1;amount*=1.10
+ if player.has_effect("high_voltage"):amount*=1.25
  for e in enemies.duplicate():
   if e==source or e.dead or e.position.distance_to(p)>270 or not dungeon.line_clear(p,e.position):continue
   fx.lightning(p,e.position);e.take_damage(amount,Vector2.ZERO,false,true);count+=1
@@ -362,6 +428,10 @@ func tick_hazards(dt:float)->void:
      if e.position.distance_to(h.p)<h.radius:e.ignite(h.damage*.2,.6)
    elif h.p.distance_to(player.position)<h.radius:player.take_damage(h.damage)
   if h.life<=0:hazards.remove_at(i)
+func roll_material_yield(find_bonus:float)->int:
+ var bonus=clampf(find_bonus,0,2)
+ var whole=floori(bonus);var fraction=bonus-whole
+ return 1+whole+(1 if fraction>0 and rng.randf()<fraction else 0)
 func enemy_died(e,proc:bool=false)->void:
  enemies.erase(e);kills+=1;metrics.kills+=1
  profile.chronicle.enemies[e.kind]=int(profile.chronicle.enemies.get(e.kind,0))+1
@@ -371,7 +441,7 @@ func enemy_died(e,proc:bool=false)->void:
  fx.burst(e.position,Color("caad86"),85 if e.kind=="boss" else 15,200);sound.play("enemy_death",.55);player.gain_xp(e.xp if not e.spawned_minion else 0);player.heal(player.upgrades.get("leech",0))
  if player.has_effect("chain") and not proc:chain_lightning(e.position,player.stats.attack*.9,e)
  if e.spawned_minion:return
- player.materials+=maxi(1,roundi(1+clampf(player.stats.material_find,0,2)))
+ player.materials+=roll_material_yield(player.stats.material_find)
  if e.kind in ["elite","boss"]:profile.oaths.points+=3 if e.kind=="boss" else 1
  var tier=maxi(1,dungeon.rooms[e.room_id].tier+ascension*2)
  if e.kind=="boss":
@@ -395,8 +465,10 @@ func spawn_chest(p:Vector2,tier:int,gilded:bool)->void:
  var d=DropScript.new();add_child(d);d.setup(self,p,{"tier":tier,"gilded":gilded},"chest");d.z_index=1400;drops.append(d)
 func collect(d)->bool:
  if d.taken or d.kind!="item":return false
- if player.inventory.size()>=40:
-  if toast_time<.3:toast("所持品が満杯です。[I] 不要な装備を比較・分解してください。")
+ if profile.settings.get("auto_salvage_rare",false) and int(d.item.rarity)<=1:
+  player.materials+=Forge.yield_for(d.item,player.stats);metrics.pickups+=1;sound.play("equip",.45);toast("自動分解: "+d.item.name);d.take();save_run();return true
+ if player.inventory.size()>=80:
+  if toast_time<.3:toast("所持品が満杯です。[I] フィルタ・保管庫・分解で整理してください。")
   return false
  player.inventory.append(d.item.duplicate(true));record_item(d.item);metrics.pickups+=1;sound.play("loot",.65);toast("回収: "+d.item.name+"  [I] 比較");d.take();return true
 func interact()->void:
@@ -425,18 +497,17 @@ func salvage(i:int)->void:
  toast("分解素材を獲得し、少し生命を回復しました。");ui.selected=clampi(ui.selected,0,maxi(0,player.inventory.size()-1));save_run()
 func prepare_upgrade()->void:
  upgrade_choices.clear();var pool=UPGRADE_POOL.duplicate(true)
- # Legacy spear_count stays functional, but new characters choose an explicit path.
  pool=pool.filter(func(c):return c.key!="spear_count")
+ var chain_pool=BuildDB.chain_choices(player.equipment,player.upgrades)
+ if not chain_pool.is_empty():upgrade_choices.append(chain_pool.pop_at(rng.randi_range(0,chain_pool.size()-1)))
+ pool.append_array(chain_pool)
  var branches=BuildDB.available(player.upgrades,profile.chronicle.achievements)
- if player.level==2 and BuildDB.lance_key(player.upgrades).is_empty():
-  upgrade_choices=BuildDB.LANCE_PATHS.duplicate(true);mode="upgrade";ui.reset_touch();return
- if not branches.is_empty():
-  upgrade_choices.append(branches.pop_at(rng.randi_range(0,branches.size()-1)))
  pool.append_array(branches)
  for i in range(pool.size()-1,-1,-1):
   if pool[i].key=="spear_count" and player.upgrades.get("spear_count",0)>0:pool.remove_at(i)
   elif pool[i].key=="cdr" and player.stats.cdr>=.52:pool.remove_at(i)
- while upgrade_choices.size()<3:upgrade_choices.append(pool.pop_at(rng.randi_range(0,pool.size()-1)))
+  elif player.upgrades.get(pool[i].key,0)>=pool[i].get("max",99):pool.remove_at(i)
+ while upgrade_choices.size()<3 and not pool.is_empty():upgrade_choices.append(pool.pop_at(rng.randi_range(0,pool.size()-1)))
  mode="upgrade";ui.reset_touch()
 func choose_upgrade(i:int)->void:
  if mode!="upgrade" or i<0 or i>=upgrade_choices.size():return

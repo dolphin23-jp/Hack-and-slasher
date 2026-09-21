@@ -22,6 +22,12 @@ var attack_cd=0.0
 var attack_time=0.0
 var combo=0
 var combo_expire=0.0
+var last_chain_weapon=""
+var chain_streak=0
+var chain_history=[]
+var repeat_next=false
+var repeat_block=false
+var skip_next=false
 var swing_count=0
 var invulnerable=0.0
 var flash=0.0
@@ -68,28 +74,107 @@ func average_weapon_power(loadout:Dictionary=equipment)->float:
  return value
 func weapon_power(it:Dictionary)->float:return Loadout.equipped_stats(it).get("attack",0)
 func build_score(loadout:Dictionary=equipment)->float:
+ # This is only an internal replacement-slot heuristic. The UI deliberately
+ # exposes multidimensional tags instead of claiming one definitive strength %.
  var s:Dictionary=calculated(loadout)
  var dps:float=float(s.attack)*(1.0+float(s.haste))
  dps*=1.0+float(s.crit)*float(s.crit_damage)
  var score:float=dps+float(s.hp)*.018+float(s.armor)*.10+float(s.speed)*5.0
+ score+=chain_affinity(loadout)*dps*.035
+ var has_magic=false
+ for weapon_slot in Loadout.WEAPONS:
+  if "magic" in WeaponDB.get_weapon(loadout[weapon_slot]).types:has_magic=true
+  var gear=loadout[weapon_slot];var kind=String(gear.get("weapon_type","sword"));var tier=int(gear.get("tier",1))
+  if tier>=3:score+=dps*({"scythe":.055,"spear":.045,"fist":.035,"mace":.04}.get(kind,.025))
+  if tier>=4:score+=dps*({"staff":.065,"scythe":.045,"mace":.04,"spellblade":.04}.get(kind,.025))
+  if tier>=5:score+=dps*.055
  for slot in ItemDB.SLOTS:
-  match String(loadout[slot].effect):
+  var item=loadout[slot]
+  match String(item.get("effect","")):
    "echo":score+=dps*.28
    "crit_blast":score+=dps*.16
    "chain":score+=dps*.12
+  match String(item.get("unique","")):
+   "double_spin":score+=dps*.16
+   "split_lance":score+=dps*.10
+   "ricochet":score+=dps*.12
+   "fist_nova":score+=dps*.12
+   "shield_reach":score+=dps*.07
+   "wide_chain":score+=dps*.07
+   "chain_guard","chain_aegis":score+=dps*.045
+   "crit_repeat":score+=dps*.11
+   "dodge_skip":score+=dps*.065
+   "chain_cooldown":score+=dps*.085
+   "barrier_burst_armor":score+=dps*.075
+   "full_shield_double_magic":
+    if has_magic:score+=dps*.12
  return score
+func chain_affinity(loadout:Dictionary)->float:
+ var kinds=[];var attrs=[];var score=0.0
+ for slot in Loadout.WEAPONS:
+  var kind=String(loadout[slot].get("weapon_type","sword"));kinds.append(kind)
+  var attr=String(WeaponDB.get_weapon(loadout[slot]).types[0])
+  if attr not in attrs:attrs.append(attr)
+ for i in range(3):
+  var previous=String(kinds[i]);var current=String(kinds[(i+1)%3])
+  var profile=CombatChain.transition_profile(previous,current,kinds,2,true)
+  if float(profile.damage)>1.001 or float(profile.reach)>1.001 or float(profile.knock)>1.001:score+=1
+ if attrs.size()==3:score+=1.5
+ if kinds[0]==kinds[1] and kinds[1]==kinds[2]:score+=1.25
+ return score
+func item_comparison(item:Dictionary,target:String="")->Array:
+ if not ItemDB.valid(item):return []
+ if target.is_empty():target=item_upgrade_target(item)
+ if target.is_empty() or not Loadout.accepts(item,target):return []
+ var before=stats;var loadout=equipment.duplicate(true);loadout[target]=item;var after=calculated(loadout)
+ var tags=[]
+ var attack_delta=float(after.attack)-float(before.attack)
+ if attack_delta>1.0:tags.append("攻撃↑")
+ elif attack_delta<-1.0:tags.append("攻撃↓")
+ var hp_delta=float(after.hp)-float(before.hp)
+ if hp_delta>8:tags.append("生命↑")
+ elif hp_delta<-8:tags.append("生命↓")
+ var armor_delta=float(after.armor)-float(before.armor)
+ if armor_delta>3:tags.append("防御↑")
+ elif armor_delta<-3:tags.append("防御↓")
+ if target in Loadout.WEAPONS:
+  var old_weapon=WeaponDB.get_weapon(equipment[target]);var new_weapon=WeaponDB.get_weapon(item)
+  if float(new_weapon.reach)>float(old_weapon.reach)*1.08:tags.append("範囲↑")
+  elif float(new_weapon.reach)<float(old_weapon.reach)*.92:tags.append("範囲↓")
+  if float(new_weapon.cooldown)<float(old_weapon.cooldown)*.92:tags.append("手数↑")
+  var before_chain=chain_affinity(equipment);var after_chain=chain_affinity(loadout)
+  if after_chain>before_chain+.2:tags.append("連携相性↑")
+  elif after_chain<before_chain-.2:tags.append("連携相性↓")
+  var attrs=WeaponDB.attributes(item)
+  if WeaponDB.attributes(equipment[target])!=attrs:tags.append(attrs)
+ if int(item.rarity)>=3:tags.append("固有能力")
+ if tags.is_empty():tags.append("数値は近似")
+ return tags
+func item_upgrade_target(item:Dictionary)->String:
+ if not ItemDB.valid(item):return ""
+ var current:float=build_score(equipment)
+ if current<=0.001:return String(item.slot)
+ var best_target="";var best_ratio=-INF
+ for target in ItemDB.SLOTS:
+  if not Loadout.accepts(item,target):continue
+  var loadout:Dictionary=equipment.duplicate(true);loadout[target]=item
+  var ratio=build_score(loadout)/current-1.0
+  if ratio>best_ratio:best_ratio=ratio;best_target=target
+ return best_target
 func item_upgrade_ratio(item:Dictionary)->float:
- if not ItemDB.valid(item):return 0.0
- var slot:String=String(item.slot)
- if slot not in ItemDB.SLOTS:return 0.0
+ var target=item_upgrade_target(item)
+ if target.is_empty():return 0.0
  var current:float=build_score(equipment)
  if current<=0.001:return 0.0
- var loadout:Dictionary=equipment.duplicate(true)
- loadout[slot]=item
+ var loadout:Dictionary=equipment.duplicate(true);loadout[target]=item
  return build_score(loadout)/current-1.0
 func rebuild_stats()->void:stats=calculated();hp=minf(hp,stats.hp)
+func has_unique(id:String)->bool:
+ for slot in ItemDB.SLOTS:
+  if String(equipment[slot].get("unique",""))==id:return true
+ return false
 func has_effect(effect:String)->bool:
- if OathBoard.has_effect(active_oaths,effect):return true
+ if OathBoard.has_effect(game.profile.oaths,active_oaths,effect):return true
  for slot in ItemDB.SLOTS:
   if effect in ["echo","reaper","execution","judgement_echo","lance_fork","lance_return","echo_guard","dash_nova"] and equipment[slot].effect==effect:return true
  return false
@@ -149,8 +234,22 @@ func tick(dt:float)->void:
  anim+=dt*(9 if velocity.length()>20 else 2);z_index=clampi(int(position.y/10),-400,400)+500;queue_redraw()
 func attack()->bool:
  if dead or attack_cd>0 or dash_time>0:return false
- combo=combo%3+1;combo_expire=1.25;swing_count+=1
- CombatChain.strike(self)
+ var linked=combo_expire>0
+ chain_streak=mini(chain_streak+1,99) if linked else 1
+ repeat_block=false
+ if repeat_next and combo>0:
+  repeat_next=false;repeat_block=true
+ elif skip_next:
+  skip_next=false;combo=(combo+1)%3+1
+ else:combo=combo%3+1
+ var current_kind=String(equipment[Loadout.WEAPONS[combo-1]].get("weapon_type","sword"))
+ if linked:
+  chain_history.append(current_kind)
+  if chain_history.size()>3:chain_history.pop_front()
+ else:chain_history=[current_kind]
+ combo_expire=1.25;swing_count+=1
+ CombatChain.strike(self,linked)
+ repeat_block=false
  var amount=stats.attack
  if combo==3:
   if has_effect("reaper"):game.area_damage(position,165,stats.attack*.75);game.fx.ring(position,165,Color("cbd4ff"),.4)
@@ -167,6 +266,7 @@ func dash()->bool:
  dash_time=.19;invulnerable=maxf(invulnerable,.24);dash_cd=1.1*(1-clampf(stats.dodge_cdr,0,.6))*(1-stats.cdr*.55)*(.8 if upgrades.get("dash_hunter",0)>0 else 1.0)
  dash_evaded=false;dash_attack_time=.9;attack_time=0;attack_cd=minf(attack_cd,.12)
  dash_direction=last_move if velocity.length()>20 else facing;fire_tick=0
+ if has_unique("dodge_skip"):skip_next=true
  game.fx.ring(position,45,Color("a4ebe0"),.3);game.sound.play("dash");return true
 func skill_duration(i:int)->float:return [5.0,10.0,6.0][i]*(1-stats.cdr)*(.75 if i==2 and upgrades.get("giant_mastery",0)>0 else 1.0)
 func cast(i:int)->bool:

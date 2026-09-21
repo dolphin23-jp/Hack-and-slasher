@@ -8,10 +8,11 @@ static func empty_run_metrics()->Dictionary:
  return out
 var recovery_notice=""
 var path="user://ashen_vow_v1.json"
-var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false,"touch_size":.5,"touch_inset":.5,"hitstop":true}
+var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false,"touch_size":.5,"touch_inset":.5,"hitstop":true,"auto_salvage_rare":false}
 var records={"runs":0,"wins":0,"best_level":1,"best_ascension":0,"total_kills":0}
 var run={}
 var oaths=OathBoard.empty()
+var vault=[]
 var chronicle=ChronicleDB.empty()
 func read_save()->void:
  if not FileAccess.file_exists(path):return
@@ -47,6 +48,12 @@ func read_save()->void:
   for key in ["evades","contracts"]:
    if history.get(key) is int or history.get(key) is float:chronicle[key]=clampi(int(history[key]),0,100000000)
   if history.get("start","") in ["blade","lance","ember"]:chronicle.start=history.start
+ vault=[]
+ var saved_vault=data.get("vault",[])
+ if saved_vault is Array:
+  for item in saved_vault:
+   if vault.size()>=120:break
+   if ItemDB.valid(item):vault.append(item.duplicate(true))
  var s=data.get("run",{})
  if valid_run(s):
   run=s
@@ -77,7 +84,7 @@ func valid_run(v:Variant)->bool:
   for key in v.active_oaths:
    if not key is String or not OathBoard.PATHS.has(key) or key in seen:return false
    seen.append(key)
- if not v.equipment is Dictionary or not v.inventory is Array or v.inventory.size()>44 or not v.upgrades is Dictionary:return false
+ if not v.equipment is Dictionary or not v.inventory is Array or v.inventory.size()>84 or not v.upgrades is Dictionary:return false
  for slot in ItemDB.SLOTS:
   if not ItemDB.valid(v.equipment.get(slot)):return false
  for item in v.inventory:
@@ -124,5 +131,5 @@ func vector_valid(v:Variant)->bool:
 func write_save()->bool:
  var f=FileAccess.open(path+".tmp",FileAccess.WRITE)
  if f==null:return false
- f.store_string(JSON.stringify({"version":VERSION,"settings":settings,"records":records,"run":run,"chronicle":chronicle,"oaths":oaths}));f.flush();f.close()
+ f.store_string(JSON.stringify({"version":VERSION,"settings":settings,"records":records,"run":run,"chronicle":chronicle,"oaths":oaths,"vault":vault}));f.flush();f.close()
  return DirAccess.rename_absolute(path+".tmp",path)==OK

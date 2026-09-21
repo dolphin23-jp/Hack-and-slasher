@@ -48,10 +48,13 @@ func touch_rect(r:Rect2)->Rect2:
 func _ready()->void:
  mouse_filter=Control.MOUSE_FILTER_IGNORE
  var jp_path="res://assets/fonts/NotoSansJP-Regular.subset.ttf"
+ var extra_path="res://assets/fonts/NotoSansJP-Extra.ttf"
  if ResourceLoader.exists(jp_path):
   japanese_font=load(jp_path)
-  body.fallbacks=[japanese_font]
-  heading.fallbacks=[japanese_font]
+  var fallbacks=[japanese_font]
+  if ResourceLoader.exists(extra_path):fallbacks.append(load(extra_path))
+  body.fallbacks=fallbacks
+  heading.fallbacks=fallbacks
  for name in ["sword","armor","accessory","cleave","nova","bolt","dash","potion","crest","chest","flame","chain","crit"]:icons[name]=load("res://assets/icons/"+name+".svg")
 func layout_scale()->float:
  var size=get_viewport_rect().size
@@ -451,8 +454,7 @@ func draw_upgrades()->void:
   var c=game.upgrade_choices[i];var r=Rect2(221+i*344,299,310,356);var focused=r.has_point(hover) or (pad_active and buttons.size()==pad_focus);panel(r,Color("19313a") if focused else PANEL,GOLD if focused else LINE)
   icon(c.icon,Rect2(r.get_center().x-49,r.position.y+31,98,98));text(c.name,Vector2(r.get_center().x,r.position.y+177),20,TEXT,true,true);wrapped_text(c.detail,r.position+Vector2(25,220),260,16,MUTED,25)
   text("[ %d ] この誓いを選ぶ"%(i+1),Vector2(r.get_center().x,r.end.y-25),13,GOLD,true);buttons.append({"rect":r,"action":"upgrade:"+str(i)})
- var branch=BuildDB.lance_key(game.player.upgrades)
- text("ランスの形を選択 / この探索中は変更できません" if branch.is_empty() and game.player.level==2 else "武器の順番・祝福・誓印を組み合わせよう。",Vector2(720,714),15,MUTED,true)
+ text("現在装備中の3武器・順番・属性構成を見て祝福候補が変化します。",Vector2(720,714),15,MUTED,true)
 func draw_pause()->void:
  dim();icon("crest",Rect2(680,147,80,80));text("束の間の静寂",Vector2(720,280),32,TEXT,true,true)
  button(Rect2(535,333,370,53),"大聖堂へ戻る","resume",true);button(Rect2(535,402,370,48),"設定","settings");button(Rect2(535,467,370,48),"遊び方","help");button(Rect2(535,532,370,48),"保存してタイトルへ","title")
@@ -537,7 +539,8 @@ func draw_journal()->void:
    panel(Rect2(pos,Vector2(630,126)),PANEL,GOLD if found else LINE)
    text(entry.name if found else "未発見 / "+ItemDB.slot_text(entry.slot),pos+Vector2(19,29),19,GOLD if found else MUTED)
    text("三連の聖遺物",pos+Vector2(455,29),14,TEAL)
-   wrapped_text((ReliquaryUI.UNIQUE_TEXT[ItemDB.UNIQUE[WeaponDB.TYPES.keys().find(entry.get("weapon_type",WeaponDB.TYPES.keys()[idx%7]))]] if entry.slot=="weapon" else "3連携完了で障壁を獲得。旧属性能力は誓印盤へ移行。") if found else "宝箱、精鋭、危険な契約、王の戦利品から発見できる。",pos+Vector2(19,62),590,15,TEXT if found else MUTED,24)
+   var preview={"unique":ItemDB.legendary_unique(entry,entry.get("weapon_type",WeaponDB.TYPES.keys()[idx%7]))}
+   wrapped_text(ItemDB.unique_text(preview) if found else "宝箱、精鋭、危険な契約、王の戦利品から発見できる。",pos+Vector2(19,62),590,15,TEXT if found else MUTED,24)
   button(Rect2(566,806,308,48),"次の頁" if journal_page==0 else "前の頁","journal_next")
  elif journal_tab=="enemies":
   var i=0

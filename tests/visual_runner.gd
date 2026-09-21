@@ -343,6 +343,18 @@ func _run() -> void:
 	await _shot("30_mythic_drop_ipad")
 	game.mode="inventory";game.player.inventory.append(myth);game.ui.selected=game.player.inventory.size()-1
 	await _shot("31_mythic_detail_ipad")
+	await _click(Vector2(115,294))
+	_expect("inventory filter cycles on iPad",game.ui.reliquary.filter_mode=="weapon")
+	await _shot("32_inventory_filter_ipad")
+	await _click(Vector2(1270,311))
+	_expect("large item detail opens on iPad",game.ui.reliquary.focus_detail)
+	await _shot("33_inventory_detail_focus_ipad")
+	var vault_before=game.profile.vault.size()
+	await _click(Vector2(1035,794))
+	_expect("focused detail can move an item to the vault",game.profile.vault.size()==vault_before+1)
+	await _click(Vector2(860,48))
+	_expect("vault tab opens after storing an item",game.ui.reliquary.tab=="vault")
+	await _shot("34_vault_ipad")
 
 	var summary := "VISUAL_SMOKE shots=%d failures=%d\n" % [shots, failures.size()]
 	for failure in failures:
