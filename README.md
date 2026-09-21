@@ -32,7 +32,7 @@ See [the update and design notes](docs/CATHEDRAL_REBORN.md) for rules, controls 
 - 50 expansion behavior checks covering real combat, skill/equipment interactions, contracts, legacy saves, disk restart and discovery.
 - Original ten-room campaign, including treasury and boss, using movement and normal attacks for combat.
 - Southern-route campaign using normal attacks, skills, dodge and healing; both paid contracts must complete before the boss.
-- 53 Skill 2.0 and recipe behavior checks; 108 item / forge / oath / migration checks.
+- 55 Skill 2.0 and recipe behavior checks; 108 item / forge / oath / migration checks.
 - 38 rendered UI captures with click/gamepad/touch checks, including journal, contracts, awakened boss, equipment synergy and simultaneous stick/attack at iPad-class aspect ratio.
 - Script errors and resource leaks fail CI. Web export and Chromium / touch / PWA runtime gates remain required before merging.
 

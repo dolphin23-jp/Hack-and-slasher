@@ -97,6 +97,14 @@ func run()->void:
  clear();p=game.player;p.cast(1);p.dead=true;WeaponActionResolver.tick(p,1)
  check("death cancels pending stages",p.skill_actions.is_empty() and game.projectiles.is_empty())
  check("out-of-range skill buttons are harmless",not p.cast(-1) and not p.cast(3))
+ clear();p=game.player;equip(["fist","fist","fist"]);e=foe(Vector2(65,0));e.hp=1000000;e.max_hp=e.hp
+ for i in range(150):p.attack_cd=0;p.attack()
+ check("sustained combos beyond 99 retain bounded charge tracking",p.chain_streak==150 and p.finisher_charge==4 and p.normal_groups.size()<=4)
+ clear();equip(["staff","staff","staff"]);e=foe(Vector2(160,0))
+ for i in range(3):p.attack_cd=0;p.attack()
+ p.dead=true
+ for bolt in game.projectiles.duplicate():bolt.tick(.2)
+ check("late projectiles cannot charge a dead player",p.finisher_charge==0)
  DirAccess.make_dir_recursive_absolute("res://test-artifacts")
  var summary="SKILL checks=%d failures=%d\n"%[checks,failures.size()]
  FileAccess.open("res://test-artifacts/skill_summary.txt",FileAccess.WRITE).store_string(summary+"\n".join(failures));print(summary)

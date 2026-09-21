@@ -117,11 +117,9 @@ func build_score(loadout:Dictionary=equipment)->float:
     if has_magic:score+=dps*.12
  return score
 func chain_affinity(loadout:Dictionary)->float:
- var kinds=[];var attrs=[];var score=0.0
+ var kinds=[];var score=0.0
  for slot in Loadout.WEAPONS:
   var kind=String(loadout[slot].get("weapon_type","sword"));kinds.append(kind)
-  for attr in WeaponDB.get_weapon(loadout[slot]).types:
-   if attr not in attrs:attrs.append(attr)
  for i in range(3):
   var previous=String(kinds[i]);var current=String(kinds[(i+1)%3])
   var profile=CombatChain.transition_profile(previous,current,kinds,2,true)
@@ -243,7 +241,7 @@ func tick(dt:float)->void:
 func attack()->bool:
  if dead or attack_cd>0 or dash_time>0:return false
  var linked=combo_expire>0
- chain_streak=mini(chain_streak+1,99) if linked else 1
+ chain_streak=chain_streak+1 if linked else 1
  repeat_block=false
  if repeat_next and combo>0:
   repeat_next=false;repeat_block=true

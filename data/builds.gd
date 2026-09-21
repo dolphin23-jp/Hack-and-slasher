@@ -13,11 +13,9 @@ const CHOICES=[
 const SET_NAMES={"storm":"雷の遺産","cinder":"残り火","echo":"残響"}
 const SET_TEXT={"storm":"2部位: 雷撃が最大5体へ。槍・杖の武技初撃にも雷撃が発生。","cinder":"2部位: 炎上中の敵への剣・直接スキルダメージ +30%。","echo":"2部位: スキル使用で次の剣3段目が2連撃になる。"}
 static func chain_choices(equipment:Dictionary,upgrades:Dictionary)->Array:
- var kinds=[];var attrs=[]
+ var kinds=[]
  for slot in Loadout.WEAPONS:
   var kind=String(equipment[slot].get("weapon_type","sword"));kinds.append(kind)
-  for attr in WeaponDB.get_weapon(equipment[slot]).types:
-   if attr not in attrs:attrs.append(attr)
  var out=[]
  for kind in kinds:
   var key="master_"+kind
