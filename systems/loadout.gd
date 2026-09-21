@@ -12,4 +12,5 @@ static func equipped_stats(item:Dictionary)->Dictionary:
   for key in table:result[key]=result.get(key,0)+float(table[key])*(1+int(item.get("enhance",0))*.03)
  if int(item.get("tier",1))>=2 and item.slot not in WEAPONS:result.shield_regen=result.get("shield_regen",0)+1
  if int(item.get("tier",1))>=3 and item.slot not in WEAPONS:result.healing=result.get("healing",0)+.04
+ if int(item.get("tier",1))>=4 and item.slot not in WEAPONS:result.fatal_resist=result.get("fatal_resist",0)+.03
  return result

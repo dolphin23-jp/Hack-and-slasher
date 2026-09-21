@@ -53,7 +53,7 @@ static func generate(rng:RandomNumberGenerator,depth:int,rarity:int=-1,legend:in
   var l=LEGENDS[legend_index]
   kind=l.get("weapon_type",WeaponDB.TYPES.keys()[legend_index%7])
   slot=l.slot;name=l.name;effect=l.effect
-  description="3番目の攻撃範囲拡張。固有挙動: "+UNIQUE[WeaponDB.TYPES.keys().find(kind)]
+  description=WeaponDB.UNIQUE_TEXT[UNIQUE[WeaponDB.TYPES.keys().find(kind)] if slot=="weapon" else "chain_guard"]
  var ranges={};var base={};var power=GRADES[grade-1]
  var templates={"weapon":{"attack":10.0},"armor":{"armor":9.0,"hp":16.0},"head":{"hp":10.0},"hands":{"haste":.035},"feet":{"speed":.03},"accessory":{"crit":.02,"skill":.04}}
  for key in templates[slot]:

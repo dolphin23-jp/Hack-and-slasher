@@ -5,10 +5,14 @@ static func strike(p)->void:
  var w=WeaponDB.get_weapon(it);var g=p.game
  var amount=(p.stats.attack-p.average_weapon_power()+p.weapon_power(it))*w.damage
  var reach=w.reach*(1.15 if int(it.tier)>=2 else 1.0)*(1.15 if p.combo==3 else 1.0)
+ if p.dash_attack_time>0 and p.upgrades.get("dash_hunter",0)>0:reach+=35
  var unique=String(it.get("unique",""))
  if unique=="shield_reach" and p.barrier>=5:p.barrier-=5;reach*=1.3
  if unique=="wide_chain" and p.combo==3:reach*=1.2
- if p.counter_time>0:amount*=1.75 if p.upgrades.get("riposte",0)>0 else 1.35;p.counter_time=0
+ if p.counter_time>0:
+  amount*=1.75 if p.upgrades.get("riposte",0)>0 else 1.35
+  if p.upgrades.get("storm_counter",0)>0:g.chain_lightning(p.position,p.stats.attack*.8,null,2)
+  p.counter_time=0
  p.attack_cd=w.cooldown/(1+p.stats.haste);p.attack_time=.2
  var rounds=1+(1 if int(it.rarity)==4 and p.combo==3 else 0)+(1 if (int(it.tier)>=5 and p.combo==3) or (unique=="double_spin" and w.shape=="circle") else 0)
  var landed=0

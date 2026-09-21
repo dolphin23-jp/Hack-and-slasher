@@ -266,7 +266,8 @@ func _draw()->void:
    if big_map:draw_map(Rect2(280,195,880,440),true)
  if game.toast_time>0:
   var w=body.get_string_size(game.toast_text,HORIZONTAL_ALIGNMENT_LEFT,-1,16).x+42
-  panel(Rect2(720-w/2,108,w,36),Color(.06,.12,.17,.94),Color(.45,.58,.55,.5));text(game.toast_text,Vector2(720,132),16,TEXT,true)
+  var toast_y=864 if game.mode in ["inventory","victory_inventory","oaths"] else 108
+  panel(Rect2(720-w/2,toast_y,w,36),Color(.06,.12,.17,.94),Color(.45,.58,.55,.5));text(game.toast_text,Vector2(720,toast_y+24),16,TEXT,true)
 func text(s:String,p:Vector2,size:int=18,c:Color=TEXT,center:bool=false,serif:bool=false)->void:
  var f=heading if serif else body;var at=p
  if center:at.x-=f.get_string_size(s,HORIZONTAL_ALIGNMENT_LEFT,-1,size).x/2

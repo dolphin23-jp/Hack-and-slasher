@@ -136,6 +136,31 @@ func run()->void:
   var unique_item=ItemDB.generate(game.rng,1,3,index)
   if unique_item.weapon_type not in found_types:found_types.append(unique_item.weapon_type)
  check("all seven unique weapon behaviors are obtainable",found_types.size()==7)
+ var legacy_build=legacy.duplicate(true);legacy_build.erase("active_oaths")
+ legacy_build.equipment.weapon.effect="ash_edge";legacy_build.equipment.armor.effect="fire_dash"
+ var old_build=SaveMigration.migrate({"version":1,"run":legacy_build})
+ check("legacy current Run keeps elemental build",old_build.run.active_oaths[0]=="flame")
+ var stat_item=ItemDB.initial_items().armor;stat_item.tier=4
+ check("armor T4 grants functional fatal resistance",Loadout.equipped_stats(stat_item).get("fatal_resist",0)>0)
+ var drop_counts=[]
+ for bonus in [0.0,2.0]:
+  clear();p=game.player;p.stats.drop_rate=bonus;p.stats.material_find=0;p.level=99;p.xp=0;game.rng.seed=4401
+  for i in range(100):
+   var target=foe(Vector2(100,0));target.dead=true;game.enemy_died(target,true);target.queue_free()
+  drop_counts.append(game.drops.filter(func(d):return d.kind=="item").size())
+ check("Drop Rate increases actual dropped item count",drop_counts[1]>drop_counts[0]*1.5)
+ check("Drop Rate has a finite chance cap",drop_counts[1]<100)
+ var jp=load("res://assets/fonts/NotoSansJP-Regular.subset.ttf")
+ var missing_glyphs=[]
+ for folder in ["actors","data","scripts","systems","ui","world"]:
+  for file in DirAccess.get_files_at("res://"+folder):
+   if not file.ends_with(".gd") and not file.ends_with(".json"):continue
+   var content=FileAccess.get_file_as_string("res://"+folder+"/"+file)
+   for character in content:
+    var code=character.unicode_at(0)
+    if code>=0x3000 and code<=0x9fff and not jp.has_char(code) and character not in missing_glyphs:missing_glyphs.append(character)
+ check("bundled Japanese font covers every UI kanji",missing_glyphs.is_empty())
+ if not missing_glyphs.is_empty():print("Missing glyphs: ",missing_glyphs)
  print("V03 checks=",count," failures=",failures.size())
  game.shutdown(0 if failures.is_empty() else 1)
 func check_roll(it:Dictionary)->void:

@@ -82,7 +82,7 @@ non-Common weights, capped at +200%. Material Find and Salvage affect their own 
 
 Save version 2, same `ashen_vow_v1.json` path. Before upgrading version 1, preserve
 `.v1.bak`. Preserve records, settings, Chronicle, discoveries, contracts, map version,
-checkpoint, equipment and inventory; fill six missing slots. Migration is idempotent.
+checkpoint, equipment and inventory; fill six missing slots. Infer the active elemental oath for an old in-progress Run from its equipped sets. Migration is idempotent.
 Invalid Run data is rejected without crashing, with a recovery backup and title notice.
 A mid-combat resume uses the existing cleared-sanctuary checkpoint policy.
 
@@ -94,16 +94,18 @@ trigger themselves. UI stays on the existing touch/gamepad input routing.
 
 Existing 67 gameplay and 51 expansion assertions remain, with obsolete fixed-sword
 and elemental-set expectations updated for the new specification. Added `v03_runner.gd`
-checks real family hit geometry, chain order, four damage types, dodge cancellation,
+now contains 76 assertions and checks real family hit geometry, chain order, four damage types, dodge cancellation,
 roll bounds, crafting, affix inheritance, grade balance, protection, uniques, oaths,
 disk restoration, malformed values and actual version-1 migration.
 
 CI retains the original ten-room campaign, southern campaign, rendered UI, resource
 leak gate, Web export, Chromium runtime and touch/PWA smoke. It additionally runs
 four explicit weapon-chain campaigns and the 0.3 regression. Visual coverage includes
-40 captures with forge, evolution, Tier upgrade, reordered chain, oath board and Mythic.
+40 captures, including four-finger move/attack/skill/dodge assertions, with forge, evolution, Tier upgrade, reordered chain, oath board and Mythic.
 
 Physical iPad Safari testing requires a real device. Desktop Chromium touch emulation
 and native 4:3 viewport tests do not establish device-specific Safari performance.
 The visual style remains the existing procedural 2D presentation, with seven distinct
 weapon silhouettes, new loot beams/rings and an original Mythic chime.
+
+The bundled Noto Sans JP subset is regenerated from the OFL upstream font for all current source text. A native glyph-coverage assertion prevents new Japanese labels from silently becoming missing-glyph boxes; the font verification script pins its SHA-256.

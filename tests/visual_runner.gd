@@ -283,6 +283,13 @@ func _run() -> void:
 	Input.parse_input_event(drag)
 	await _frames(2)
 	_expect("stick and held attack coexist", game.player.touch_move.x > .5 and game.player.touch_attack)
+	game.player.cooldowns[0]=0;game.player.dash_time=0;game.player.dash_cd=0
+	var down_skill:=InputEventScreenTouch.new();down_skill.index=4;down_skill.pressed=true;down_skill.position=_touch_position(Vector2(406,809))
+	Input.parse_input_event(down_skill);await _frames(1)
+	_expect("third touch casts skill while movement and attack stay held",game.player.cooldowns[0]>0 and game.player.touch_attack and game.player.touch_move.x>.5)
+	var down_dash:=InputEventScreenTouch.new();down_dash.index=5;down_dash.pressed=true;down_dash.position=_touch_position(Vector2(1128,698))
+	Input.parse_input_event(down_dash);await _frames(1)
+	_expect("fourth touch dodges without releasing held movement or attack",game.player.dash_cd>0 and game.player.touch_attack and game.player.touch_move.x>.5)
 	await _shot("21_multitouch_ipad")
 	game.mode = "pause"
 	await _frames(2)

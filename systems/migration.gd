@@ -23,6 +23,16 @@ static func migrate(data:Dictionary)->Dictionary:
   if run.get("drops") is Array:
    for drop in run.drops:
     if drop is Dictionary and drop.get("kind")=="item":drop.item=item(drop.get("item"))
+  if out.get("version",1)==1 and not run.has("active_oaths") and run.get("equipment") is Dictionary:
+   var families={}
+   for gear in run.equipment.values():
+    if not gear is Dictionary:continue
+    var family=ItemDB.set_of(gear)
+    var oath={"storm":"storm","cinder":"flame","echo":"dance"}.get(family,"")
+    if not oath.is_empty():families[oath]=families.get(oath,0)+1
+   var active=families.keys()
+   active.sort_custom(func(a,b):return families[a]>families[b])
+   run.active_oaths=active if not active.is_empty() else ["dance"]
   run.materials=run.get("materials",0);run.active_oaths=run.get("active_oaths",out.oaths.active.duplicate());run.combo=run.get("combo",0)
  if out.get("version",1)==1:
   var legends=out.get("chronicle",{}).get("legends",[]) if out.get("chronicle") is Dictionary else []

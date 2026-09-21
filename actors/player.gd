@@ -34,10 +34,6 @@ var dash_nova_cd=0.0
 var echo_ready=false
 var barrier=0.0
 var barrier_time=0.0
-const COMBO=[
- {"reach":122.0,"arc":.85,"damage":1.0,"knock":175.0,"cooldown":.29},
- {"reach":137.0,"arc":1.55,"damage":1.05,"knock":220.0,"cooldown":.34},
- {"reach":151.0,"arc":1.18,"damage":1.8,"knock":370.0,"cooldown":.52}]
 var anim=0.0
 var dead=false
 var touch_move=Vector2.ZERO

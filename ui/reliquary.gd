@@ -1,6 +1,6 @@
 class_name ReliquaryUI
 extends RefCounted
-const UNIQUE_TEXT={"wide_chain":"3番目の範囲がさらに20%拡大","double_spin":"鎌が二重に回転","split_lance":"槍から側方へ貫通波2本","ricochet":"魔力弾が壁で2回反射","fist_nova":"3番目に周囲打撃","shield_reach":"障壁5消費で範囲30%増加","chain_guard":"3連携完了で障壁を獲得"}
+const UNIQUE_TEXT=WeaponDB.UNIQUE_TEXT
 var tab="equipment"
 var target="weapon"
 var forge_slot="weapon"
