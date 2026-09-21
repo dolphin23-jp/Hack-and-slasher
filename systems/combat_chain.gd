@@ -8,8 +8,14 @@ static func strike(p)->void:
  if p.swing_count>1:
   var previous=p.equipment[Loadout.WEAPONS[(p.combo+1)%3]]
   transition=WeaponDB.transition(previous,it)
-  amount*=float(transition.damage)
+  amount*=float(transition.damage)*(1+float(p.upgrades.get("transition_power",0)))
  var reach=w.reach*(1.15 if int(it.tier)>=2 else 1.0)*(1.15 if p.combo==3 else 1.0)
+ if p.combo==2:reach*=1+float(p.upgrades.get("slot2_range",0))
+ if p.combo==3:
+  amount*=1+float(p.upgrades.get("slot3_power",0))
+  if WeaponDB.same_family_chain(p.equipment):amount*=1+float(p.upgrades.get("family_finisher",0))
+  if WeaponDB.distinct_primary_chain(p.equipment):amount*=1+float(p.upgrades.get("triad_finisher",0))
+  if transition.id=="reap_cast":amount*=1+float(p.upgrades.get("reap_cast_power",0))
  if transition.id=="spell_edge":reach*=1.12
  if transition.id=="reap_cast":
   var focus=p.position+p.facing*minf(reach*.45,180.0)
