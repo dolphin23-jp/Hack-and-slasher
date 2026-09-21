@@ -6,7 +6,11 @@ controller/touch controls and Web/PWA remain the foundation. No save path is ren
 ## Combat
 
 Hold the existing attack input to cycle weapon slots 1 → 2 → 3 → 1. Pausing does
-not reset the order. Slot three gains 15% reach. Every family cancels into dodge.
+not reset the order. A short uninterrupted chain now gives meaning to the transition
+itself: slash→blunt can create 断甲, blunt→pierce creates 破砕貫通, magic→slash
+creates 魔力纏刃, and scythe→staff creates 収束魔撃. Three distinct primary
+attributes trigger 三相連環; three identical weapon families trigger 同型極撃.
+Every family still cancels into dodge.
 
 | Family | Type | Attack | Base interval |
 |---|---|---|---|
@@ -42,41 +46,73 @@ Schema 3 keeps `id`, `name`, `slot`, `rarity`, `tier`, `base`, `affixes`, `effec
 | Mythic | 1.70–2.05 | 4 |
 
 Rolls are sampled independently; base and affix keys do not overwrite each other's
-range metadata. The detail view shows rolled/current upper values.
+range metadata. Affixes use weighted weapon/slot pools instead of flat random choice:
+spears favor pierce/penetration, staves favor magic/skill/CDR, hands favor haste/crit,
+feet favor movement/dodge, armor favors HP/armor/barrier, while low-weight off-theme
+rolls remain possible. The detail view shows rolled/current upper values.
 
-T1 is the base. T2 increases weapon reach; T3 rewards multiple contacts with a
-shield; T4 opens stronger affixes and pull/piercing/guard-break behavior; T5 adds a
-third-slot strike. Armor tiers grant shield regeneration, healing, and chain shields.
+Tier behavior is family-specific rather than one shared template. Examples: T3 scythe
+rewards three-target contact with an extra rotation, T3 spear increases damage after
+the first pierced target, T4 staff gains a wall bounce, T4 scythe pulls enemies,
+T5 fist creates a circular finisher, T5 spear emits side lances, and T5 spellblade
+converts the finisher into barrier. Head, armor, hands, feet and accessories now also
+follow separate offensive, defensive, mobility and utility tier paths.
 
 Six grades use multipliers 1, 1.24, 1.54, 1.91, 2.37, 2.94. Enhancement +0…+10
 adds 3% per step. At equal rarity/roll, each grade +10 is slightly stronger than
 the next grade +0. Different rarity and roll quality still matter.
 
-The sixteen historical legendary discovery IDs remain. Seven explicit weapon
-relics add obtainable family-specific uniques (23 catalogue entries total).
-Mythic weapons add a third-slot strike and three-way projectiles; Mythic armor
-increases its chain shield contribution. Effects are bounded, with no recursive proc.
+Historical legendary discovery IDs remain. Seven explicit weapon relics keep their
+family-specific uniques, and new armor-slot legendaries can alter chain rules directly:
+critical hits can repeat the current weapon once, dodge can skip the next weapon,
+full barrier can duplicate magic attacks, chain completion can convert barrier into
+area damage or shorten skill cooldowns. Mythic behavior is family-specific instead
+of a universal "legendary + three-way projectile" rule. Effects are bounded with
+guards against recursive repeats.
 
 ## Forge and oaths
 
-Inventory contains separate equipment/forge tabs. Forge the selected equipped slot:
-enhance, fuse an unprotected item of the same family/grade (lowest rarity first),
-raise Tier with fusion progress, or evolve +10 equipment. Evolution preserves all
-affixes and boosts the selected inherited affix by 8%; it resets enhancement.
-Salvage yields materials and a small heal. Lock/favorite protects against salvage
-and fusion. Bulk salvage affects unprotected Common/Rare inventory only.
+Inventory contains equipment, forge and persistent vault tabs. The bag cap is 80,
+with 40-item pages, filters, junk marks, optional automatic Common/Rare salvage and a
+120-item profile vault. A selected item can open a large detail mode suitable for
+the 4:3 iPad layout. Forge the selected equipped slot: enhance, fuse an unprotected
+item of the same family/grade (lowest rarity first), raise Tier with fusion progress,
+or evolve +10 equipment. Evolution preserves the roll percentile of every base stat
+and affix when mapping into the next grade range; the selected inherited affix then
+receives a further 8% bonus. Salvage yields materials and a small heal. Lock/favorite
+protects against salvage and fusion; bulk salvage can also consume explicit junk.
 
 Six permanent paths: 戦舞, 秘術, 城塞, 紅蓮, 雷霆, 探究. Select one primary and up to
-two distinct secondary paths before departure. Secondary stats are half strength
-and grant only the first passive. Three capped ranks per path cost earned oath
-fragments. Elite/boss kills award fragments. Active selections are saved per Run;
-selection and rank editing are disabled from the in-Run board.
+two distinct secondary paths before departure; at least one primary is always
+required. Each path now owns a seven-node permanent tree with prerequisite nodes,
+a mutually exclusive middle branch and a final capstone. Legacy rank data maps into
+the first nodes so existing saves remain useful. Secondary paths contribute half
+their node stats; branch effects and capstones are primary-path behavior.
+Elite/boss kills still award oath fragments.
 
 Fire and lightning procs come from active oaths, not the old equipment sets.
 Old elemental discoveries receive two fragments per discovery on version-1 migration.
 Equipment stats and IDs are retained; legacy items receive compatible behavior.
 Drop Rate scales drop frequency, capped at 90%; Rarity Find separately scales
-non-Common weights, capped at +200%. Material Find and Salvage affect their own yields.
+non-Common weights, capped at +200%. Fractional Material Find is probabilistic rather
+than rounded away: +30% means one guaranteed material plus a 30% chance for another.
+Salvage affects its own yield.
+
+
+## Encounter composition and Run blessings
+
+Level-up choices now inspect the currently equipped three weapons. At least one offer
+comes from the live chain pool when available: weapon-family mastery, transition
+power, slot-2 reach, three-attribute mastery, same-family mastery, or specific links
+such as scythe→staff. Legacy Spirit Lance branches remain selectable but are no longer
+forced at level 2.
+
+Rooms can spawn authored tactical formations before falling back to random fill:
+depth lanes reward line penetration, circular surrounds reward 360-degree control,
+shield lines protect ranged backliners, arcane courts spread casters at range, rush
+crosses create intersecting charge lanes, and combined-arms waves mix wardens,
+summoners, cantors and hounds. The encounter problem is therefore intended to make
+weapon order and shape selection matter rather than simply increasing enemy count.
 
 ## Persistence and limits
 
@@ -87,16 +123,18 @@ Invalid Run data is rejected without crashing, with a recovery backup and title 
 A mid-combat resume uses the existing cleared-sanctuary checkpoint policy.
 
 Projectile cap 192, delayed blasts 64, hazards 96. Existing visual-effect and
-chain-lightning limits remain. Weapon T5 and Mythic extra strikes do not recursively
-trigger themselves. UI stays on the existing touch/gamepad input routing.
+chain-lightning limits remain. Weapon T5, Mythic extras and same-weapon repeat logic
+do not recursively trigger themselves. UI stays on the existing touch/gamepad input routing.
 
 ## Validation
 
-Existing 67 gameplay and 51 expansion assertions remain, with obsolete fixed-sword
-and elemental-set expectations updated for the new specification. Added `v03_runner.gd`
-now contains 76 assertions and checks real family hit geometry, chain order, four damage types, dodge cancellation,
-roll bounds, crafting, affix inheritance, grade balance, protection, uniques, oaths,
-disk restoration, malformed values and actual version-1 migration.
+Existing gameplay and expansion assertions remain, with the obsolete mandatory
+level-2 lance choice replaced by a chain-native blessing expectation while the three
+legacy lance branches keep dedicated behavior tests. `v03_runner.gd` additionally
+covers transition bonuses, weighted affixes, percentile-preserving evolution, distinct
+Tier identities, oath-tree branching, chain-rule legendaries, multidimensional item
+comparison, probabilistic material find, persistent vault storage, auto-salvage and
+tactical encounter formations.
 
 CI retains the original ten-room campaign, southern campaign, rendered UI, resource
 leak gate, Web export, Chromium runtime and touch/PWA smoke. It additionally runs
