@@ -32,6 +32,7 @@ var dash_evaded=false
 var dash_attack_time=0.0
 var dash_nova_cd=0.0
 var echo_ready=false
+var skip_next_weapon=false
 var barrier=0.0
 var barrier_time=0.0
 var anim=0.0
@@ -128,6 +129,10 @@ func has_effect(effect:String)->bool:
  for slot in ItemDB.SLOTS:
   if effect in ["echo","reaper","execution","judgement_echo","lance_fork","lance_return","echo_guard","dash_nova"] and equipment[slot].effect==effect:return true
  return false
+func has_unique(key:String)->bool:
+ for slot in ItemDB.SLOTS:
+  if String(equipment[slot].get("unique",""))==key:return true
+ return false
 func set_count(family:String,loadout:Dictionary=equipment)->int:
  var count=0
  for slot in ItemDB.SLOTS:
@@ -184,7 +189,11 @@ func tick(dt:float)->void:
  anim+=dt*(9 if velocity.length()>20 else 2);z_index=clampi(int(position.y/10),-400,400)+500;queue_redraw()
 func attack()->bool:
  if dead or attack_cd>0 or dash_time>0:return false
- combo=combo%3+1;combo_expire=1.25;swing_count+=1
+ combo=combo%3+1
+ if skip_next_weapon:
+  combo=combo%3+1;skip_next_weapon=false
+  game.fx.number(position+facing*38,"跳躍連環",Color("bfe9ff"))
+ combo_expire=1.25;swing_count+=1
  CombatChain.strike(self)
  var amount=stats.attack
  if combo==3:
@@ -202,6 +211,7 @@ func dash()->bool:
  dash_time=.19;invulnerable=maxf(invulnerable,.24);dash_cd=1.1*(1-clampf(stats.dodge_cdr,0,.6))*(1-stats.cdr*.55)*(.8 if upgrades.get("dash_hunter",0)>0 else 1.0)
  dash_evaded=false;dash_attack_time=.9;attack_time=0;attack_cd=minf(attack_cd,.12)
  dash_direction=last_move if velocity.length()>20 else facing;fire_tick=0
+ if has_unique("dodge_skip"):skip_next_weapon=true
  game.fx.ring(position,45,Color("a4ebe0"),.3);game.sound.play("dash");return true
 func skill_duration(i:int)->float:return [5.0,10.0,6.0][i]*(1-stats.cdr)*(.75 if i==2 and upgrades.get("giant_mastery",0)>0 else 1.0)
 func cast(i:int)->bool:
