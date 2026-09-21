@@ -85,7 +85,7 @@ func _input(event:InputEvent)->void:
   if event.is_action("map") and game.mode=="play":big_map=not big_map
   if game.mode=="upgrade" and event.keycode in [KEY_1,KEY_2,KEY_3]:game.choose_upgrade(event.keycode-KEY_1)
   if game.mode in ["inventory","victory_inventory"] and not reliquary.modal_active():
-   if event.keycode==KEY_ENTER:game.player.equip(selected);salvage_confirm=-1
+   if event.keycode==KEY_ENTER:game.player.equip(selected,reliquary.target);salvage_confirm=-1
    if event.keycode==KEY_DELETE:act("salvage")
    if event.keycode==KEY_RIGHT:selected=mini(game.player.inventory.size()-1,selected+1)
    if event.keycode==KEY_LEFT:selected=maxi(0,selected-1)
@@ -114,7 +114,7 @@ func _input(event:InputEvent)->void:
     if pad_back():get_viewport().set_input_as_handled()
     return
    if game.mode in ["inventory","victory_inventory"] and event.button_index==JOY_BUTTON_X and not reliquary.modal_active():
-    game.player.equip(selected);salvage_confirm=-1;get_viewport().set_input_as_handled();return
+    game.player.equip(selected,reliquary.target);salvage_confirm=-1;get_viewport().set_input_as_handled();return
    if game.mode in ["inventory","victory_inventory"] and event.button_index==JOY_BUTTON_Y:
     act("salvage");get_viewport().set_input_as_handled();return
    var direction=Vector2.ZERO
@@ -232,7 +232,7 @@ func act(action:String)->void:
   "journal_next":journal_page=(journal_page+1)%ceili(ItemDB.LEGENDS.size()/8.0)
   "back":game.mode=settings_return
   "title":game.return_to_title()
-  "equip":game.player.equip(selected);salvage_confirm=-1
+  "equip":game.player.equip(selected,reliquary.target);salvage_confirm=-1
   "sort":
    var selected_id:String=""
    if selected>=0 and selected<game.player.inventory.size():selected_id=String(game.player.inventory[selected].id)
