@@ -180,7 +180,7 @@ func _run() -> void:
 	game.toast_time = 0.0
 	game.banner_time = 0.0
 	await _frames(3)
-	_expect("elite affix metadata is exposed to HUD", elite.affix_name() == "VOLATILE" and not elite.affix_hint().is_empty())
+	_expect("elite affix metadata is exposed to HUD", elite.affix_name() == "爆裂" and not elite.affix_hint().is_empty())
 	await _shot("10b_elite_affix")
 	for enemy in game.enemies.duplicate():
 		if is_instance_valid(enemy):
