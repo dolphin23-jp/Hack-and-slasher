@@ -448,7 +448,7 @@ func weapon_native_upgrades()->Array:
  if WeaponDB.chain_synergy_score(player.equipment)>0:
   out.append({"name":"連携強化","detail":"武器間連携が発動する攻撃の威力 +12%。","icon":"bolt","key":"transition_power","value":.12})
  if WeaponDB.same_family_chain(player.equipment):
-  out.append({"name":"同型連環","detail":"同武器3連のフィニッシュ威力 +24%。","icon":"sword","key":"family_finisher","value":.24})
+  out.append({"name":"同型連環","detail":"同武器3連の3段目威力 +24%。","icon":"sword","key":"family_finisher","value":.24})
  if WeaponDB.distinct_primary_chain(player.equipment):
   out.append({"name":"三種循環","detail":"3属性すべて異なるチェインの3番目の武器威力 +24%。","icon":"nova","key":"triad_finisher","value":.24})
  for i in range(3):
