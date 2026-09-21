@@ -232,8 +232,9 @@ func draw(u)->void:
  if u.selected<0 or u.selected>=p.inventory.size():
   detail(u,p.equipment[target],Rect2(640,283,748,440),"装備中 / "+ItemDB.slot_text(target));return
  var it=p.inventory[u.selected]
- var auto_target=p.item_upgrade_target(it)
- if not auto_target.is_empty() and Loadout.accepts(it,auto_target):target=auto_target;forge_slot=auto_target
+ if not Loadout.accepts(it,target):
+  var auto_target=p.item_upgrade_target(it)
+  if not auto_target.is_empty():target=auto_target;forge_slot=auto_target
  draw_compare_panel(u,it,target,Rect2(640,283,748,440))
  u.button(Rect2(1190,294,178,32),"拡大比較","detail_toggle")
  u.button(Rect2(1000,294,178,32),"保管庫へ","vault_store")
@@ -247,8 +248,8 @@ func draw(u)->void:
 func draw_focus_detail(u)->void:
  var p=u.game.player
  if u.selected<0 or u.selected>=p.inventory.size():focus_detail=false;return
- var it=p.inventory[u.selected];var target_slot=p.item_upgrade_target(it)
- if target_slot.is_empty():target_slot=target
+ var it=p.inventory[u.selected];var target_slot=target if Loadout.accepts(it,target) else p.item_upgrade_target(it)
+ if target_slot.is_empty():target_slot=String(it.slot)
  var snap=EquipmentCompare.snapshot(p,it,target_slot)
  u.dim();u.text("拡大比較 / "+ItemDB.slot_text(target_slot),Vector2(55,60),29)
  u.button(Rect2(1160,35,220,48),"一覧へ戻る","detail_toggle")
@@ -285,7 +286,7 @@ func detail(u,it:Dictionary,r:Rect2,label:String)->void:
  u.panel(r,u.PANEL,ItemDB.COLORS[int(it.rarity)])
  var x=r.position.x+18;var y=r.position.y+26
  u.text(label,Vector2(x,y),14,u.MUTED)
- var art_size=minf(150.0,r.size.x*.24,r.size.y*.31);var art_r=Rect2(x,y+18,art_size,art_size)
+ var art_size=minf(150.0,minf(r.size.x*.24,r.size.y*.31));var art_r=Rect2(x,y+18,art_size,art_size)
  item_art(u,it,art_r)
  u.text("ART "+String(it.get("art_id","legacy")),Vector2(x+art_size/2,art_r.end.y+18),9,u.MUTED,true)
  var tx=x+art_size+28;var tw=r.size.x-art_size-64
