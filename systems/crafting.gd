@@ -58,5 +58,6 @@ static func apply(p,it:Dictionary,action:String,inherit:String="",selected_donor
     it.affixes[inherit]*=1.08;it.rolls[inherit][1]*=1.08;it.inherited=inherit
    it.grade+=1;it.enhance=0
    if it.slot in Loadout.WEAPONS and int(it.rarity)<3:it.name=WeaponDB.NAMES[it.weapon_type][int(it.grade)-1]
+   it.art_id=ItemDB.default_art_id(it)
   _:return "不明な操作"
  p.materials-=price;p.rebuild_stats();p.game.save_run();return "完了 / "+{"enhance":"強化","fuse":"合成","tier":"Tier上昇","evolve":"階級進化"}[action]
