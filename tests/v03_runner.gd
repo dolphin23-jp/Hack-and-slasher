@@ -86,6 +86,7 @@ func run()->void:
  check("mythic three real projectiles",game.projectiles.size()==3)
  var board=OathBoard.sanitize({"active":["dance","dance","storm","flame","seek"],"ranks":{},"points":4})
  check("main plus two unique secondary limit",board.active==["dance","storm","flame"])
+ check("oath board always keeps a main oath",OathBoard.sanitize({"active":[]}).active==["dance"])
  p.active_oaths=["flame"];check("flame independent of equipment",p.has_effect("ash_edge") and p.has_effect("fire_dash"))
  p.active_oaths=["storm"];check("storm independent of equipment",p.has_effect("chain"))
  p.active_oaths=[];check("inactive elemental gear gives no elemental proc",not p.has_effect("chain"))
@@ -150,6 +151,16 @@ func run()->void:
   drop_counts.append(game.drops.filter(func(d):return d.kind=="item").size())
  check("Drop Rate increases actual dropped item count",drop_counts[1]>drop_counts[0]*1.5)
  check("Drop Rate has a finite chance cap",drop_counts[1]<100)
+ clear();p=game.player;p.level=99;p.xp=0;p.materials=0;p.stats.drop_rate=0;p.stats.material_find=.3;game.rng.seed=9001
+ for i in range(1000):
+  var target=foe(Vector2(100,0));target.dead=true;game.enemy_died(target,true);target.queue_free()
+ check("fractional Material Find grants stochastic extra materials",p.materials>1200 and p.materials<1400)
+ var weakest=weapon("sword","weapon");weakest.base.attack=2.0
+ var middle=weapon("sword","weapon2");middle.base.attack=8.0
+ var strongest=weapon("sword","weapon3");strongest.base.attack=20.0
+ p.rebuild_stats()
+ var candidate=ItemDB.generate(game.rng,1,0);candidate.slot="weapon";candidate.weapon_type="sword";candidate.base={"attack":9.0};candidate.affixes={}
+ check("field comparison considers all three weapon slots",p.item_upgrade_ratio(candidate)>0.0)
  var jp=load("res://assets/fonts/NotoSansJP-Regular.subset.ttf")
  var missing_glyphs=[]
  for folder in ["actors","data","scripts","systems","ui","world"]:

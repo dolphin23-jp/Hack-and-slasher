@@ -84,9 +84,13 @@ func item_upgrade_ratio(item:Dictionary)->float:
  if slot not in ItemDB.SLOTS:return 0.0
  var current:float=build_score(equipment)
  if current<=0.001:return 0.0
- var loadout:Dictionary=equipment.duplicate(true)
- loadout[slot]=item
- return build_score(loadout)/current-1.0
+ var targets:Array=Loadout.WEAPONS if slot=="weapon" else [slot]
+ var best:float=-INF
+ for target in targets:
+  var loadout:Dictionary=equipment.duplicate(true)
+  loadout[target]=item
+  best=maxf(best,build_score(loadout)/current-1.0)
+ return best if best>-INF else 0.0
 func rebuild_stats()->void:stats=calculated();hp=minf(hp,stats.hp)
 func has_effect(effect:String)->bool:
  if OathBoard.has_effect(active_oaths,effect):return true

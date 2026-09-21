@@ -371,7 +371,10 @@ func enemy_died(e,proc:bool=false)->void:
  fx.burst(e.position,Color("caad86"),85 if e.kind=="boss" else 15,200);sound.play("enemy_death",.55);player.gain_xp(e.xp if not e.spawned_minion else 0);player.heal(player.upgrades.get("leech",0))
  if player.has_effect("chain") and not proc:chain_lightning(e.position,player.stats.attack*.9,e)
  if e.spawned_minion:return
- player.materials+=maxi(1,roundi(1+clampf(player.stats.material_find,0,2)))
+ var material_find:float=clampf(player.stats.material_find,0,2)
+ var material_gain:int=1+int(floor(material_find))
+ if rng.randf()<material_find-floor(material_find):material_gain+=1
+ player.materials+=material_gain
  if e.kind in ["elite","boss"]:profile.oaths.points+=3 if e.kind=="boss" else 1
  var tier=maxi(1,dungeon.rooms[e.room_id].tier+ascension*2)
  if e.kind=="boss":

@@ -20,6 +20,7 @@ static func sanitize(value:Variant)->Dictionary:
   for key in PATHS:
    var rank=value.ranks.get(key,0)
    if rank is int or rank is float:out.ranks[key]=clampi(int(rank),0,3)
+ if out.active.is_empty():out.active=["dance"]
  return out
 static func stats(board:Dictionary,active:Array)->Dictionary:
  var out={}
