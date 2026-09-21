@@ -4,7 +4,8 @@ extends Node
 const DT = 1.0 / 60.0
 const SUBSTEPS_PER_FRAME = 120
 const MAX_SIM_SECONDS = 2400.0
-const ROUTE = [1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
+var route = [1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
+var southern = false
 
 var game
 var route_index = 0
@@ -24,6 +25,9 @@ func _ready() -> void:
 
 func _run() -> void:
 	game.profile.run = {}
+	game.profile.chronicle.start = "blade"
+	southern = OS.get_cmdline_user_args().has("--southern")
+	if southern: route = [1, 2, 10, 11, 7, 8, 9]
 	game.start_run()
 	game.set_physics_process(false)
 	game.set_process(false)
@@ -34,6 +38,8 @@ func _run() -> void:
 
 	while simulated < MAX_SIM_SECONDS and game.mode not in ["victory", "dead"]:
 		for _substep in range(SUBSTEPS_PER_FRAME):
+			if game.mode == "event":
+				game.choose_contract(("blood" if game.player.hp>game.player.stats.hp*.25+1 else "danger") if game.event_room==10 else "wager")
 			if game.mode == "upgrade":
 				_choose_survival_blessing()
 			if game.mode == "dead" or game.mode == "victory":
@@ -43,6 +49,7 @@ func _run() -> void:
 				break
 
 			_drive_player()
+			if southern: _use_build_actions()
 			game.step(DT)
 			simulated += DT
 			if game.player.hp < last_hp - 0.5:
@@ -83,10 +90,11 @@ func _run() -> void:
 
 	if game.mode != "victory":
 		failures.append("campaign did not reach victory; mode=%s t=%.1f" % [game.mode, simulated])
-	if unique_visited.size() != 10:
-		failures.append("expected all 10 rooms visited, got " + str(unique_visited))
-	if 3 not in unique_visited:
-		failures.append("optional treasury was not visited")
+	var expected = [0,1,2,7,8,9,10,11] if southern else [0,1,2,3,4,5,6,7,8,9]
+	if unique_visited != expected:
+		failures.append("expected route rooms %s, got %s" % [expected,unique_visited])
+	if southern and game.metrics.contracts != 2:
+		failures.append("southern route must complete both paid contracts")
 	if attacks <= 0:
 		failures.append("normal attack was never used")
 	if game.player.dead:
@@ -98,7 +106,7 @@ func _run() -> void:
 	]
 	for failure in failures:
 		summary += "FAIL: " + failure + "\n"
-	var file = FileAccess.open("res://test-artifacts/campaign_summary.txt", FileAccess.WRITE)
+	var file = FileAccess.open("res://test-artifacts/southern_summary.txt" if southern else "res://test-artifacts/campaign_summary.txt", FileAccess.WRITE)
 	if file:
 		file.store_string(summary)
 		file.close()
@@ -106,14 +114,14 @@ func _run() -> void:
 	game.shutdown(0 if failures.is_empty() else 1)
 
 func _advance_route_if_ready() -> void:
-	if route_index >= ROUTE.size() or game.dungeon.active >= 0 or not game.enemies.is_empty():
+	if route_index >= route.size() or game.dungeon.active >= 0 or not game.enemies.is_empty():
 		return
-	var target_room: int = ROUTE[route_index]
+	var target_room: int = route[route_index]
 	var current_room = game.dungeon.room_at(game.player.position)
 	if current_room == target_room and target_room in game.dungeon.cleared:
 		route_index += 1
-		if route_index < ROUTE.size():
-			print("CAMPAIGN NEXT room=", ROUTE[route_index] + 1)
+		if route_index < route.size():
+			print("CAMPAIGN NEXT room=", route[route_index] + 1)
 
 func _drive_player() -> void:
 	var player = game.player
@@ -194,11 +202,11 @@ func _drive_player() -> void:
 		player.test_move = Vector2.ZERO
 		return
 
-	if route_index >= ROUTE.size():
+	if route_index >= route.size():
 		player.test_move = Vector2.ZERO
 		return
 
-	var room = game.dungeon.rooms[ROUTE[route_index]]
+	var room = game.dungeon.rooms[route[route_index]]
 	var to_room: Vector2 = room.center - player.position
 	if to_room.length() > 20.0:
 		player.facing = to_room.normalized()
@@ -574,3 +582,16 @@ func _choose_survival_blessing() -> void:
 			choice = i
 	game.choose_upgrade(choice)
 	blessings += 1
+
+func _use_build_actions()->void:
+	var player=game.player
+	if player.hp<player.stats.hp*.50:player.drink()
+	var target=_nearest_live_enemy()
+	if target==null:return
+	var distance=target.position.distance_to(player.position)
+	if distance<600:player.cast(2)
+	if distance<195:player.cast(0)
+	if distance<210:player.cast(1)
+	if target.state in ["charge","chain_windup"] or (target.state=="windup" and target.timer<.15 and distance<250):
+		if player.test_move.length()>.1:player.last_move=player.test_move.normalized()
+		player.dash()

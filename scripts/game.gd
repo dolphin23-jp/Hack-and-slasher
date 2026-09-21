@@ -47,6 +47,10 @@ var enemies=[]
 var projectiles=[]
 var drops=[]
 var hazards=[]
+var delayed_blasts=[]
+var event_choices={}
+var event_room=-1
+var loot_favor=0.0
 var enemy_data={}
 var rng=RandomNumberGenerator.new()
 var run_seed=0
@@ -72,13 +76,16 @@ var test_mode=false
 var metrics={}
 func _ready()->void:
  configure_input();test_mode=OS.get_cmdline_user_args().has("--test")
- if test_mode:profile.path="user://ashen_vow_test.json"
+ if test_mode:
+  profile.path="user://ashen_vow_test.json"
+  for suite in ["qa","expansion","campaign","southern"]:
+   if OS.get_cmdline_user_args().has("--"+suite):profile.path="user://ashen_vow_test_"+suite+".json"
  profile.read_save();enemy_data=JSON.parse_string(FileAccess.get_file_as_string("res://data/enemies.json"))
  sound=Soundscape.new();add_child(sound);sound.settings=profile.settings;sound.set_music("menu")
  var layer=CanvasLayer.new();layer.layer=10;add_child(layer)
  ui=UIScript.new();ui.game=self;layer.add_child(ui);ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  get_tree().auto_accept_quit=false
- for flag in ["qa","campaign"]:
+ for flag in ["qa","campaign","expansion"]:
   if OS.get_cmdline_user_args().has("--"+flag):
    var harness=load("res://tests/"+flag+"_runner.gd").new();harness.game=self;add_child(harness)
 func configure_input()->void:
@@ -107,7 +114,7 @@ func ascension_elite_damage_mult()->float:return 1.08 if has_ascension_vow("thic
 func clear_world()->void:
  for child in get_children():
   if child is Node2D:remove_child(child);child.queue_free()
- enemies.clear();projectiles.clear();drops.clear();hazards.clear()
+ enemies.clear();projectiles.clear();drops.clear();hazards.clear();delayed_blasts.clear();event_choices.clear();event_room=-1;loot_favor=0
  pending_upgrades=0;victory_pending=false;wave=0;encounter_room=-1;room_modifier_timer=0;last_room=-1;hitstop=0;shake_amount=0;toast_time=0;banner_time=0
  metrics=ProfileStore.empty_run_metrics()
 func start_run(resume:bool=false,ascend:bool=false)->void:
@@ -117,7 +124,9 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
  if ascend and is_instance_valid(player):carry={"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"level":player.level,"upgrades":player.upgrades.duplicate(true),"ascension":ascension+1}
  clear_world();rng.randomize();run_seed=20260920 if OS.get_cmdline_user_args().has("--campaign") else rng.randi();rng.seed=run_seed
  elapsed=0;kills=0;ascension=0
- dungeon=DungeonScript.new();add_child(dungeon);dungeon.setup(self)
+ if resume and profile.valid_run(profile.run):run_seed=int(profile.run.seed)
+ rng.seed=run_seed
+ dungeon=DungeonScript.new();dungeon.layout_version=int(profile.run.get("world_version",1)) if resume and profile.valid_run(profile.run) else 2;add_child(dungeon);dungeon.setup(self)
  fx=EffectScript.new();fx.z_index=2000;add_child(fx)
  overlay=OverlayScript.new();overlay.game=self;overlay.z_index=100;add_child(overlay)
  player=PlayerScript.new();add_child(player);player.setup(self);player.position=Vector2(-240,0)
@@ -137,13 +146,24 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
   if id<0 or id not in dungeon.cleared:player.position=dungeon.rooms[int(dungeon.cleared[-1])].center
   pending_upgrades=int(s.get("pending_upgrades",0))
   for record in s.get("drops",[]):
-   var d=DropScript.new();add_child(d);d.setup(self,Vector2(record.position[0],record.position[1]),record.item.duplicate(true),record.kind);d.age=1;d.z_index=230;drops.append(d)
+   var d=DropScript.new();add_child(d);d.setup(self,Vector2(record.position[0],record.position[1]),record.item.duplicate(true),record.kind);d.age=1;d.z_index=1400;drops.append(d)
  elif not carry.is_empty():
   player.equipment=carry.equipment;player.inventory=carry.inventory;player.level=carry.level;player.upgrades=carry.upgrades;ascension=carry.ascension;player.rebuild_stats();player.hp=player.stats.hp
- else:profile.records.runs+=1
+ else:
+  profile.records.runs+=1
+  match profile.chronicle.start:
+   "lance":
+    if "first_clear" in profile.chronicle.achievements:player.upgrades.lance_fan=1;player.upgrades.haste=-.1
+   "ember":
+    if "collector" in profile.chronicle.achievements:player.upgrades.ember_start=1;player.upgrades.hp=-15
+  player.rebuild_stats();player.hp=player.stats.hp
+ if resume and profile.valid_run(profile.run):
+  event_choices=profile.run.get("event_choices",{}).duplicate(true);loot_favor=float(profile.run.get("loot_favor",0))
+ for item in player.inventory:record_item(item)
+ for slot in ItemDB.SLOTS:record_item(player.equipment[slot])
  camera.position=player.position
  if resume and profile.valid_run(profile.run) and bool(profile.run.get("victory_ready",false)):
-  mode="victory";dungeon.active=-1;victory_pending=false;sound.set_music("menu");ui.selected=0;return
+  mode="victory";dungeon.active=-1;victory_pending=false;sound.set_music("victory_music");ui.selected=0;return
  mode="play";sound.set_music("dungeon")
  if ascension>0:
   var vow=ascension_vow();banner("アセンション %02d / %s"%[ascension,vow.name],vow.detail)
@@ -171,7 +191,7 @@ func step(dt:float)->void:
   if is_instance_valid(p) and not p.dead:p.tick(dt)
  for d in drops.duplicate():
   if is_instance_valid(d) and not d.taken:d.tick(dt)
- tick_hazards(dt);tick_room_modifier(dt);fx.tick(dt)
+ tick_hazards(dt);tick_delayed_blasts(dt);tick_room_modifier(dt);fx.tick(dt)
  if mode!="play":return
  if Input.is_action_just_pressed("interact") and not test_mode:interact()
  check_rooms(dt)
@@ -187,6 +207,8 @@ func check_rooms(dt:float)->void:
    if room.waves==0:
     dungeon.cleared.append(id);player.heal(player.stats.hp);player.potions=3
     spawn_chest(room.center+Vector2(0,125),room.tier,true);toast("生命と回復薬を補充しました。");save_run()
+   elif room.get("optional",false) and not event_choices.has(str(id)):
+    event_room=id;mode="event";ui.reset_touch()
    else:begin_encounter(id)
  if dungeon.active>=0:
   wave_delay-=dt
@@ -197,7 +219,10 @@ func check_rooms(dt:float)->void:
 func begin_encounter(id:int)->void:
  dungeon.active=id;encounter_room=id;wave=0;wave_delay=.9;room_modifier_timer=room_modifier_interval(4.5)
  if id in ROOM_MODIFIER_TEXT:toast(ROOM_MODIFIER_TEXT[id])
- if id==9:sound.set_music("boss_music");sound.play("boss")
+ if id==9:
+  sound.set_music("boss_music");sound.play("boss");toast("王の攻撃を見極めろ / 青緑の輪は反撃の機会")
+ elif id in [3,4,6,8,10,11]:sound.set_music("elite_music")
+ else:sound.set_music("dungeon")
 func room_hazard_point(p:Vector2)->Vector2:
  var room=dungeon.rooms[dungeon.active];var r=room.rect.grow(-125.0)
  var q=Vector2(clampf(p.x,r.position.x,r.end.x),clampf(p.y,r.position.y,r.end.y))
@@ -226,7 +251,11 @@ func tick_room_modifier(dt:float)->void:
    var offsets=[Vector2.ZERO,Vector2(145,0),Vector2(-145,0),Vector2(0,145),Vector2(0,-145)]
    for i in range(offsets.size()):add_hazard(room_hazard_point(player.position+offsets[i]),62,.12,damage,false,1.0+i*.08)
 func encounter_pool(room_id:int,current_wave:int)->Array:
- var pool=ROOM_ENEMY_POOLS.get(room_id,["hollow","hollow","hollow","cantor"]).duplicate()
+ var pool=ROOM_ENEMY_POOLS.get(room_id,["hollow","hound","warden","summoner"]).duplicate()
+ if room_id in [4,5,6,8,10,11]:pool.append("summoner")
+ var variant=int(dungeon.rooms[room_id].get("variant",0))
+ if variant==1:pool.append_array(["hound","cantor"])
+ elif variant==2:pool.append_array(["warden","summoner"])
  if current_wave>=2:
   match room_id:
    1:pool.append("cantor")
@@ -243,6 +272,8 @@ func spawn_wave()->void:
  var enemy_total=room.count+wave*2+ascension_wave_bonus()
  for i in range(enemy_total):
   var kind=pool[rng.randi_range(0,pool.size()-1)]
+  if i==1 and room.tier>=3:kind="warden"
+  if i==2 and room.tier>=3:kind="summoner" if wave%2==0 else "cantor"
   if i==0 and wave==room.waves and room.id in [3,4,6,8]:kind="elite"
   spawn_enemy(kind,dungeon.spawn_point(room.id,i),room.tier,room.id)
  if wave>1:toast("%s  /  ウェーブ %d / %d"%[room.encounter,wave,room.waves])
@@ -254,7 +285,9 @@ func clear_encounter()->void:
  var room=dungeon.rooms[id];dungeon.cleared.append(id);dungeon.active=-1
  for p in projectiles.duplicate():p.remove()
  hazards.clear();player.heal(player.stats.hp*.22);player.potions=mini(3,player.potions+1)
- spawn_chest(room.center+Vector2(0,125),room.tier,id in [3,4,6,8]);banner("聖域を解放","回復薬 +1。宝箱が開きました。次へ進む前に戦利品を確認できます。");save_run()
+ if room.get("optional",false):resolve_contract(id)
+ sound.set_music("dungeon")
+ spawn_chest(room.center+Vector2(0,125),room.tier,id in [3,4,6,8,10,11]);banner("聖域を解放","回復薬 +1。宝箱が開きました。次へ進む前に戦利品を確認できます。");save_run()
 func nearest_enemy(p:Vector2,reach:float=1000):
  var nearest=null;var best=reach*reach
  for e in enemies:
@@ -266,11 +299,16 @@ func melee(p:Vector2,dir:Vector2,reach:float,half_angle:float,amount:float,knock
  var hit=false
  for e in enemies.duplicate():
   var delta=e.position-p
-  if not e.dead and delta.length()<reach+e.radius*.3 and absf(dir.angle_to(delta))<half_angle and dungeon.line_clear(p,e.position):
-   var crit=rng.randf()<player.stats.crit;e.take_damage(amount*(1+player.stats.crit_damage if crit else 1),delta.normalized()*knock,crit)
+  if not e.dead and e.state not in ["spawn","transform"] and delta.length()<reach+e.radius*.3 and absf(dir.angle_to(delta))<half_angle and dungeon.line_clear(p,e.position):
+   var crit=rng.randf()<player.stats.crit
+   var extra=player.stats.attack if knock>=300 and player.has_effect("execution") and e.hp/e.max_hp<.3 else 0.0
+   e.take_damage((amount+extra)*(1+player.stats.crit_damage if crit else 1),delta.normalized()*knock,crit)
+   if player.has_effect("ash_edge") and not e.dead:e.ignite(player.stats.attack*.35,2.5)
    if crit:critical_effect(e.position)
    hit=true
- if hit:hitstop=.035;shake(2.5);sound.play("hit",.7)
+ if hit:
+  if profile.settings.get("hitstop",true):hitstop=.07 if knock>=300 else (.028 if player.combo==1 else .04)
+  shake(5 if knock>=300 else 2);sound.play("hit",.9 if knock>=300 else .65,.75 if knock>=300 else 1.1)
 func area_damage(p:Vector2,radius:float,amount:float,proc:bool=true,allow_crit:bool=false)->void:
  for e in enemies.duplicate():
   if e.dead or e.position.distance_to(p)>radius or not dungeon.line_clear(p,e.position):continue
@@ -281,10 +319,29 @@ func critical_effect(p:Vector2)->void:
  sound.play("crit",.7);shake(4)
  if player.has_effect("crit_blast") and player.crit_blast_cd<=0:
   player.crit_blast_cd=.7;fx.ring(p,125,Color("eeaf7c"),.35);area_damage(p,125,player.stats.attack*.8,true,false)
+func queue_blast(p:Vector2,radius:float,amount:float,delay:float,color:Color)->void:
+ delayed_blasts.append({"p":p,"radius":radius,"damage":amount,"delay":delay,"color":color})
+ fx.ring(p,radius,color,delay)
+func tick_delayed_blasts(dt:float)->void:
+ for i in range(delayed_blasts.size()-1,-1,-1):
+  var b=delayed_blasts[i];b.delay-=dt
+  if b.delay<=0:
+   delayed_blasts.remove_at(i);area_damage(b.p,b.radius,b.damage,true);fx.ring(b.p,b.radius,b.color,.35)
+func chain_lightning(p:Vector2,amount:float,source=null,limit:int=3)->void:
+ var count=0
+ if player.synergy("storm"):limit+=2
+ for e in enemies.duplicate():
+  if e==source or e.dead or e.position.distance_to(p)>270 or not dungeon.line_clear(p,e.position):continue
+  fx.lightning(p,e.position);e.take_damage(amount,Vector2.ZERO,false,true);count+=1
+  if count>=limit:break
 func fire(p:Vector2,v:Vector2,amount:float,friendly:bool=false,pierce:int=0,color:Color=Color("e0a8d7")):
  var bolt=ProjectileScript.new();add_child(bolt);bolt.game=self;bolt.position=p;bolt.velocity=v;bolt.damage=amount;bolt.friendly=friendly;bolt.pierce=pierce;bolt.color=color
  bolt.radius=8 if friendly else 10;bolt.z_index=1500;projectiles.append(bolt);return bolt
 func add_hazard(p:Vector2,radius:float,duration:float,amount:float,friendly:bool,delay:float)->void:
+ if friendly:
+  for h in hazards:
+   if h.friendly and h.p.distance_to(p)<radius*.85:
+    h.life=maxf(h.life,duration);h.damage=maxf(h.damage,amount);return
  hazards.append({"p":p,"radius":radius,"life":duration,"damage":amount,"friendly":friendly,"delay":delay,"max_delay":maxf(.01,delay),"tick":0.0})
 func tick_hazards(dt:float)->void:
  for i in range(hazards.size()-1,-1,-1):
@@ -296,51 +353,53 @@ func tick_hazards(dt:float)->void:
   h.life-=dt;h.tick-=dt
   if h.tick<=0:
    h.tick=.33
-   if h.friendly:area_damage(h.p,h.radius,h.damage*.33,true)
+   if h.friendly:
+    area_damage(h.p,h.radius,h.damage*.33,true)
+    for e in enemies:
+     if e.position.distance_to(h.p)<h.radius:e.ignite(h.damage*.2,.6)
    elif h.p.distance_to(player.position)<h.radius:player.take_damage(h.damage)
   if h.life<=0:hazards.remove_at(i)
 func enemy_died(e,proc:bool=false)->void:
  enemies.erase(e);kills+=1;metrics.kills+=1
+ profile.chronicle.enemies[e.kind]=int(profile.chronicle.enemies.get(e.kind,0))+1
+ if e.burn_time>0 and player.upgrades.get("ember_harvest",0)>0:player.heal(4)
+ check_achievements()
  if enemies.is_empty() and dungeon.active>=0:wave_delay=2.3
- fx.burst(e.position,Color("caad86"),85 if e.kind=="boss" else 15,200);sound.play("enemy_death",.55);player.gain_xp(e.xp);player.heal(player.upgrades.get("leech",0))
- if player.has_effect("chain") and not proc:
-  var count=0
-  for other in enemies.duplicate():
-   if other.dead or other.position.distance_to(e.position)>235:continue
-   fx.lightning(e.position,other.position);other.take_damage(player.stats.attack*.9,Vector2.ZERO,false,true);count+=1
-   if count>=3:break
+ fx.burst(e.position,Color("caad86"),85 if e.kind=="boss" else 15,200);sound.play("enemy_death",.55);player.gain_xp(e.xp if not e.spawned_minion else 0);player.heal(player.upgrades.get("leech",0))
+ if player.has_effect("chain") and not proc:chain_lightning(e.position,player.stats.attack*.9,e)
+ if e.spawned_minion:return
  var tier=maxi(1,dungeon.rooms[e.room_id].tier+ascension*2)
  if e.kind=="boss":
   for i in range(4):
-   var reward=ItemDB.generate(rng,tier,3,i);reward.boss_reward=true;spawn_drop(e.position+Vector2.from_angle(i*TAU/4)*70,reward)
+   var reward=ItemDB.generate(rng,tier,3,(i+ascension*4+int(run_seed%4)*4)%ItemDB.LEGENDS.size());reward.boss_reward=true;spawn_drop(e.position+Vector2.from_angle(i*TAU/4)*70,reward)
   for other in enemies.duplicate():other.dead=true;enemies.erase(other);other.queue_free()
   victory_pending=true
  elif e.kind=="elite":
-  spawn_drop(e.position,ItemDB.generate(rng,tier,3,{3:2,4:0,6:1,8:3}.get(e.room_id,0)))
+  spawn_drop(e.position,ItemDB.generate(rng,tier,3,-1))
   for i in range(2):spawn_drop(e.position+Vector2(i*42-20,40),ItemDB.generate(rng,tier,2))
- elif rng.randf()<.38:spawn_drop(e.position,ItemDB.generate(rng,tier))
+ elif rng.randf()<.38+loot_favor:spawn_drop(e.position,roll_loot(tier))
  if rng.randf()<.2:
   var d=DropScript.new();add_child(d);d.setup(self,e.position+Vector2(25,15),{},"health");d.z_index=200;drops.append(d)
 func spawn_drop(p:Vector2,item:Dictionary):
- var d=DropScript.new();add_child(d);d.setup(self,p,item);d.z_index=230;drops.append(d);metrics.drops+=1
+ var d=DropScript.new();add_child(d);d.setup(self,p,item);d.z_index=1400;drops.append(d);metrics.drops+=1
  if item.rarity>=2:
   sound.play("legendary" if item.rarity==3 else "rare",.75);fx.ring(p,110 if item.rarity==3 else 60,ItemDB.COLORS[int(item.rarity)],1);fx.burst(p,ItemDB.COLORS[int(item.rarity)],38 if item.rarity==3 else 18,210)
   if item.rarity==3:toast("レジェンダリー  /  "+item.name)
  return d
 func spawn_chest(p:Vector2,tier:int,gilded:bool)->void:
- var d=DropScript.new();add_child(d);d.setup(self,p,{"tier":tier,"gilded":gilded},"chest");d.z_index=230;drops.append(d)
+ var d=DropScript.new();add_child(d);d.setup(self,p,{"tier":tier,"gilded":gilded},"chest");d.z_index=1400;drops.append(d)
 func collect(d)->bool:
  if d.taken or d.kind!="item":return false
  if player.inventory.size()>=40:
   if toast_time<.3:toast("所持品が満杯です。[I] 不要な装備を比較・分解してください。")
   return false
- player.inventory.append(d.item.duplicate(true));metrics.pickups+=1;sound.play("loot",.65);toast("回収: "+d.item.name+"  [I] 比較");d.take();return true
+ player.inventory.append(d.item.duplicate(true));record_item(d.item);metrics.pickups+=1;sound.play("loot",.65);toast("回収: "+d.item.name+"  [I] 比較");d.take();return true
 func interact()->void:
  for d in drops.duplicate():
   if d.position.distance_to(player.position)>150 or d.taken:continue
   if d.kind=="chest":
    var at=d.position;var tier=int(d.item.tier);var gilded=d.item.gilded;d.take();sound.play("chest")
-   for i in range(4 if gilded else 3):spawn_drop(at+Vector2.from_angle(i*1.7)*50,ItemDB.generate(rng,maxi(1,tier),2 if i==0 else -1))
+   for i in range(4 if gilded else 3):spawn_drop(at+Vector2.from_angle(i*1.7)*50,roll_loot(maxi(1,tier),2 if i==0 else -1))
   elif d.kind=="item":collect(d)
 func inventory_before(a:Dictionary,b:Dictionary)->bool:
  var ar:int=int(a.rarity);var br:int=int(b.rarity)
@@ -359,14 +418,24 @@ func salvage(i:int)->void:
  toast("装備を分解し、少し生命を回復しました。");ui.selected=clampi(ui.selected,0,maxi(0,player.inventory.size()-1));save_run()
 func prepare_upgrade()->void:
  upgrade_choices.clear();var pool=UPGRADE_POOL.duplicate(true)
+ # Legacy spear_count stays functional, but new characters choose an explicit path.
+ pool=pool.filter(func(c):return c.key!="spear_count")
+ var branches=BuildDB.available(player.upgrades,profile.chronicle.achievements)
+ if player.level==2 and BuildDB.lance_key(player.upgrades).is_empty():
+  upgrade_choices=BuildDB.LANCE_PATHS.duplicate(true);mode="upgrade";ui.reset_touch();return
+ if not branches.is_empty():
+  upgrade_choices.append(branches.pop_at(rng.randi_range(0,branches.size()-1)))
+ pool.append_array(branches)
  for i in range(pool.size()-1,-1,-1):
   if pool[i].key=="spear_count" and player.upgrades.get("spear_count",0)>0:pool.remove_at(i)
   elif pool[i].key=="cdr" and player.stats.cdr>=.52:pool.remove_at(i)
- for i in range(3):upgrade_choices.append(pool.pop_at(rng.randi_range(0,pool.size()-1)))
- mode="upgrade"
+ while upgrade_choices.size()<3:upgrade_choices.append(pool.pop_at(rng.randi_range(0,pool.size()-1)))
+ mode="upgrade";ui.reset_touch()
 func choose_upgrade(i:int)->void:
- if i<0 or i>=upgrade_choices.size():return
- var c=upgrade_choices[i];player.upgrades[c.key]=player.upgrades.get(c.key,0)+c.value
+ if mode!="upgrade" or i<0 or i>=upgrade_choices.size():return
+ var c=upgrade_choices[i]
+ if c.get("family","")=="lance" and not BuildDB.lance_key(player.upgrades).is_empty():return
+ player.upgrades[c.key]=player.upgrades.get(c.key,0)+c.value
  for pair in [["crit","crit_damage",.2],["nova_radius","skill",.2],["speed","armor",10]]:
   if c.key==pair[0]:player.upgrades[pair[1]]=player.upgrades.get(pair[1],0)+pair[2]
  player.rebuild_stats();player.heal(player.stats.hp*.3);pending_upgrades=maxi(0,pending_upgrades-1);mode="play";sound.play("equip");toast("誓いを選択 / "+c.name);save_run()
@@ -386,14 +455,14 @@ func run_snapshot(victory_ready:bool=false)->Dictionary:
  if not victory_ready:
   for d in drops:
    if not d.taken and d.kind!="health":saved_drops.append({"kind":d.kind,"item":d.item.duplicate(true),"position":[d.position.x,d.position.y]})
- return {"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades,"victory_ready":victory_ready,"metrics":metrics.duplicate(true)}
+ return {"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades,"victory_ready":victory_ready,"metrics":metrics.duplicate(true),"world_version":dungeon.layout_version,"event_choices":event_choices.duplicate(true),"loot_favor":loot_favor}
 func finish_run()->void:
  victory_pending=false;mode="victory"
  if 9 not in dungeon.cleared:dungeon.cleared.append(9)
- dungeon.active=-1;profile.records.wins+=1;profile.records.best_level=maxi(profile.records.best_level,player.level);profile.records.best_ascension=maxi(profile.records.best_ascension,ascension);profile.records.total_kills+=kills
+ dungeon.active=-1;profile.records.wins+=1;check_achievements();profile.records.best_level=maxi(profile.records.best_level,player.level);profile.records.best_ascension=maxi(profile.records.best_ascension,ascension);profile.records.total_kills+=kills
  for d in drops.duplicate():
-  if d.kind=="item" and d.item.get("boss_reward",false):player.inventory.append(d.item.duplicate(true));metrics.pickups+=1;d.take()
- _persist_run_checkpoint(true);sound.set_music("menu");sound.play("legendary")
+  if d.kind=="item" and d.item.get("boss_reward",false):player.inventory.append(d.item.duplicate(true));record_item(d.item);metrics.pickups+=1;d.take()
+ _persist_run_checkpoint(true);sound.set_music("victory_music");sound.play("legendary")
 func _persist_run_checkpoint(victory_ready:bool)->bool:
  profile.records.best_ascension=maxi(profile.records.best_ascension,ascension)
  profile.run=run_snapshot(victory_ready)
@@ -406,7 +475,9 @@ func save_run()->void:
 func return_to_title()->void:save_run();mode="title";sound.set_music("menu")
 func _notification(what:int)->void:
  if what==NOTIFICATION_WM_CLOSE_REQUEST:shutdown()
- if what==NOTIFICATION_APPLICATION_FOCUS_OUT and mode=="play" and not test_mode:mode="pause"
+ if what==NOTIFICATION_APPLICATION_FOCUS_OUT and not test_mode:
+  if is_instance_valid(ui):ui.reset_touch()
+  if mode=="play":mode="pause";save_run()
 func shutdown(code:int=0)->void:
  save_run();profile.write_save();mode="title"
  if is_instance_valid(sound):
@@ -419,7 +490,10 @@ func shutdown(code:int=0)->void:
 func next_passage(id:int)->Dictionary:
  if id<0:return {}
  var target=-1
- for r in [1,2,4,5,6,7,8,9]:
+ var required=[1,2,4,5,6,7,8,9]
+ if 11 in dungeon.cleared:required=[7,8,9]
+ elif id==10:required=[11,7,8,9]
+ for r in required:
   if r not in dungeon.cleared:target=r;break
  if target<0:return {}
  var queue=[[id]];var seen=[id]
@@ -432,3 +506,46 @@ func next_passage(id:int)->Dictionary:
    var n=edge[1] if edge[0]==at else (edge[0] if edge[1]==at else -1)
    if n>=0 and n not in seen:seen.append(n);var route=path.duplicate();route.append(n);queue.append(route)
  return {}
+
+func roll_loot(tier:int,rarity:int=-1)->Dictionary:
+ if rarity<0 and loot_favor>0:
+  var roll=rng.randf()
+  rarity=3 if roll<.035 else (2 if roll<.30 else -1)
+ return ItemDB.generate(rng,tier,rarity)
+func risk_damage_multiplier()->float:return 1.2 if "danger" in event_choices.values() else 1.0
+func choose_contract(choice:String)->void:
+ if mode!="event" or event_room not in [10,11] or event_choices.has(str(event_room)):return
+ if event_room==10 and choice not in ["blood","danger","leave"]:return
+ if event_room==11 and choice not in ["wager","leave"]:return
+ if choice=="blood":
+  var cost=player.stats.hp*.25
+  if player.hp<=cost+1:toast("生命が足りません。別の契約を選べます。");return
+  player.hp-=cost
+ elif choice=="danger":loot_favor=.15
+ elif choice=="wager":
+  var loan=ItemDB.initial_items().weapon.duplicate(true)
+  loan.id="contract-loan";loan.name="契約の貸与剣";loan.base.attack=round(player.equipment.weapon.base.get("attack",9)*.7)
+  player.equipment.weapon=loan;player.rebuild_stats()
+ event_choices[str(event_room)]=choice;mode="play";begin_encounter(event_room);save_run()
+func resolve_contract(id:int)->void:
+ var choice=String(event_choices.get(str(id),"leave"))
+ if choice=="leave":return
+ profile.chronicle.contracts+=1;metrics.contracts+=1;check_achievements()
+ player.gain_xp(220+dungeon.rooms[id].tier*75)
+ var reward=ItemDB.generate(rng,dungeon.rooms[id].tier+1,3)
+ if choice=="wager":
+  var weapon_legends=[]
+  for i in range(ItemDB.LEGENDS.size()):
+   if ItemDB.LEGENDS[i].slot=="weapon":weapon_legends.append(i)
+  reward=ItemDB.generate(rng,dungeon.rooms[id].tier+1,3,weapon_legends[rng.randi_range(0,weapon_legends.size()-1)])
+ spawn_drop(dungeon.rooms[id].center+Vector2(70,80),reward);toast("契約達成 / 聖遺物が現れた")
+func record_item(item:Dictionary)->void:
+ if int(item.get("rarity",0))!=3:return
+ var effect=String(item.effect)
+ if not effect.is_empty() and effect not in profile.chronicle.legends:profile.chronicle.legends.append(effect);check_achievements()
+func check_achievements()->void:
+ var c=profile.chronicle
+ var earned={"first_clear":profile.records.wins>0,"collector":c.legends.size()>=6,"evader":c.evades>=5,"risk":c.contracts>=1,"bestiary":c.enemies.size()>=ChronicleDB.ENEMIES.size()}
+ for id in earned:
+  if earned[id] and id not in c.achievements:
+   c.achievements.append(id);toast("記録達成 / "+ChronicleDB.ACHIEVEMENTS[id][0]);sound.play("level",.5)

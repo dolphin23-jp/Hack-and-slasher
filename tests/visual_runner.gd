@@ -27,7 +27,7 @@ func _run() -> void:
 	# Every UI run starts from a deterministic profile. Previous test processes
 	# share user:// on the runner and may otherwise leave CONTINUE or touch mode on.
 	game.profile.run = {}
-	game.profile.settings = {"music": .65, "sfx": .8, "shake": .7, "auto_aim": false, "touch": false}
+	game.profile.settings = {"music": .65, "sfx": .8, "shake": .7, "auto_aim": false, "touch": false, "touch_size": .5, "touch_inset": .5, "hitstop": true}
 	game.sound.settings = game.profile.settings
 	game.sound.update_volume()
 	game.profile.write_save()
@@ -238,6 +238,74 @@ func _run() -> void:
 	_expect("4:3 scaled minimap remains clickable", game.ui.big_map)
 	game.ui.big_map = false
 
+	# Expansion screens and multi-touch input at iPad aspect ratio.
+	game.ui.settings_return = "play"
+	game.mode = "journal"
+	await _shot("15_journal_legends_ipad")
+	await _click(Vector2(495, 135))
+	_expect("bestiary tab opens by click", game.ui.journal_tab == "enemies")
+	await _shot("16_bestiary_ipad")
+	await _click(Vector2(785, 135))
+	await _shot("17_unlocks_ipad")
+	await _click(Vector2(1200, 60))
+	_expect("journal returns to combat", game.mode == "play")
+	game.event_room = 10
+	game.mode = "event"
+	await _shot("18_blood_contract_ipad")
+	await _click(Vector2(1070, 570))
+	_expect("contract decline still opens alternate route combat", game.mode == "play" and game.event_choices.get("10") == "leave")
+	game.dungeon.active = -1
+	game.event_room = 11
+	game.mode = "event"
+	await _shot("19_wager_ipad")
+	game.mode = "settings"
+	await _click(Vector2(1190, 250))
+	await _shot("20_touch_settings_ipad")
+	game.mode = "play"
+	game.player.dash_time = 0
+	game.player.attack_cd = 0
+	await _frames(3)
+	var down_attack := InputEventScreenTouch.new()
+	down_attack.index = 2
+	down_attack.pressed = true
+	down_attack.position = _touch_position(Vector2(1290, 626))
+	Input.parse_input_event(down_attack)
+	await _frames(2)
+	_expect("touch attack holds across frames", game.player.touch_attack)
+	var down_stick := InputEventScreenTouch.new()
+	down_stick.index = 3
+	down_stick.pressed = true
+	down_stick.position = _touch_position(Vector2(160, 640))
+	Input.parse_input_event(down_stick)
+	var drag := InputEventScreenDrag.new()
+	drag.index = 3
+	drag.position = _touch_position(Vector2(220, 640))
+	Input.parse_input_event(drag)
+	await _frames(2)
+	_expect("stick and held attack coexist", game.player.touch_move.x > .5 and game.player.touch_attack)
+	await _shot("21_multitouch_ipad")
+	game.mode = "pause"
+	await _frames(2)
+	_expect("opening a modal clears all held touch input", not game.player.touch_attack and game.player.touch_move == Vector2.ZERO)
+	game.mode = "play"
+	game.player.position = game.dungeon.rooms[9].center
+	game.camera.position = game.player.position
+	game.dungeon.active = 9
+	var awakened = game.spawn_enemy("boss", game.player.position + Vector2(260, 0), 7, 9)
+	awakened.phase = 2
+	awakened.state = "windup"
+	awakened.pattern = 2
+	awakened.start_windup()
+	await _shot("22_awakened_boss_ipad")
+	awakened.state = "recover"
+	awakened.timer = 2
+	await _shot("23_boss_opening_ipad")
+	game.dungeon.active = -1
+	game.mode = "inventory"
+	game.player.inventory.append(ItemDB.generate(game.rng, 5, 3, 4))
+	game.ui.selected = game.player.inventory.size()-1
+	await _shot("24_synergy_comparison_ipad")
+
 	var summary := "VISUAL_SMOKE shots=%d failures=%d\n" % [shots, failures.size()]
 	for failure in failures:
 		summary += "FAIL: " + failure + "\n"
@@ -359,3 +427,8 @@ func _expect(label: String, condition: bool) -> void:
 	else:
 		failures.append(label)
 		printerr("FAIL ", label)
+
+func _touch_position(p:Vector2)->Vector2:
+	var window_size=Vector2(root.size)
+	var scale=minf(window_size.x/BASE.x,window_size.y/BASE.y)
+	return (window_size-BASE*scale)*.5+p*scale
