@@ -42,7 +42,12 @@ const LEGENDS=[
  {"name":"反響の水晶杖","slot":"weapon","effect":"weapon_staff","set":"","weapon_type":"staff","text":"魔力弾が壁で反射"},
  {"name":"轟く拳誓","slot":"weapon","effect":"weapon_fist","set":"","weapon_type":"fist","text":"3番目に周囲打撃"},
  {"name":"城塞を拓く槌","slot":"weapon","effect":"weapon_mace","set":"","weapon_type":"mace","text":"障壁消費で範囲拡大"},
- {"name":"巡る守護の魔刃","slot":"weapon","effect":"weapon_spellblade","set":"","weapon_type":"spellblade","text":"チェイン完了で障壁"}]
+ {"name":"巡る守護の魔刃","slot":"weapon","effect":"weapon_spellblade","set":"","weapon_type":"spellblade","text":"チェイン完了で障壁"},
+ {"name":"満月鏡の冠","slot":"head","effect":"chain_crown","set":"","text":"障壁最大時、魔撃武器が二重化する。"},
+ {"name":"反復の手甲","slot":"hands","effect":"chain_hands","set":"","text":"クリティカル後、次の通常攻撃は同じ武器を再使用する。"},
+ {"name":"飛び石の巡礼靴","slot":"feet","effect":"chain_feet","set":"","text":"回避後、次の通常攻撃は1武器飛ばして接続する。"},
+ {"name":"時環の指輪","slot":"accessory","effect":"chain_rewind","set":"","text":"3連携成立時、全スキルの再使用を短縮する。"},
+ {"name":"砕障の聖衣","slot":"armor","effect":"barrier_burst","set":"","text":"3連携成立時、障壁の一部を周囲攻撃へ変換する。"}]
 static func legend_info(effect:String)->Dictionary:
  for l in LEGENDS:
   if l.effect==effect:return l
@@ -52,6 +57,26 @@ static func set_of(item:Dictionary)->String:
 const GRADES=[1.0,1.24,1.54,1.91,2.37,2.94]
 const ROLLS=[[.88,1.12],[1.05,1.25],[1.20,1.45],[1.40,1.70],[1.70,2.05]]
 const UNIQUE=["wide_chain","double_spin","split_lance","ricochet","fist_nova","shield_reach","chain_guard"]
+const ARMOR_UNIQUE_TEXT={
+ "chain_aegis":"3連携成立時に障壁を獲得",
+ "full_shield_double_magic":"障壁最大時、魔撃武器の攻撃が二重化",
+ "crit_repeat":"クリティカル後、次の通常攻撃で同じ武器を再使用",
+ "dodge_skip":"回避後、次の通常攻撃で1武器を飛ばす",
+ "chain_cooldown":"3連携成立時、全スキルCTを1.2秒短縮",
+ "barrier_burst_armor":"3連携成立時、障壁を一部消費して周囲攻撃"
+}
+static func legendary_unique(entry:Dictionary,kind:String)->String:
+ if entry.slot=="weapon":return UNIQUE[WeaponDB.TYPES.keys().find(kind)]
+ match String(entry.get("effect","")):
+  "chain_crown":return "full_shield_double_magic"
+  "chain_hands":return "crit_repeat"
+  "chain_feet":return "dodge_skip"
+  "chain_rewind":return "chain_cooldown"
+  "barrier_burst":return "barrier_burst_armor"
+ return "chain_aegis"
+static func unique_text(item:Dictionary)->String:
+ var id=String(item.get("unique",""))
+ return WeaponDB.UNIQUE_TEXT.get(id,ARMOR_UNIQUE_TEXT.get(id,"固有能力"))
 static func affix_weight(key:String,slot:String,kind:String)->float:
  var source=kind if slot=="weapon" else slot
  var table=AFFIX_BIAS.get(source,{})
@@ -82,9 +107,10 @@ static func generate(rng:RandomNumberGenerator,depth:int,rarity:int=-1,legend:in
   var l=LEGENDS[legend_index]
   kind=l.get("weapon_type",WeaponDB.TYPES.keys()[legend_index%7])
   slot=l.slot;name=l.name;effect=l.effect
-  description=WeaponDB.UNIQUE_TEXT[UNIQUE[WeaponDB.TYPES.keys().find(kind)] if slot=="weapon" else "chain_guard"]
+  var chosen_unique=legendary_unique(l,kind)
+  description=WeaponDB.UNIQUE_TEXT.get(chosen_unique,ARMOR_UNIQUE_TEXT.get(chosen_unique,l.text))
  var ranges={};var base={};var power=GRADES[grade-1]
- var templates={"weapon":{"attack":10.0},"armor":{"armor":9.0,"hp":16.0},"head":{"hp":10.0},"hands":{"haste":.035},"feet":{"speed":.03},"accessory":{"crit":.02,"skill":.04}}
+ var templates={"weapon":{"attack":10.0},"armor":{"armor":9.0,"hp":16.0},"head":{"hp":10.0},"hands":{"haste":.035},"feet":{"speed":.03},"accessory":{"crit":.02,"skill":.04},"accessory2":{"crit":.02,"skill":.04}}
  for key in templates[slot]:
   var unit=templates[slot][key]*power
   ranges[key]=[unit*ROLLS[rarity][0],unit*ROLLS[rarity][1]]
@@ -97,7 +123,9 @@ static func generate(rng:RandomNumberGenerator,depth:int,rarity:int=-1,legend:in
   var scale=power
   ranges[key]=[def[1]*scale*ROLLS[rarity][0],def[2]*scale*ROLLS[rarity][1]]
   affixes[key]=snappedf(rng.randf_range(ranges[key][0],ranges[key][1]),.001)
- return {"schema":3,"id":str(rng.randi())+"-"+str(rng.randi()),"name":name,"rarity":rarity,"slot":slot,"weapon_type":kind,"grade":grade,"tier":tier,"enhance":0,"fusion":0,"base":base,"affixes":affixes,"rolls":ranges,"effect":effect,"unique":(UNIQUE[WeaponDB.TYPES.keys().find(kind)] if slot=="weapon" else "chain_guard") if rarity>=3 else "","description":description,"locked":false,"favorite":false}
+ var final_unique=""
+ if rarity>=3:final_unique=legendary_unique(legend_info(effect),kind)
+ return {"schema":3,"id":str(rng.randi())+"-"+str(rng.randi()),"name":name,"rarity":rarity,"slot":slot,"weapon_type":kind,"grade":grade,"tier":tier,"enhance":0,"fusion":0,"base":base,"affixes":affixes,"rolls":ranges,"effect":effect,"unique":final_unique,"description":description,"locked":false,"favorite":false}
 static func roll_rarity(rng:RandomNumberGenerator,find:float)->int:
  var weights=[55.0,28.0,13.0,3.6,.4];var bonus=1+clampf(find,0,2)
  var total=weights[0]
