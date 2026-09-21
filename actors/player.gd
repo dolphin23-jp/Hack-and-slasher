@@ -24,6 +24,9 @@ var combo=0
 var combo_expire=0.0
 var last_chain_weapon=""
 var chain_streak=0
+var repeat_next=false
+var repeat_block=false
+var skip_next=false
 var swing_count=0
 var invulnerable=0.0
 var flash=0.0
@@ -99,6 +102,10 @@ func item_upgrade_ratio(item:Dictionary)->float:
  var loadout:Dictionary=equipment.duplicate(true);loadout[target]=item
  return build_score(loadout)/current-1.0
 func rebuild_stats()->void:stats=calculated();hp=minf(hp,stats.hp)
+func has_unique(id:String)->bool:
+ for slot in ItemDB.SLOTS:
+  if String(equipment[slot].get("unique",""))==id:return true
+ return false
 func has_effect(effect:String)->bool:
  if OathBoard.has_effect(game.profile.oaths,active_oaths,effect):return true
  for slot in ItemDB.SLOTS:
@@ -162,8 +169,15 @@ func attack()->bool:
  if dead or attack_cd>0 or dash_time>0:return false
  var linked=combo_expire>0
  chain_streak=mini(chain_streak+1,99) if linked else 1
- combo=combo%3+1;combo_expire=1.25;swing_count+=1
+ repeat_block=false
+ if repeat_next and combo>0:
+  repeat_next=false;repeat_block=true
+ elif skip_next:
+  skip_next=false;combo=(combo+1)%3+1
+ else:combo=combo%3+1
+ combo_expire=1.25;swing_count+=1
  CombatChain.strike(self,linked)
+ repeat_block=false
  var amount=stats.attack
  if combo==3:
   if has_effect("reaper"):game.area_damage(position,165,stats.attack*.75);game.fx.ring(position,165,Color("cbd4ff"),.4)
@@ -180,6 +194,7 @@ func dash()->bool:
  dash_time=.19;invulnerable=maxf(invulnerable,.24);dash_cd=1.1*(1-clampf(stats.dodge_cdr,0,.6))*(1-stats.cdr*.55)*(.8 if upgrades.get("dash_hunter",0)>0 else 1.0)
  dash_evaded=false;dash_attack_time=.9;attack_time=0;attack_cd=minf(attack_cd,.12)
  dash_direction=last_move if velocity.length()>20 else facing;fire_tick=0
+ if has_unique("dodge_skip"):skip_next=true
  game.fx.ring(position,45,Color("a4ebe0"),.3);game.sound.play("dash");return true
 func skill_duration(i:int)->float:return [5.0,10.0,6.0][i]*(1-stats.cdr)*(.75 if i==2 and upgrades.get("giant_mastery",0)>0 else 1.0)
 func cast(i:int)->bool:
