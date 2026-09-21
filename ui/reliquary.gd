@@ -285,6 +285,12 @@ func detail(u,it:Dictionary,r:Rect2,label:String)->void:
  u.text("%s / 階級%d / T%d / +%d"%[ItemDB.RARITIES[int(it.rarity)],it.grade,it.tier,it.enhance],Vector2(tx,y+76),14,u.GOLD)
  u.text((WeaponDB.attributes(it)+" / "+WeaponDB.type_name(it)) if String(it.slot) in Loadout.WEAPONS else ItemDB.slot_text(String(it.slot)),Vector2(tx,y+100),13,u.TEAL)
  u.text("Art: "+String(it.get("art_id",""))+(" ✓" if ItemDB.art_ready(it) else " / placeholder"),Vector2(tx,y+124),10,u.MUTED)
+ var contribution=EquipmentCompare.item_contribution(it);var contribution_parts=[]
+ for key in EquipmentCompare.PRIORITY_STATS:
+  if contribution.has(key) and absf(float(contribution[key]))>.0001:
+   contribution_parts.append(ItemDB.stat_name(key)+" "+ItemDB.stat_value(key,float(contribution[key])))
+   if contribution_parts.size()>=3:break
+ u.text("装備寄与: "+(" / ".join(contribution_parts) if not contribution_parts.is_empty() else "基礎性能のみ"),Vector2(tx,y+146),11,u.TEAL)
  y+=art_size+38
  var rows=[]
  for table in [it.base,it.affixes]:
