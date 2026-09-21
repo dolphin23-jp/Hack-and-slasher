@@ -201,7 +201,12 @@ func act(action:String)->void:
   for entry in ChronicleDB.STARTS:
    if entry.id==id and (entry.unlock.is_empty() or entry.unlock in game.profile.chronicle.achievements):game.profile.chronicle.start=id;game.profile.write_save()
   return
- if action.begins_with("item:"):selected=int(action.split(":")[1]);salvage_confirm=-1;game.sound.play("ui");return
+ if action.begins_with("item:"):
+  selected=int(action.split(":")[1]);salvage_confirm=-1
+  if selected>=0 and selected<game.player.inventory.size():
+   var auto_target=game.player.item_upgrade_target(game.player.inventory[selected])
+   if not auto_target.is_empty():reliquary.target=auto_target;reliquary.forge_slot=auto_target
+  game.sound.play("ui");return
  if action.begins_with("upgrade:"):game.choose_upgrade(int(action.split(":")[1]));return
  if action.begins_with("skill:"):
   if game.mode=="play":game.player.cast(int(action.split(":")[1]))
