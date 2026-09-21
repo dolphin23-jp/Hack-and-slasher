@@ -135,3 +135,113 @@ static func has_effect(board:Dictionary,active:Array,effect:String)->bool:
     if node.id in board.get("nodes",[]) and effect in node.get("effects",[]):return true
  return false
 static func has_node(board:Dictionary,id:String)->bool:return id in board.get("nodes",[])
+static func node_cost(id:String)->int:
+ var node=node_info(id)
+ return int(node.get("cost",0)) if not node.is_empty() else 0
+static func spent_points(board:Dictionary)->int:
+ var total=0
+ for id in board.get("nodes",[]):total+=node_cost(String(id))
+ return total
+static func total_points(board:Dictionary)->int:return int(board.get("points",0))+spent_points(board)
+static func path_nodes(board:Dictionary,path:String)->Array:
+ var out=[]
+ for id in board.get("nodes",[]):
+  var node=node_info(String(id))
+  if not node.is_empty() and String(node.path)==path:out.append(String(id))
+ return out
+static func respec_path(board:Dictionary,path:String)->int:
+ if not TREES.has(path):return 0
+ var removed=path_nodes(board,path);var refund=0
+ for id in removed:refund+=node_cost(String(id))
+ for id in removed:board.nodes.erase(id)
+ board.points=int(board.get("points",0))+refund
+ return refund
+static func respec_all(board:Dictionary)->int:
+ var refund=spent_points(board)
+ board.nodes=[]
+ board.points=int(board.get("points",0))+refund
+ return refund
+static func _prerequisites_met(board:Dictionary,node:Dictionary)->bool:
+ for required in node.get("requires",[]):
+  if required not in board.get("nodes",[]):return false
+ if node.has("requires_any"):
+  var ok=false
+  for required in node.requires_any:
+   if required in board.get("nodes",[]):ok=true
+  if not ok:return false
+ return true
+static func branch_conflict(board:Dictionary,path:String,id:String)->Array:
+ var node=node_info(id);var out=[]
+ if node.is_empty() or String(node.path)!=path:return out
+ var group=String(node.get("group",""))
+ if group.is_empty():return out
+ for owned in board.get("nodes",[]):
+  var other=node_info(String(owned))
+  if not other.is_empty() and String(other.get("group",""))==group and String(owned)!=id:out.append(String(owned))
+ return out
+static func switch_branch(board:Dictionary,path:String,id:String)->String:
+ var node=node_info(id)
+ if node.is_empty() or String(node.path)!=path or String(node.get("group","")).is_empty():return "切替対象ではありません"
+ if id in board.get("nodes",[]):return "すでに選択中です"
+ if not _prerequisites_met(board,node):return "分岐の前提ノードが不足しています"
+ var removed=branch_conflict(board,path,id)
+ if removed.is_empty():return unlock_node(board,path,id)
+ var changed=true
+ while changed:
+  changed=false
+  for owned_value in board.get("nodes",[]):
+   var owned=String(owned_value)
+   if owned in removed:continue
+   var info=node_info(owned)
+   if info.is_empty() or String(info.path)!=path:continue
+   var depends=false
+   for required in info.get("requires",[]):
+    if required in removed:depends=true
+   if info.has("requires_any"):
+    var viable=false
+    for required in info.requires_any:
+     if required in board.get("nodes",[]) and required not in removed:viable=true
+    if not viable:depends=true
+   if depends:removed.append(owned);changed=true
+ var refund=0
+ for owned in removed:refund+=node_cost(String(owned))
+ for owned in removed:board.nodes.erase(owned)
+ board.points=int(board.get("points",0))+refund
+ var result=unlock_node(board,path,id)
+ if result.begins_with("解放"):return "分岐切替 / "+String(node.name)+" / 返還 %d"%refund
+ return result
+static func preset_cost(value:Dictionary)->int:
+ var total=0
+ for id in value.get("nodes",[]):total+=node_cost(String(id))
+ return total
+static func sanitize_preset(value:Variant)->Dictionary:
+ if not value is Dictionary:return {}
+ var active=[]
+ if value.get("active") is Array:
+  for key in value.active:
+   if key is String and PATHS.has(key) and key not in active and active.size()<3:active.append(key)
+ if active.is_empty():active=["dance"]
+ var nodes=[]
+ if value.get("nodes") is Array:
+  for id in value.nodes:
+   if id is String and not node_info(id).is_empty() and id not in nodes:nodes.append(id)
+ var weapons=[]
+ if value.get("weapon_types") is Array:
+  for kind in value.weapon_types:
+   if kind is String and WeaponDB.TYPES.has(kind) and weapons.size()<3:weapons.append(kind)
+ while weapons.size()<3:weapons.append("sword")
+ var starter=String(value.get("starter","blade"))
+ if starter not in ["blade","lance","ember"]:starter="blade"
+ var name=String(value.get("name","Build")).strip_edges()
+ if name.is_empty():name="Build"
+ if name.length()>32:name=name.substr(0,32)
+ return {"name":name,"active":active,"nodes":nodes,"starter":starter,"weapon_types":weapons}
+static func make_preset(board:Dictionary,name:String,starter:String,weapon_types:Array)->Dictionary:
+ return sanitize_preset({"name":name,"active":board.get("active",["dance"]).duplicate(),"nodes":board.get("nodes",[]).duplicate(),"starter":starter,"weapon_types":weapon_types.duplicate()})
+static func apply_preset(board:Dictionary,preset:Dictionary)->String:
+ var clean=sanitize_preset(preset)
+ if clean.is_empty():return "Presetが壊れています"
+ var total=total_points(board);var needed=preset_cost(clean)
+ if needed>total:return "誓片が不足しています / 必要 %d / 保有 %d"%[needed,total]
+ board.active=clean.active.duplicate();board.nodes=clean.nodes.duplicate();board.points=total-needed
+ return "Preset読込 / "+String(clean.name)
