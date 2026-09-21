@@ -18,3 +18,24 @@ static func attributes(item:Dictionary)->String:
  var names=[]
  for key in get_weapon(item).types:names.append(ATTRIBUTES[key])
  return "＋".join(names)
+
+static func primary_type(item:Dictionary)->String:
+ var types:Array=get_weapon(item).types
+ return String(types[0]) if not types.is_empty() else ""
+static func transition(from_item:Dictionary,to_item:Dictionary)->Dictionary:
+ var a=primary_type(from_item);var b=primary_type(to_item)
+ if a=="slash" and b=="blunt":return {"id":"sunder","name":"断甲","damage":1.08,"guard":1.28,"knock":1.18}
+ if a=="blunt" and b=="pierce":return {"id":"breach","name":"砕穿","damage":1.20,"guard":1.12,"knock":1.0}
+ if a=="magic" and b=="slash":return {"id":"spell_edge","name":"魔纏斬","damage":1.16,"guard":1.0,"knock":1.0}
+ if from_item.get("weapon_type","")== "scythe" and to_item.get("weapon_type","")=="staff":return {"id":"reap_cast","name":"収束魔撃","damage":1.12,"guard":1.0,"knock":1.0}
+ return {"id":"","name":"","damage":1.0,"guard":1.0,"knock":1.0}
+static func same_family_chain(equipment:Dictionary)->bool:
+ var kind=String(equipment[Loadout.WEAPONS[0]].get("weapon_type",""))
+ return not kind.is_empty() and Loadout.WEAPONS.all(func(slot):return equipment[slot].get("weapon_type","")==kind)
+static func distinct_primary_chain(equipment:Dictionary)->bool:
+ var seen=[]
+ for slot in Loadout.WEAPONS:
+  var key=primary_type(equipment[slot])
+  if key.is_empty() or key in seen:return false
+  seen.append(key)
+ return seen.size()==3

@@ -4,7 +4,17 @@ static func strike(p)->void:
  var it=p.equipment[Loadout.WEAPONS[p.combo-1]]
  var w=WeaponDB.get_weapon(it);var g=p.game
  var amount=(p.stats.attack-p.average_weapon_power()+p.weapon_power(it))*w.damage
+ var transition={"id":"","name":"","damage":1.0,"guard":1.0,"knock":1.0}
+ if p.swing_count>1:
+  var previous=p.equipment[Loadout.WEAPONS[(p.combo+1)%3]]
+  transition=WeaponDB.transition(previous,it)
+  amount*=float(transition.damage)
  var reach=w.reach*(1.15 if int(it.tier)>=2 else 1.0)*(1.15 if p.combo==3 else 1.0)
+ if transition.id=="spell_edge":reach*=1.12
+ if transition.id=="reap_cast":
+  var focus=p.position+p.facing*minf(reach*.45,180.0)
+  for enemy in g.enemies:
+   if not enemy.dead and enemy.position.distance_to(focus)<190:enemy.velocity+=(focus-enemy.position).normalized()*150
  if p.dash_attack_time>0 and p.upgrades.get("dash_hunter",0)>0:reach+=35
  var unique=String(it.get("unique",""))
  if unique=="shield_reach" and p.barrier>=5:p.barrier-=5;reach*=1.3
@@ -15,6 +25,8 @@ static func strike(p)->void:
   p.counter_time=0
  p.attack_cd=w.cooldown/(1+p.stats.haste);p.attack_time=.2
  var rounds=1+(1 if int(it.rarity)==4 and p.combo==3 else 0)+(1 if (int(it.tier)>=5 and p.combo==3) or (unique=="double_spin" and w.shape=="circle") else 0)
+ if p.combo==3 and WeaponDB.same_family_chain(p.equipment):rounds+=1
+ if p.combo==3 and WeaponDB.distinct_primary_chain(p.equipment):rounds+=1
  var landed=0
  for repeat in range(rounds):
   if w.shape in ["bolt","wave"]:
@@ -33,8 +45,10 @@ static func strike(p)->void:
      if not inside or not g.dungeon.line_clear(p.position,e.position):continue
      var crit=g.rng.randf()<p.stats.crit
      var damage=(amount+p.stats.attack if p.combo==3 and p.has_effect("execution") and e.hp/e.max_hp<.3 else amount)*DamageModel.multiplier(e.kind,w.types,p.stats)*(1+p.stats.crit_damage if crit else 1)
+     if transition.id=="sunder" and e.kind in ["warden","elite","boss"]:damage*=float(transition.guard)
      if "blunt" in w.types and e.kind=="warden":e.shield_break=maxf(e.shield_break,1.2)
-     e.take_damage(damage,delta.normalized()*maxf(w.knock,350 if int(it.tier)>=4 and w.shape!="circle" else 0)*(1+p.stats.stagger),crit)
+     var knock=maxf(w.knock,350 if int(it.tier)>=4 and w.shape!="circle" else 0)*(1+p.stats.stagger)*float(transition.knock)
+     e.take_damage(damage,delta.normalized()*knock,crit)
      if not e.dead and p.has_effect("ash_edge"):e.ignite(p.stats.attack*.35,2.5)
      if int(it.tier)>=4 and w.shape=="circle" and not e.dead:e.velocity=-delta.normalized()*160
      if crit:g.critical_effect(e.position)
@@ -53,5 +67,6 @@ static func strike(p)->void:
  else:g.fx.slash(p.position,p.facing,minf(reach,160),Color("b4ecdf"),p.combo==3,true)
  g.sound.play("slash" if w.shape!="bolt" else "bolt",.8,1.2 if w.cooldown<.25 else .95)
  if landed>0:
+  if not String(transition.name).is_empty():g.fx.number(p.position+p.facing*44,String(transition.name),Color("d9e7ff"))
   if g.profile.settings.hitstop:g.hitstop=.025
   g.sound.play("hit",.65);g.shake(2)

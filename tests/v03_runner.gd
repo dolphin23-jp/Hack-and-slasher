@@ -23,6 +23,14 @@ func run()->void:
  clear();var p=game.player
  check("nine slots",p.equipment.size()==9)
  check("seven weapon families",WeaponDB.TYPES.size()==7)
+ var tr=WeaponDB.transition({"weapon_type":"sword"},{"weapon_type":"mace"})
+ check("slash to blunt has sunder transition",tr.id=="sunder" and tr.guard>1.0)
+ tr=WeaponDB.transition({"weapon_type":"mace"},{"weapon_type":"spear"})
+ check("blunt to pierce has breach transition",tr.id=="breach" and tr.damage>1.0)
+ tr=WeaponDB.transition({"weapon_type":"staff"},{"weapon_type":"sword"})
+ check("magic to slash has spell-edge transition",tr.id=="spell_edge" and tr.damage>1.0)
+ tr=WeaponDB.transition({"weapon_type":"scythe"},{"weapon_type":"staff"})
+ check("scythe to staff has gather transition",tr.id=="reap_cast")
  check("five rarities",ItemDB.RARITIES.size()==5)
  var order=[]
  for i in range(4):p.attack_cd=0;p.attack();order.append(p.combo)
@@ -33,6 +41,9 @@ func run()->void:
  order=[]
  for i in range(4):p.attack_cd=0;p.attack();order.append(p.combo)
  check("three same families cycle",order==[3,1,2,3])
+ check("same weapon trio enables family finisher",WeaponDB.same_family_chain(p.equipment))
+ weapon("sword","weapon");weapon("mace","weapon2");weapon("spear","weapon3")
+ check("three primary attributes enable triad finisher",WeaponDB.distinct_primary_chain(p.equipment))
  for kind in WeaponDB.TYPES:
   clear();weapon(kind);p.rebuild_stats();p.stats.crit=0
   var front=foe(Vector2(75,0));var back=foe(Vector2(-80,0));var far=foe(Vector2(240,0))
