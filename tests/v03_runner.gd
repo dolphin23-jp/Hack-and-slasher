@@ -225,6 +225,7 @@ func run()->void:
  check("auto salvage consumes Rare-or-lower drops without filling inventory",p.inventory.size()==auto_before and p.materials>0 and auto_drop.taken)
  game.profile.settings.auto_salvage_rare=false
  var jp=load("res://assets/fonts/NotoSansJP-Regular.subset.ttf")
+ var extra=load("res://assets/fonts/NotoSansJP-Extra.ttf") if ResourceLoader.exists("res://assets/fonts/NotoSansJP-Extra.ttf") else null
  var missing_glyphs=[]
  for folder in ["actors","data","scripts","systems","ui","world"]:
   for file in DirAccess.get_files_at("res://"+folder):
@@ -232,7 +233,8 @@ func run()->void:
    var content=FileAccess.get_file_as_string("res://"+folder+"/"+file)
    for character in content:
     var code=character.unicode_at(0)
-    if code>=0x3000 and code<=0x9fff and not jp.has_char(code) and character not in missing_glyphs:missing_glyphs.append(character)
+    var covered=jp.has_char(code) or (extra!=null and extra.has_char(code))
+    if code>=0x3000 and code<=0x9fff and not covered and character not in missing_glyphs:missing_glyphs.append(character)
  check("bundled Japanese font covers every UI kanji",missing_glyphs.is_empty())
  if not missing_glyphs.is_empty():print("Missing glyphs: ",missing_glyphs)
  print("V03 checks=",count," failures=",failures.size())
