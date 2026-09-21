@@ -321,7 +321,7 @@ func draw_hud()->void:
   var cd=p.cooldowns[i] if i<3 else (p.dash_cd if i==3 else 0.0)
   if cd>0:draw_rect(r,Color(.02,.04,.07,.67));text("%.1f"%cd,Vector2(x+31,817),19,TEXT,true)
   if i==4:text(str(p.potions),Vector2(x+53,834),20,TEXT,true)
-  text("TAP" if touch_mode else keys[i],Vector2(x+31,853),11,GOLD,true);text(names[i],Vector2(x+31,869),10,MUTED,true)
+  text("タップ" if touch_mode else keys[i],Vector2(x+31,853),11,GOLD,true);text(names[i],Vector2(x+31,869),10,MUTED,true)
   buttons.append({"rect":r,"action":"skill:"+str(i) if i<3 else ("dash" if i==3 else "heal")})
  if touch_mode:
   text("下のスキルをタップ",Vector2(1005,794),12,MUTED);text("移動 / 攻撃 / 回収",Vector2(1005,816),12,MUTED)
@@ -351,7 +351,7 @@ func draw_critical_health(p)->void:
  draw_rect(Rect2(0,0,edge,BASE.y),danger)
  draw_rect(Rect2(BASE.x-edge,0,edge,BASE.y),danger)
  var label_color:=Color(RED.r,RED.g,RED.b,.78+pulse*.18)
- var warning:String="生命 CRITICAL"
+ var warning:String="瀕死"
  var warning_w:float=body.get_string_size(warning,HORIZONTAL_ALIGNMENT_LEFT,-1,12).x
  draw_rect(Rect2(720-warning_w/2-12,724,warning_w+24,28),Color(.035,.02,.025,.76))
  draw_rect(Rect2(720-warning_w/2-12,724,warning_w+24,28),Color(RED.r,RED.g,RED.b,.32),false,1)
@@ -368,10 +368,10 @@ func draw_map(r:Rect2,large:bool)->void:
   if large:text(str(room.id+1).pad_zeros(2),rect.get_center()+Vector2(0,5),14,TEXT,true)
  draw_circle(game.player.position*f+origin,5 if large else 3,Color("d0ffe9"));text("大聖堂" if large else "M / 大聖堂",r.position+Vector2(13,22),15 if large else 10,GOLD)
  if large:
-  text("01 Threshold  02 Nave  03 Ossuary  04 Treasury (optional)  05 Forge",Vector2(r.get_center().x,r.end.y-47),13,MUTED,true)
-  text("06 Archive  07 Cloister  08 Chapel  09 Procession  10 Throne",Vector2(r.get_center().x,r.end.y-24),13,MUTED,true)
+  text("01 入口  02 大広間  03 納骨堂  04 宝物庫(任意)  05 工房",Vector2(r.get_center().x,r.end.y-47),13,MUTED,true)
+  text("06 書庫  07 回廊  08 礼拝堂  09 行進路  10 王座",Vector2(r.get_center().x,r.end.y-24),13,MUTED,true)
 func draw_inventory()->void:
- dim();text("THE 聖遺物庫",Vector2(42,62),33,TEXT,false,true);text("戦利品を比べ、戦い方を組み替えよう。",Vector2(43,94),15,MUTED)
+ dim();text("聖遺物庫",Vector2(42,62),33,TEXT,false,true);text("戦利品を比べ、戦い方を組み替えよう。",Vector2(43,94),15,MUTED)
  button(Rect2(1215,40,180,43),"戻る","return_victory" if game.mode=="victory_inventory" else "inventory")
  var p=game.player;panel(Rect2(40,128,284,701));text("装備中",Vector2(60,162),13,GOLD)
  for i in range(3):
@@ -379,7 +379,7 @@ func draw_inventory()->void:
   panel(Rect2(57,y,66,66),INK,ItemDB.COLORS[int(item.rarity)]);icon("sword" if item.slot=="weapon" else item.slot,Rect2(63,y+6,54,54))
   text(item.slot.to_upper(),Vector2(138,y+17),11,MUTED);wrapped_text(item.name,Vector2(138,y+38),165,13,ItemDB.COLORS[int(item.rarity)],19)
  rule(58,477,245);text("現在の装備",Vector2(60,507),13,GOLD)
- var s=p.stats;var rows=[["攻撃力","%.0f"%s.attack],["クリティカル率","%d%%"%roundi(s.crit*100)],["クリティカル威力","%d%%"%roundi((1+s.crit_damage)*100)],["攻撃力 speed","+%d%%"%roundi(s.haste*100)],["防御力","%.0f"%s.armor],["スキル威力","+%d%%"%roundi(s.skill*100)],["クールダウン","-%d%%"%roundi(s.cdr*100)],["移動速度","+%d%%"%roundi(s.speed*100)]]
+ var s=p.stats;var rows=[["攻撃力","%.0f"%s.attack],["クリティカル率","%d%%"%roundi(s.crit*100)],["クリティカル威力","%d%%"%roundi((1+s.crit_damage)*100)],["攻撃速度","+%d%%"%roundi(s.haste*100)],["防御力","%.0f"%s.armor],["スキル威力","+%d%%"%roundi(s.skill*100)],["クールダウン","-%d%%"%roundi(s.cdr*100)],["移動速度","+%d%%"%roundi(s.speed*100)]]
  for i in range(rows.size()):text(rows[i][0],Vector2(60,540+i*30),14,MUTED);text(rows[i][1],Vector2(238,540+i*30),14)
  text("LV %d / 討伐 %d"%[p.level,game.kills],Vector2(60,808),12,GOLD);text("所持品 %d / 40"%p.inventory.size(),Vector2(351,154),14,GOLD);text("比較するアイテムを選択",Vector2(351,177),12,MUTED)
  for i in range(maxi(40,p.inventory.size())):
@@ -394,13 +394,13 @@ func draw_inventory()->void:
  button(Rect2(535,139,180,36),"並べ替え","sort")
  text("ENTER 装備 / DELETE 分解",Vector2(351,808),12,MUTED)
  if selected<0 or selected>=p.inventory.size():text("未回収の装備はありません。",Vector2(1059,400),27,GOLD,true,true);return
- var it=p.inventory[selected];item_card(it,Rect2(746,129,310,487),"所持品");item_card(p.equipment[it.slot],Rect2(1074,129,310,487),"CURRENTLY 装備中")
+ var it=p.inventory[selected];item_card(it,Rect2(746,129,310,487),"所持品");item_card(p.equipment[it.slot],Rect2(1074,129,310,487),"現在の装備")
  var loadout=p.equipment.duplicate(true);loadout[it.slot]=it;var next=p.calculated(loadout)
  panel(Rect2(746,635,638,103),INK);text("IF 装備中",Vector2(762,657),11,GOLD)
  var comparisons=[["剣DPS",dps(next)/dps(s)-1],["実効耐久",next.hp*(1+next.armor/100)/(s.hp*(1+s.armor/100))-1],["スキル一撃",next.attack*(1+next.skill)/(s.attack*(1+s.skill))-1]]
  for i in range(3):
   var x=762+i*209;var v=comparisons[i][1]*100;text(comparisons[i][0],Vector2(x,682),11,MUTED);text("%+.1f%%"%v,Vector2(x,714),26,TEAL if v>0 else (RED if v<0 else TEXT))
- button(Rect2(746,761,310,54),"この装備に変更","equip",true);button(Rect2(1074,761,310,54),"分解を確定" if salvage_confirm==selected else "SALVAGE TO 治癒","salvage")
+ button(Rect2(746,761,310,54),"この装備に変更","equip",true);button(Rect2(1074,761,310,54),"分解を確定" if salvage_confirm==selected else "分解して回復","salvage")
  text("比較値にはレジェンダリー効果を含みません。分解前に効果を確認してください。",Vector2(1065,850),12,MUTED,true)
 func dps(s:Dictionary)->float:return s.attack*(1+s.haste)*(1+s.crit*s.crit_damage)
 func item_card(it:Dictionary,r:Rect2,tag:String)->void:
@@ -422,7 +422,7 @@ func draw_upgrades()->void:
  text("装備は残る。誓いだけが変わる。",Vector2(720,714),15,MUTED,true)
 func draw_pause()->void:
  dim();icon("crest",Rect2(680,147,80,80));text("束の間の静寂",Vector2(720,280),32,TEXT,true,true)
- button(Rect2(535,333,370,53),"戻る TO 大聖堂","resume",true);button(Rect2(535,402,370,48),"設定","settings");button(Rect2(535,467,370,48),"遊び方","help");button(Rect2(535,532,370,48),"SAVE & 戻る TO TITLE","title")
+ button(Rect2(535,333,370,53),"戻る TO 大聖堂","resume",true);button(Rect2(535,402,370,48),"設定","settings");button(Rect2(535,467,370,48),"遊び方","help");button(Rect2(535,532,370,48),"保存してタイトルへ","title")
  wrapped_text("装備と祝福は保存されます。戦闘中なら最後に解放した聖域から再開します。",Vector2(492,642),460,15,MUTED,25)
 func draw_run_summary()->void:
  var m=game.metrics
@@ -450,11 +450,11 @@ func draw_end(won:bool)->void:
   button(Rect2(502,541,436,54),"王の戦利品を見る","inspect_victory",true)
   button(Rect2(502,610,436,54),"アセンション %02d / %s"%[next_asc,next_vow.name],"ascend")
   text(next_vow.detail,Vector2(720,687),12,GOLD,true)
-  button(Rect2(502,720,436,48),"戻る TO TITLE","title")
+  button(Rect2(502,720,436,48),"タイトルへ戻る","title")
  else:
   wrapped_text("予備動作を見て動き続け、隙が閉じる前に回復を使おう。",Vector2(454,505),535,14,MUTED,22)
   button(Rect2(502,557,436,54),"もう一度探索する","start",true)
-  button(Rect2(502,689,436,48),"戻る TO TITLE","title")
+  button(Rect2(502,689,436,48),"タイトルへ戻る","title")
 func draw_settings()->void:
  dim();text("設定",Vector2(720,162),35,TEXT,true,true)
  var labels={"music":"BGM音量","sfx":"効果音量","shake":"画面揺れ","auto_aim":"自動照準","touch":"タッチ操作"};var i=0
