@@ -178,6 +178,13 @@ func act(action:String)->void:
   "back":game.mode=settings_return
   "title":game.return_to_title()
   "equip":game.player.equip(selected);salvage_confirm=-1
+  "sort":
+   var selected_id:String=""
+   if selected>=0 and selected<game.player.inventory.size():selected_id=String(game.player.inventory[selected].id)
+   game.sort_inventory();selected=0;salvage_confirm=-1
+   if not selected_id.is_empty():
+    for i in range(game.player.inventory.size()):
+     if String(game.player.inventory[i].id)==selected_id:selected=i;break
   "salvage":
    if selected<0 or selected>=game.player.inventory.size():return
    if int(game.player.inventory[selected].rarity)==3 and salvage_confirm!=selected:salvage_confirm=selected;game.toast("Legendary selected. Press Salvage again to confirm.")
@@ -340,6 +347,7 @@ func draw_inventory()->void:
    var it=p.inventory[i];icon("sword" if it.slot=="weapon" else it.slot,r.grow(-7))
    if i==selected or pad_over:draw_rect(r.grow(3),GOLD if pad_over else Color("f0e3bb"),false,2)
    text(str(it.tier),r.position+Vector2(48,57),10,c);buttons.append({"rect":r,"action":"item:"+str(i)})
+ button(Rect2(535,139,180,36),"SORT PACK","sort")
  text("ENTER equip / DELETE salvage",Vector2(351,808),12,MUTED)
  if selected<0 or selected>=p.inventory.size():text("No unclaimed promises.",Vector2(1059,400),27,GOLD,true,true);return
  var it=p.inventory[selected];item_card(it,Rect2(746,129,310,487),"IN YOUR PACK");item_card(p.equipment[it.slot],Rect2(1074,129,310,487),"CURRENTLY EQUIPPED")

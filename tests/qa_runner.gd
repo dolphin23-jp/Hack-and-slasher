@@ -129,6 +129,17 @@ func _run() -> void:
 	obvious_weaker.affixes = {}
 	_expect("loot comparison identifies a weaker replacement", game.player.item_upgrade_ratio(obvious_weaker) < -0.02)
 
+	var saved_inventory: Array = game.player.inventory.duplicate(true)
+	var sort_common := ItemDB.generate(game.rng, 8, 0)
+	var sort_rare_low := ItemDB.generate(game.rng, 2, 2)
+	var sort_rare_high := ItemDB.generate(game.rng, 6, 2)
+	var sort_legend := ItemDB.generate(game.rng, 1, 3, 0)
+	game.player.inventory = [sort_common, sort_rare_low, sort_legend, sort_rare_high]
+	game.sort_inventory()
+	_expect("pack sort puts higher rarity first", int(game.player.inventory[0].rarity) == 3 and int(game.player.inventory[-1].rarity) == 0)
+	_expect("pack sort orders equal rarity by tier", int(game.player.inventory[1].rarity) == 2 and int(game.player.inventory[1].tier) >= int(game.player.inventory[2].tier))
+	game.player.inventory = saved_inventory
+
 	var item := ItemDB.generate(game.rng, 2, 2)
 	var drop_metric := int(game.metrics.drops)
 	var drop = game.spawn_drop(game.player.position + Vector2(30, 0), item)
@@ -217,8 +228,8 @@ func _run() -> void:
 	game.start_run(true)
 	_expect("continue restores the victory screen with rewards intact", game.mode == "victory" and game.player.inventory.size() == victory_pack_size and game.player.equipment.weapon.id == victory_weapon_id)
 
-	if checks != 60:
-		failures.append("expected 60 checks, executed %d" % checks)
+	if checks != 62:
+		failures.append("expected 62 checks, executed %d" % checks)
 		printerr("QA FAIL check count: ", checks)
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts"))

@@ -342,6 +342,17 @@ func interact()->void:
    var at=d.position;var tier=int(d.item.tier);var gilded=d.item.gilded;d.take();sound.play("chest")
    for i in range(4 if gilded else 3):spawn_drop(at+Vector2.from_angle(i*1.7)*50,ItemDB.generate(rng,maxi(1,tier),2 if i==0 else -1))
   elif d.kind=="item":collect(d)
+func inventory_before(a:Dictionary,b:Dictionary)->bool:
+ var ar:int=int(a.rarity);var br:int=int(b.rarity)
+ if ar!=br:return ar>br
+ var at:int=int(a.tier);var bt:int=int(b.tier)
+ if at!=bt:return at>bt
+ var aslot:int=ItemDB.SLOTS.find(String(a.slot));var bslot:int=ItemDB.SLOTS.find(String(b.slot))
+ if aslot!=bslot:return aslot<bslot
+ return String(a.name).naturalnocasecmp_to(String(b.name))<0
+func sort_inventory()->void:
+ if not is_instance_valid(player) or player.inventory.size()<2:return
+ player.inventory.sort_custom(Callable(self,"inventory_before"));sound.play("ui",.5);save_run()
 func salvage(i:int)->void:
  if i<0 or i>=player.inventory.size():return
  var rarity=int(player.inventory[i].rarity);player.inventory.remove_at(i);player.heal(player.stats.hp*(.025+rarity*.0125));sound.play("equip",.6)
