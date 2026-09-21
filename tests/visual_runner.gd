@@ -73,6 +73,14 @@ func _run() -> void:
 	await _frames(4)
 	await _shot("04_gameplay")
 
+	var full_hp: float = game.player.hp
+	game.player.hp = game.player.stats.hp * 0.22
+	await _frames(3)
+	_expect("critical-health state is below the HUD warning threshold", game.player.hp / game.player.stats.hp < 0.30)
+	await _shot("04a_critical_health")
+	game.player.hp = full_hp
+	await _frames(2)
+
 	# Nearby loot should communicate whether it is likely to improve the current build.
 	var preview_item: Dictionary = game.player.equipment.weapon.duplicate(true)
 	preview_item.id = "visual-upgrade"
@@ -309,7 +317,7 @@ func _shot(label: String) -> void:
 	else:
 		shots += 1
 		print("SHOT ", label, " ", image.get_width(), "x", image.get_height())
-		if label in ["04_gameplay", "09b_touch_gameplay", "10b_elite_affix", "11_boss_hud", "13c_ascension_vow", "14_ipad_4x3_touch"]:
+		if label in ["04_gameplay", "04a_critical_health", "09b_touch_gameplay", "10b_elite_affix", "11_boss_hud", "13c_ascension_vow", "14_ipad_4x3_touch"]:
 			_expect("world visible in " + label, _world_visible(image))
 
 func _world_visible(image: Image) -> bool:
