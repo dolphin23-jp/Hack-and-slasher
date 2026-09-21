@@ -12,6 +12,7 @@ var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false,"to
 var records={"runs":0,"wins":0,"best_level":1,"best_ascension":0,"total_kills":0}
 var run={}
 var oaths=OathBoard.empty()
+var build_presets=[]
 var vault=[]
 var chronicle=ChronicleDB.empty()
 func read_save()->void:
@@ -24,6 +25,13 @@ func read_save()->void:
   DirAccess.copy_absolute(path,path+".v1.bak")
  data=SaveMigration.migrate(data)
  oaths=OathBoard.sanitize(data.oaths)
+ build_presets=[]
+ var incoming_presets=data.get("build_presets",[])
+ if incoming_presets is Array:
+  for value in incoming_presets:
+   if build_presets.size()>=5:break
+   var preset=OathBoard.sanitize_preset(value)
+   if not preset.is_empty():build_presets.append(preset)
  var incoming=data.get("settings",{})
  if incoming is Dictionary:
   for k in settings:
@@ -139,5 +147,5 @@ func vector_valid(v:Variant)->bool:
 func write_save()->bool:
  var f=FileAccess.open(path+".tmp",FileAccess.WRITE)
  if f==null:return false
- f.store_string(JSON.stringify({"version":VERSION,"settings":settings,"records":records,"run":run,"chronicle":chronicle,"oaths":oaths,"vault":vault}));f.flush();f.close()
+ f.store_string(JSON.stringify({"version":VERSION,"settings":settings,"records":records,"run":run,"chronicle":chronicle,"oaths":oaths,"build_presets":build_presets,"vault":vault}));f.flush();f.close()
  return DirAccess.rename_absolute(path+".tmp",path)==OK
