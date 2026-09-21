@@ -12,6 +12,7 @@ var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false,"to
 var records={"runs":0,"wins":0,"best_level":1,"best_ascension":0,"total_kills":0}
 var run={}
 var oaths=OathBoard.empty()
+var build_presets=[]
 var vault=[]
 var chronicle=ChronicleDB.empty()
 func read_save()->void:
@@ -24,6 +25,13 @@ func read_save()->void:
   DirAccess.copy_absolute(path,path+".v1.bak")
  data=SaveMigration.migrate(data)
  oaths=OathBoard.sanitize(data.oaths)
+ build_presets=[]
+ var incoming_presets=data.get("build_presets",[])
+ if incoming_presets is Array:
+  for value in incoming_presets:
+   if build_presets.size()>=5:break
+   var preset=OathBoard.sanitize_preset(value)
+   if not preset.is_empty():build_presets.append(preset)
  var incoming=data.get("settings",{})
  if incoming is Dictionary:
   for k in settings:
@@ -92,6 +100,18 @@ func valid_run(v:Variant)->bool:
   for key in v.active_oaths:
    if not key is String or not OathBoard.PATHS.has(key) or key in seen:return false
    seen.append(key)
+ if v.has("oath_board"):
+  if not v.oath_board is Dictionary:return false
+  var board=OathBoard.sanitize(v.oath_board)
+  if not v.oath_board.get("nodes",[]) is Array:return false
+  var clean_nodes=OathBoard.sanitize_node_ids(v.oath_board.get("nodes",[]))
+  var requested=[]
+  for id in v.oath_board.get("nodes",[]):
+   if not id is String or OathBoard.node_info(id).is_empty() or id in requested:return false
+   requested.append(id)
+  if clean_nodes.size()!=requested.size():return false
+  for id in requested:
+   if id not in clean_nodes:return false
  if not v.equipment is Dictionary or not v.inventory is Array or v.inventory.size()>84 or not v.upgrades is Dictionary:return false
  for slot in ItemDB.SLOTS:
   if not ItemDB.valid(v.equipment.get(slot)):return false
@@ -139,5 +159,5 @@ func vector_valid(v:Variant)->bool:
 func write_save()->bool:
  var f=FileAccess.open(path+".tmp",FileAccess.WRITE)
  if f==null:return false
- f.store_string(JSON.stringify({"version":VERSION,"settings":settings,"records":records,"run":run,"chronicle":chronicle,"oaths":oaths,"vault":vault}));f.flush();f.close()
+ f.store_string(JSON.stringify({"version":VERSION,"settings":settings,"records":records,"run":run,"chronicle":chronicle,"oaths":oaths,"build_presets":build_presets,"vault":vault}));f.flush();f.close()
  return DirAccess.rename_absolute(path+".tmp",path)==OK

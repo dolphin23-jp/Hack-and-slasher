@@ -20,6 +20,9 @@ func _run() -> void:
 	root.add_child(game)
 	# Each harness must start from a clean profile state even when prior CI steps saved a run.
 	game.profile.run = {}
+	game.profile.oaths = OathBoard.empty()
+	game.profile.oaths.points = 20
+	game.profile.build_presets = []
 	game.profile.settings.touch = false
 	game.profile.write_save()
 	await _frames(5)
@@ -69,7 +72,22 @@ func _run() -> void:
 	_expect("help back returns to title", game.mode == "title")
 
 	await _click(Vector2(281, 577))
-	_expect("begin descent click", game.mode == "play")
+	_expect("begin descent opens build confirmation", game.mode == "build_confirm")
+	await _shot("03b_build_confirm")
+	await _click(Vector2(390, 678))
+	_expect("build confirmation opens editable oath board", game.mode == "oaths" and game.ui.reliquary.back == "build_confirm")
+	await _click(Vector2(745, 235))
+	_expect("pre-run oath node can be purchased", "dance_tempo" in game.profile.oaths.nodes)
+	await _click(Vector2(1095, 51))
+	_expect("build manager tab opens before departure", game.ui.reliquary.oath_section == "build")
+	await _shot("03c_build_manager")
+	await _click(Vector2(205, 488))
+	_expect("current build can be saved as a preset", game.profile.build_presets.size() == 1)
+	await _shot("03d_build_preset_saved")
+	await _click(Vector2(1280, 51))
+	_expect("oath board returns to build confirmation", game.mode == "build_confirm")
+	await _click(Vector2(720, 678))
+	_expect("confirmed build begins descent", game.mode == "play")
 	await _frames(4)
 	await _shot("04_gameplay")
 
@@ -336,6 +354,11 @@ func _run() -> void:
 	await _click(Vector2(140,723))
 	_expect("oath board opens from inventory",game.mode=="oaths")
 	await _shot("29_oath_board_ipad")
+	await _click(Vector2(1095,51))
+	_expect("run build summary opens on iPad",game.ui.reliquary.oath_section=="build")
+	await _shot("29a_build_summary_ipad")
+	await _click(Vector2(950,51))
+	_expect("oath tree returns from build summary",game.ui.reliquary.oath_section=="tree")
 	await _click(Vector2(1260,60))
 	game.mode="play"
 	var myth=ItemDB.generate(game.rng,8,4,0)

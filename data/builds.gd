@@ -31,6 +31,22 @@ static func chain_choices(equipment:Dictionary,upgrades:Dictionary)->Array:
    out.append({"name":"刈り集め、穿つ","detail":"鎌→杖の収束魔撃を強化。威力と射程をさらに +12%。","icon":"bolt","key":"harvest_cast_mastery","value":.12,"max":1})
    break
  return out
+static func upgrade_label(key:String)->String:
+ for choice in CHOICES:
+  if String(choice.key)==key:return String(choice.name)
+ if key.begins_with("master_"):
+  var kind=key.trim_prefix("master_")
+  if WeaponDB.TYPES.has(kind):return WeaponDB.TYPES[kind].name+"の研鑽"
+ return {"transition_power":"継ぎ目を断つ","slot2_reach":"第二歩の間合い","triune_mastery":"三相の誓い","same_family_mastery":"一器専心","harvest_cast_mastery":"刈り集め、穿つ","ember_start":"残火の開始","art_power":"武技の研鑽","chain_skill_power":"三器共鳴","finisher_power":"奥義の誓い","chain_echo":"追憶の輪","finisher_wave":"第三の波","riposte":"見切りの誓い","dash_hunter":"狩人の歩幅","storm_counter":"雷鳴の継承","ember_harvest":"残火の収穫"}.get(key,key)
+static func blessing_labels(upgrades:Dictionary,limit:int=6)->Array:
+ var out=[]
+ for key in upgrades:
+  var value=upgrades[key]
+  if not (value is int or value is float) or absf(float(value))<.0001:continue
+  var label=upgrade_label(String(key))
+  if label not in out:out.append(label)
+  if out.size()>=limit:break
+ return out
 static func available(upgrades:Dictionary,unlocks:Array)->Array:
  var out=[]
  for c in CHOICES:

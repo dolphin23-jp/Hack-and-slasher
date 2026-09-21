@@ -44,7 +44,7 @@ static func migrate(data:Dictionary)->Dictionary:
    var active=families.keys()
    active.sort_custom(func(a,b):return families[a]>families[b])
    run.active_oaths=active if not active.is_empty() else ["dance"]
-  run.materials=run.get("materials",0);run.active_oaths=run.get("active_oaths",out.oaths.active.duplicate());run.combo=run.get("combo",0)
+  run.materials=run.get("materials",0);run.active_oaths=run.get("active_oaths",out.oaths.active.duplicate());run.oath_board=OathBoard.sanitize(run.get("oath_board",out.oaths)).duplicate(true);run.combo=run.get("combo",0)
  var vault=out.get("vault",[])
  if vault is Array:
   for i in range(vault.size()):vault[i]=item(vault[i])
