@@ -1,6 +1,11 @@
 class_name ProfileStore
 extends RefCounted
 const VERSION=1
+const RUN_METRIC_KEYS=["hits_taken","damage_dealt","kills","drops","pickups","equips","level_ups","boss_patterns"]
+static func empty_run_metrics()->Dictionary:
+ var out={}
+ for key in RUN_METRIC_KEYS:out[key]=0.0 if key=="damage_dealt" else 0
+ return out
 var path="user://ashen_vow_v1.json"
 var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false}
 var records={"runs":0,"wins":0,"best_level":1,"best_ascension":0,"total_kills":0}
@@ -55,9 +60,8 @@ func valid_run(v:Variant)->bool:
  if v.has("victory_ready") and not v.victory_ready is bool:return false
  if v.has("metrics"):
   if not v.metrics is Dictionary:return false
-  var allowed_metrics=["hits_taken","damage_dealt","kills","drops","pickups","equips","level_ups","boss_patterns"]
   for key in v.metrics:
-   if key not in allowed_metrics:return false
+   if key not in RUN_METRIC_KEYS:return false
    var value=v.metrics[key]
    if not (value is int or value is float) or not is_finite(float(value)) or float(value)<0 or float(value)>1000000000:return false
  if not v.get("drops",[]) is Array or v.get("drops",[]).size()>1200:return false
