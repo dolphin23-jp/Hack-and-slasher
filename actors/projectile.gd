@@ -2,6 +2,9 @@ class_name SpiritProjectile
 extends Node2D
 var game
 var velocity=Vector2.ZERO
+var damage_types=[]
+var bounces=0
+var tier_shield=false
 var damage=10.0
 var friendly=false
 var pierce=0
@@ -26,6 +29,8 @@ func tick(dt:float)->void:
  var next=position+velocity*dt
  if not game.dungeon.line_clear(position,next):
   game.fx.burst(position,color,5,65)
+  if bounces>0:
+   bounces-=1;velocity=-velocity;return
   if try_return():return
   remove();return
  var previous=position
@@ -36,8 +41,10 @@ func tick(dt:float)->void:
    if e.dead or e.state in ["spawn","transform"] or e.get_instance_id() in hit_ids:continue
    if e.position.distance_to(Geometry2D.get_closest_point_to_segment(e.position,previous,position))<e.radius+radius:
     hit_ids.append(e.get_instance_id())
+    if tier_shield and hit_ids.size()>=2:
+     tier_shield=false;game.player.barrier=minf(game.player.barrier+8,maxf(20,game.player.stats.shield_max));game.player.barrier_time=5
     var crit=not secondary_effect and game.rng.randf()<game.player.stats.crit
-    e.take_damage(damage*(1+game.player.stats.crit_damage if crit else 1),velocity.normalized()*100,crit,secondary_effect)
+    e.take_damage((damage*DamageModel.multiplier(e.kind,damage_types,game.player.stats) if not damage_types.is_empty() else damage)*(1+game.player.stats.crit_damage if crit else 1),velocity.normalized()*100,crit,secondary_effect)
     if crit:game.critical_effect(position)
     if slow_on_hit>0:e.slow_time=maxf(e.slow_time,slow_on_hit)
     if chain_on_hit:

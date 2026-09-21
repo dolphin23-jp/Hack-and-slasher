@@ -15,7 +15,7 @@ func clear_combat()->void:
   list.clear()
  game.hazards.clear();game.delayed_blasts.clear();game.pending_upgrades=0
  game.dungeon.active=-1;game.mode="play";game.player.position=Vector2.ZERO
- game.player.equipment=ItemDB.initial_items();game.player.upgrades={};game.player.rebuild_stats()
+ game.player.active_oaths=["dance"];game.player.equipment=ItemDB.initial_items();game.player.upgrades={};game.player.rebuild_stats()
  game.player.hp=game.player.stats.hp;game.player.dead=false;game.player.invulnerable=0;game.player.dash_time=0;game.player.dash_cd=0
  game.player.attack_cd=0;game.player.combo=0;game.player.cooldowns=[0.0,0.0,0.0];game.player.counter_time=0;game.player.echo_ready=false
 func enemy(kind:String="hollow",p:Vector2=Vector2(90,0)):
@@ -26,11 +26,12 @@ func run()->void:
  game.set_physics_process(false);game.profile.run={};game.profile.chronicle=ChronicleDB.empty();game.start_run()
  game.player.controlled_by_test=true
  clear_combat()
+ game.player.active_oaths=[]
  var e=enemy();game.player.facing=Vector2.RIGHT;game.player.stats.crit=0
  var first_hp=e.hp;game.player.attack();var first=first_hp-e.hp
  game.player.attack_cd=0;game.player.attack();game.player.attack_cd=0
  var third_hp=e.hp;game.player.attack()
- expect("third strike deals a heavier impact",third_hp-e.hp>first*1.7 and game.hitstop>=.06)
+ expect("third chain slot switches from melee to a real staff projectile",first>0 and third_hp==e.hp and not game.projectiles.is_empty() and game.projectiles.any(func(b):return b.damage_types==["magic"]))
  expect("light enemies visibly stagger",e.stagger_time>0 and e.velocity.length()>0)
  game.player.dash_cd=0
  expect("dash cancels swing recovery",game.player.dash() and game.player.attack_time==0 and game.player.attack_cd<=.12)
@@ -72,11 +73,11 @@ func run()->void:
  expect("return lance reverses once with reduced damage",bolt.returning and bolt.velocity.x<0 and is_equal_approx(bolt.damage,original_damage*.6))
  bolt.life=.01;bolt.tick(.02)
  expect("return lance expires instead of looping",bolt.dead)
- clear_combat();equip_legend(6);equip_legend(1);game.player.stats.crit=0;e=enemy();game.player.attack()
+ clear_combat();game.player.active_oaths=["flame"];equip_legend(6);equip_legend(1);game.player.equipment.weapon.weapon_type="sword";game.player.stats.crit=0;e=enemy();game.player.attack()
  expect("ash blade applies burn and cinder set activates",e.burn_time>0 and game.player.synergy("cinder"))
  hp=e.hp;e.take_damage(100,Vector2.ZERO)
  expect("cinder synergy changes actual damage",is_equal_approx(hp-e.hp,130))
- clear_combat();equip_legend(0);equip_legend(7);e=enemy();neighbor=enemy("hollow",Vector2(170,30));hp=neighbor.hp;game.player.cast(2);game.projectiles[0].tick(.07)
+ clear_combat();game.player.active_oaths=["storm"];equip_legend(0);equip_legend(7);e=enemy();neighbor=enemy("hollow",Vector2(170,30));hp=neighbor.hp;game.player.cast(2);game.projectiles[0].tick(.07)
  expect("storm pair adds lightning to lance impact",neighbor.hp<hp)
  clear_combat();equip_legend(5);equip_legend(8);game.player.cast(1);e=enemy();game.player.combo=2;game.player.attack()
  expect("echo pair stores then releases a finisher repeat",not game.player.echo_ready and game.delayed_blasts.size()==1)
@@ -85,15 +86,15 @@ func run()->void:
  expect("delayed echo causes real damage",e.hp<hp and game.delayed_blasts.is_empty())
  clear_combat();equip_legend(11);game.player.cast(0)
  expect("double bell leaves a delayed judgement",game.delayed_blasts.size()==1)
- clear_combat();equip_legend(12);game.player.cast(1)
+ clear_combat();game.player.active_oaths=["flame"];equip_legend(12);game.player.cast(1)
  expect("ember armor changes nova into a fire field",game.hazards.size()==1 and game.hazards[0].friendly)
- clear_combat();equip_legend(9);game.player.hp*=.5;game.player.potions=3;e=enemy();hp=e.hp;game.player.drink()
+ clear_combat();game.player.active_oaths=["flame"];equip_legend(9);game.player.hp*=.5;game.player.potions=3;e=enemy();hp=e.hp;game.player.drink()
  expect("phoenix flask damages and ignites enemies",e.hp<hp and e.burn_time>0)
  clear_combat();equip_legend(14);e=enemy();game.player.controlled_by_test=true;game.player.dash();game.player.tick(.20)
  expect("dash nova creates an endpoint impact",game.player.dash_nova_cd>0)
- clear_combat();equip_legend(10);e=enemy("hollow",Vector2(260,0));hp=e.hp;game.player.cast(1)
+ clear_combat();game.player.active_oaths=["storm"];equip_legend(10);e=enemy("hollow",Vector2(260,0));hp=e.hp;game.player.cast(1)
  expect("conductor reaches beyond nova radius",e.hp<hp)
- clear_combat();equip_legend(15);game.player.stats.crit=0;e=enemy();e.hp=2000;game.player.combo=2;hp=e.hp;game.player.attack()
+ clear_combat();equip_legend(15);game.player.equipment.weapon.weapon_type="sword";game.player.equipment.weapon3=game.player.equipment.weapon.duplicate(true);game.player.stats.crit=0;e=enemy();e.hp=2000;game.player.combo=2;hp=e.hp;game.player.attack()
  expect("execution blade rewards low-health finishers",hp-e.hp>game.player.stats.attack*2.7)
  clear_combat();e=enemy("boss",Vector2(180,0));e.hp=e.max_hp*.49;e.tick(.01)
  expect("boss transforms at half health",e.phase==2 and e.state=="transform" and game.sound.music_name=="boss_awakened")

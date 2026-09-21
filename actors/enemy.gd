@@ -190,7 +190,7 @@ func release_attack()->void:
    pattern+=1;game.metrics.boss_patterns+=1
 func hit_cone(reach:float,angle:float,amount:float)->void:
  var to=game.player.position-position
- if to.length()<reach and absf(aim.angle_to(to))<angle and game.dungeon.line_clear(position,game.player.position):game.player.take_damage(amount,aim*170)
+ if to.length()<reach and absf(aim.angle_to(to))<angle and game.dungeon.line_clear(position,game.player.position):game.player.take_damage(amount,aim*170,kind in ["elite","boss"])
 func ignite(amount:float,duration:float)->void:
  burn_damage=maxf(burn_damage,amount);burn_time=maxf(burn_time,duration)
 func take_damage(amount:float,knock:Vector2,crit:bool=false,proc:bool=false)->void:
@@ -199,7 +199,7 @@ func take_damage(amount:float,knock:Vector2,crit:bool=false,proc:bool=false)->vo
   if knock.length()>=300:
    shield_break=3;state="recover";timer=1.5;game.fx.number(position,"盾崩し",Color("ffdaa1"),true);game.sound.play("heavy",.6)
   else:
-   amount*=.25;game.fx.number(position,"防御",Color("b8d8e0"));knock*=.15
+   amount*=.25+clampf(game.player.stats.get("penetration",0),0,.6);game.fx.number(position,"防御",Color("b8d8e0"));knock*=.15
  if kind=="boss" and state=="recover":amount*=1.35
  if burn_time>0 and game.player.synergy("cinder") and not proc:amount*=1.3
  if not proc and stagger_guard<=0 and kind in ["hollow","cantor","hound","summoner"] and state!="charge":

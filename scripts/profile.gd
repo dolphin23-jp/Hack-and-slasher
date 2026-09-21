@@ -1,22 +1,28 @@
 class_name ProfileStore
 extends RefCounted
-const VERSION=1
+const VERSION=2
 const RUN_METRIC_KEYS=["hits_taken","damage_dealt","kills","drops","pickups","equips","level_ups","boss_patterns","perfect_evades","contracts"]
 static func empty_run_metrics()->Dictionary:
  var out={}
  for key in RUN_METRIC_KEYS:out[key]=0.0 if key=="damage_dealt" else 0
  return out
+var recovery_notice=""
 var path="user://ashen_vow_v1.json"
 var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false,"touch_size":.5,"touch_inset":.5,"hitstop":true}
 var records={"runs":0,"wins":0,"best_level":1,"best_ascension":0,"total_kills":0}
 var run={}
+var oaths=OathBoard.empty()
 var chronicle=ChronicleDB.empty()
 func read_save()->void:
  if not FileAccess.file_exists(path):return
  var content=FileAccess.get_file_as_string(path)
  if content.length()>2000000:return
  var data=JSON.parse_string(content)
- if not data is Dictionary or data.get("version",0)!=VERSION:return
+ if not data is Dictionary or data.get("version",0)!=1 and data.get("version",0)!=VERSION:return
+ if data.get("version")==1 and not FileAccess.file_exists(path+".v1.bak"):
+  DirAccess.copy_absolute(path,path+".v1.bak")
+ data=SaveMigration.migrate(data)
+ oaths=OathBoard.sanitize(data.oaths)
  var incoming=data.get("settings",{})
  if incoming is Dictionary:
   for k in settings:
@@ -51,6 +57,9 @@ func read_save()->void:
     for i in range(run[k].size()):run[k][i]=int(run[k][i])
   for slot in ItemDB.SLOTS:run.equipment[slot].rarity=int(run.equipment[slot].rarity)
   for item in run.inventory:item.rarity=int(item.rarity)
+ if s is Dictionary and not s.is_empty() and run.is_empty():
+  recovery_notice="保存データの一部を復元できません。元データは .recovery.bak に保護しました。"
+  if not FileAccess.file_exists(path+".recovery.bak"):DirAccess.copy_absolute(path,path+".recovery.bak")
 func valid_run(v:Variant)->bool:
  if not v is Dictionary or v.is_empty():return false
  for k in ["level","xp","hp","potions","seed","kills","elapsed","ascension","equipment","inventory","upgrades","cleared","position"]:
@@ -58,6 +67,16 @@ func valid_run(v:Variant)->bool:
  for k in ["level","xp","hp","potions","seed","kills","elapsed","ascension"]:
   if not (v[k] is int or v[k] is float) or not is_finite(float(v[k])):return false
  if v.level<1 or v.level>99 or v.ascension<0 or v.ascension>100 or v.hp<=0 or v.xp<0 or v.xp>10000000 or v.potions<0 or v.potions>3:return false
+ for key in ["materials","combo"]:
+  if v.has(key):
+   if not (v[key] is int or v[key] is float) or not is_finite(float(v[key])) or v[key]<0 or v[key]>10000000:return false
+ if v.has("combo") and v.combo>3:return false
+ if v.has("active_oaths"):
+  if not v.active_oaths is Array or v.active_oaths.size()>3:return false
+  var seen=[]
+  for key in v.active_oaths:
+   if not key is String or not OathBoard.PATHS.has(key) or key in seen:return false
+   seen.append(key)
  if not v.equipment is Dictionary or not v.inventory is Array or v.inventory.size()>44 or not v.upgrades is Dictionary:return false
  for slot in ItemDB.SLOTS:
   if not ItemDB.valid(v.equipment.get(slot)):return false
@@ -105,5 +124,5 @@ func vector_valid(v:Variant)->bool:
 func write_save()->bool:
  var f=FileAccess.open(path+".tmp",FileAccess.WRITE)
  if f==null:return false
- f.store_string(JSON.stringify({"version":VERSION,"settings":settings,"records":records,"run":run,"chronicle":chronicle}));f.flush();f.close()
+ f.store_string(JSON.stringify({"version":VERSION,"settings":settings,"records":records,"run":run,"chronicle":chronicle,"oaths":oaths}));f.flush();f.close()
  return DirAccess.rename_absolute(path+".tmp",path)==OK

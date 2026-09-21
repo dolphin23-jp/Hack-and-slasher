@@ -9,6 +9,7 @@ const MUTED=Color("95a8ac")
 const TEAL=Color("8ecdc2")
 const RED=Color("d8857a")
 var game
+var reliquary=ReliquaryUI.new()
 var body=preload("res://assets/fonts/Body.ttf")
 var heading=preload("res://assets/fonts/Title.ttf")
 var title_art=preload("res://assets/title.svg")
@@ -185,6 +186,7 @@ func pointer_blocked()->bool:
   if b.rect.has_point(hover):return true
  return false
 func act(action:String)->void:
+ if reliquary.act(self,action):return
  if action in ["attack","dash","heal","interact"] and game.mode!="play":return
  if action.begins_with("contract:"):game.choose_contract(action.split(":")[1]);return
  if action.begins_with("journal:"):
@@ -217,7 +219,7 @@ func act(action:String)->void:
   "settings":settings_return=game.mode;game.mode="settings"
   "help":settings_return=game.mode;game.mode="help"
   "journal":settings_return=game.mode;game.mode="journal"
-  "journal_next":journal_page=1-journal_page
+  "journal_next":journal_page=(journal_page+1)%ceili(ItemDB.LEGENDS.size()/8.0)
   "back":game.mode=settings_return
   "title":game.return_to_title()
   "equip":game.player.equip(selected);salvage_confirm=-1
@@ -230,7 +232,7 @@ func act(action:String)->void:
      if String(game.player.inventory[i].id)==selected_id:selected=i;break
   "salvage":
    if selected<0 or selected>=game.player.inventory.size():return
-   if int(game.player.inventory[selected].rarity)==3 and salvage_confirm!=selected:salvage_confirm=selected;game.toast("レジェンダリーです。もう一度「分解」を押すと確定します。")
+   if int(game.player.inventory[selected].rarity)>=3 and salvage_confirm!=selected:salvage_confirm=selected;game.toast("レジェンダリーです。もう一度「分解」を押すと確定します。")
    else:game.salvage(selected);salvage_confirm=-1
   "dash":game.player.dash()
   "heal":game.player.drink()
@@ -258,12 +260,14 @@ func _draw()->void:
   "settings":draw_settings()
   "help":draw_help()
   "journal":draw_journal()
+  "oaths":reliquary.draw_oaths(self)
   "event":draw_event()
   "play":
    if big_map:draw_map(Rect2(280,195,880,440),true)
  if game.toast_time>0:
   var w=body.get_string_size(game.toast_text,HORIZONTAL_ALIGNMENT_LEFT,-1,16).x+42
-  panel(Rect2(720-w/2,108,w,36),Color(.06,.12,.17,.94),Color(.45,.58,.55,.5));text(game.toast_text,Vector2(720,132),16,TEXT,true)
+  var toast_y=864 if game.mode in ["inventory","victory_inventory","oaths"] else 108
+  panel(Rect2(720-w/2,toast_y,w,36),Color(.06,.12,.17,.94),Color(.45,.58,.55,.5));text(game.toast_text,Vector2(720,toast_y+24),16,TEXT,true)
 func text(s:String,p:Vector2,size:int=18,c:Color=TEXT,center:bool=false,serif:bool=false)->void:
  var f=heading if serif else body;var at=p
  if center:at.x-=f.get_string_size(s,HORIZONTAL_ALIGNMENT_LEFT,-1,size).x/2
@@ -324,7 +328,9 @@ func draw_title()->void:
   var entry=ChronicleDB.STARTS[i];var unlocked=entry.unlock.is_empty() or entry.unlock in game.profile.chronicle.achievements
   button(Rect2(520+i*285,583,270,48),entry.name if unlocked else entry.name+" / 未解放","start_oath:"+entry.id,game.profile.chronicle.start==entry.id)
   wrapped_text(entry.text if unlocked else ("初踏破で解放" if entry.id=="lance" else "レジェンダリー6種で解放"),Vector2(530+i*285,660),248,14,MUTED,23)
- text("灰冠の再誓 / 大型アップデート 0.2",Vector2(520,853),14,GOLD)
+ button(Rect2(840,753,285,53),"誓印盤 / 永続ビルド","oaths")
+ if not game.profile.recovery_notice.is_empty():wrapped_text(game.profile.recovery_notice,Vector2(850,760),520,16,RED)
+ text("三連の誓い / 大型アップデート 0.3",Vector2(520,853),14,GOLD)
  text("オリジナルアクションRPG  /  プロトタイプ",Vector2(105,859),12,MUTED);text("GODOT 4.5.1",Vector2(1329,859),12,MUTED,true)
 func draw_hud()->void:
  var p=game.player
@@ -386,7 +392,9 @@ func draw_hud()->void:
   button(touch_rect(Rect2(1060,671,136,55)),"回避" if p.dash_cd<=0 else "%.1f"%p.dash_cd,"dash",p.dash_cd<=0)
   button(touch_rect(Rect2(1213,681,154,45)),"回収","interact")
  if game.mode=="play":
-  text("剣 %s %s %s"%["●" if p.combo>=1 else "○","●" if p.combo>=2 else "○","◆" if p.combo>=3 else "◇"],Vector2(720,745),16,GOLD,true)
+  var chain_names=[]
+  for i in range(3):chain_names.append(("【" if p.combo%3==i else "")+WeaponDB.type_name(p.equipment[Loadout.WEAPONS[i]])+("】" if p.combo%3==i else ""))
+  text(" → ".join(chain_names)+" →",Vector2(720,745),16,GOLD,true)
   if p.counter_time>0:text("見切り / 次の剣を強化",Vector2(720,715),18,TEAL,true)
  if game.mode=="play":draw_critical_health(p)
 func draw_critical_health(p)->void:
@@ -421,42 +429,7 @@ func draw_map(r:Rect2,large:bool)->void:
  if large:
   text("01 入口  02 大広間  03 納骨堂  04 宝物庫(任意)  05 工房",Vector2(r.get_center().x,r.end.y-47),13,MUTED,true)
   text("南の近道: 11 告解室 → 12 鍛冶場 → 08 礼拝堂 / 危険な契約と秘宝" if game.dungeon.layout_version>=2 else "06 書庫  07 回廊  08 礼拝堂  09 行進路  10 王座",Vector2(r.get_center().x,r.end.y-24),13,MUTED,true)
-func draw_inventory()->void:
- dim();text("聖遺物庫",Vector2(42,62),33,TEXT,false,true);text("戦利品を比べ、戦い方を組み替えよう。",Vector2(43,94),15,MUTED)
- button(Rect2(1215,40,180,43),"戻る","return_victory" if game.mode=="victory_inventory" else "inventory")
- var p=game.player;panel(Rect2(40,128,284,701));text("装備中",Vector2(60,162),13,GOLD)
- for i in range(3):
-  var item=p.equipment[ItemDB.SLOTS[i]];var y=179+i*97
-  panel(Rect2(57,y,66,66),INK,ItemDB.COLORS[int(item.rarity)]);icon("sword" if item.slot=="weapon" else item.slot,Rect2(63,y+6,54,54))
-  text(ItemDB.slot_text(String(item.slot)),Vector2(138,y+17),11,MUTED);wrapped_text(item.name,Vector2(138,y+38),165,13,ItemDB.COLORS[int(item.rarity)],19)
- rule(58,477,245);text("現在の装備",Vector2(60,507),13,GOLD)
- var s=p.stats;var rows=[["攻撃力","%.0f"%s.attack],["クリティカル率","%d%%"%roundi(s.crit*100)],["クリティカル威力","%d%%"%roundi((1+s.crit_damage)*100)],["攻撃速度","+%d%%"%roundi(s.haste*100)],["防御力","%.0f"%s.armor],["スキル威力","+%d%%"%roundi(s.skill*100)],["クールダウン","-%d%%"%roundi(s.cdr*100)],["移動速度","+%d%%"%roundi(s.speed*100)]]
- for i in range(rows.size()):text(rows[i][0],Vector2(60,540+i*30),14,MUTED);text(rows[i][1],Vector2(238,540+i*30),14)
- text("LV %d / 討伐 %d"%[p.level,game.kills],Vector2(60,808),12,GOLD);text("所持品 %d / 40"%p.inventory.size(),Vector2(351,154),14,GOLD);text("比較するアイテムを選択",Vector2(351,177),12,MUTED)
- for i in range(maxi(40,p.inventory.size())):
-  var r=Rect2(349+(i%5)*72,195+floori(i/5.0)*(64 if p.inventory.size()>40 else 72),62,62)
-  var c=ItemDB.COLORS[int(p.inventory[i].rarity)] if i<p.inventory.size() else Color("344a55")
-  var pad_over=pad_active and buttons.size()==pad_focus
-  panel(r,Color("1b313b") if i==selected or pad_over else INK,c)
-  if i<p.inventory.size():
-   var it=p.inventory[i];icon("sword" if it.slot=="weapon" else it.slot,r.grow(-7))
-   if i==selected or pad_over:draw_rect(r.grow(3),GOLD if pad_over else Color("f0e3bb"),false,2)
-   text(str(it.tier),r.position+Vector2(48,57),10,c);buttons.append({"rect":r,"action":"item:"+str(i)})
- button(Rect2(535,139,180,36),"並べ替え","sort")
- text("ENTER 装備 / DELETE 分解",Vector2(351,808),12,MUTED)
- if selected<0 or selected>=p.inventory.size():text("未回収の装備はありません。",Vector2(1059,400),27,GOLD,true,true);return
- var it=p.inventory[selected];item_card(it,Rect2(746,129,310,487),"所持品");item_card(p.equipment[it.slot],Rect2(1074,129,310,487),"現在の装備")
- var loadout=p.equipment.duplicate(true);loadout[it.slot]=it;var next=p.calculated(loadout)
- panel(Rect2(746,635,638,103),INK);text("装備した場合",Vector2(762,657),11,GOLD)
- var comparisons=[["剣DPS",dps(next)/dps(s)-1],["実効耐久",next.hp*(1+next.armor/100)/(s.hp*(1+s.armor/100))-1],["スキル一撃",next.attack*(1+next.skill)/(s.attack*(1+s.skill))-1]]
- for i in range(3):
-  var x=762+i*209;var v=comparisons[i][1]*100;text(comparisons[i][0],Vector2(x,682),11,MUTED);text("%+.1f%%"%v,Vector2(x,714),26,TEAL if v>0 else (RED if v<0 else TEXT))
- button(Rect2(746,761,310,54),"この装備に変更","equip",true);button(Rect2(1074,761,310,54),"分解を確定" if salvage_confirm==selected else "分解して回復","salvage")
- var set_line=[]
- for family in BuildDB.SET_NAMES:
-  var count=p.set_count(family)
-  if count>0:set_line.append("%s %d/2%s"%[BuildDB.SET_NAMES[family],count," 発動" if count>=2 else ""])
- text(" / ".join(set_line) if not set_line.is_empty() else "同系統の聖遺物2部位で共鳴。数値比較は固有効果を含みません。",Vector2(1065,850),13,TEAL,true)
+func draw_inventory()->void:reliquary.draw(self)
 func dps(s:Dictionary)->float:return s.attack*(1+s.haste)*(1+s.crit*s.crit_damage)
 func item_card(it:Dictionary,r:Rect2,tag:String)->void:
  var c=ItemDB.COLORS[int(it.rarity)];panel(r,Color("13252f"),Color(c,.7));draw_rect(Rect2(r.position,Vector2(r.size.x,3)),c)
@@ -479,7 +452,7 @@ func draw_upgrades()->void:
   icon(c.icon,Rect2(r.get_center().x-49,r.position.y+31,98,98));text(c.name,Vector2(r.get_center().x,r.position.y+177),20,TEXT,true,true);wrapped_text(c.detail,r.position+Vector2(25,220),260,16,MUTED,25)
   text("[ %d ] この誓いを選ぶ"%(i+1),Vector2(r.get_center().x,r.end.y-25),13,GOLD,true);buttons.append({"rect":r,"action":"upgrade:"+str(i)})
  var branch=BuildDB.lance_key(game.player.upgrades)
- text("ランスの形を選択 / この探索中は変更できません" if branch.is_empty() and game.player.level==2 else "分岐した祝福・装備・2部位の共鳴を組み合わせよう。",Vector2(720,714),15,MUTED,true)
+ text("ランスの形を選択 / この探索中は変更できません" if branch.is_empty() and game.player.level==2 else "武器の順番・祝福・誓印を組み合わせよう。",Vector2(720,714),15,MUTED,true)
 func draw_pause()->void:
  dim();icon("crest",Rect2(680,147,80,80));text("束の間の静寂",Vector2(720,280),32,TEXT,true,true)
  button(Rect2(535,333,370,53),"大聖堂へ戻る","resume",true);button(Rect2(535,402,370,48),"設定","settings");button(Rect2(535,467,370,48),"遊び方","help");button(Rect2(535,532,370,48),"保存してタイトルへ","title")
@@ -528,7 +501,7 @@ func draw_settings()->void:
  text("タッチ操作では照準補助も有効。右の設定で配置を調整できます。",Vector2(720,655),14,MUTED,true);button(Rect2(566,711,308,52),"戻る","back",true)
 func draw_help()->void:
  dim();text("操作方法",Vector2(720,145),36,TEXT,true,true)
- var rows=[["WASD / 矢印キー","8方向移動"],["マウス / 右スティック","攻撃方向とスピリットランスを照準"],["LMB / J 長押し","3連続の剣攻撃。3段目は高威力。"],["SPACE / SHIFT","短い無敵時間つきの回避。再使用まで1.1秒。"],["Q / RMB","断罪: 広範囲の強力な近接攻撃。CT 5秒。"],["E","ソウルノヴァ: 範囲攻撃＋鈍足。CT 10秒。"],["R","スピリットランス: 貫通する遠距離攻撃。CT 6秒。"],["F","治癒: 3本ある回復薬を1本使用"],["C","近くの宝箱を開く / 装備を回収"],["I / TAB","聖遺物庫で比較・装備・分解"],["M / ESC","マップ / 一時停止・設定"]]
+ var rows=[["WASD / 矢印キー","8方向移動"],["マウス / 右スティック","攻撃方向とスピリットランスを照準"],["LMB / J 長押し","武器1→2→3を自動循環。3番目は範囲拡張。"],["SPACE / SHIFT","短い無敵時間つきの回避。再使用まで1.1秒。"],["Q / RMB","断罪: 広範囲の強力な近接攻撃。CT 5秒。"],["E","ソウルノヴァ: 範囲攻撃＋鈍足。CT 10秒。"],["R","スピリットランス: 貫通する遠距離攻撃。CT 6秒。"],["F","治癒: 3本ある回復薬を1本使用"],["C","近くの宝箱を開く / 装備を回収"],["I / TAB","聖遺物庫で比較・装備・分解"],["M / ESC","マップ / 一時停止・設定"]]
  for i in range(rows.size()):text(rows[i][0],Vector2(299,221+i*39),14,GOLD);text(rows[i][1],Vector2(535,221+i*39),16)
  text("戦利品は触れると回収。聖遺物庫を開いている間は戦闘が止まります。",Vector2(720,687),14,MUTED,true);text("聖域を解放すると生命と回復薬を補充。宝物庫は任意です。",Vector2(720,715),14,MUTED,true)
  button(Rect2(566,763,308,50),"準備完了","back",true)
@@ -563,15 +536,15 @@ func draw_journal()->void:
    var entry=ItemDB.LEGENDS[idx];var found=entry.effect in history.legends;var pos=Vector2(70+(i%2)*670,207+int(i/2)*143)
    panel(Rect2(pos,Vector2(630,126)),PANEL,GOLD if found else LINE)
    text(entry.name if found else "未発見 / "+ItemDB.slot_text(entry.slot),pos+Vector2(19,29),19,GOLD if found else MUTED)
-   text(BuildDB.SET_NAMES[entry.set],pos+Vector2(455,29),14,TEAL)
-   wrapped_text(entry.text if found else "宝箱、精鋭、危険な契約、王の戦利品から発見できる。",pos+Vector2(19,62),590,15,TEXT if found else MUTED,24)
+   text("三連の聖遺物",pos+Vector2(455,29),14,TEAL)
+   wrapped_text((ReliquaryUI.UNIQUE_TEXT[ItemDB.UNIQUE[WeaponDB.TYPES.keys().find(entry.get("weapon_type",WeaponDB.TYPES.keys()[idx%7]))]] if entry.slot=="weapon" else "3連携完了で障壁を獲得。旧属性能力は誓印盤へ移行。") if found else "宝箱、精鋭、危険な契約、王の戦利品から発見できる。",pos+Vector2(19,62),590,15,TEXT if found else MUTED,24)
   button(Rect2(566,806,308,48),"次の頁" if journal_page==0 else "前の頁","journal_next")
  elif journal_tab=="enemies":
   var i=0
   for kind in ChronicleDB.ENEMIES:
    var known=history.enemies.has(kind);var entry=ChronicleDB.ENEMIES[kind];var pos=Vector2(70+(i%2)*670,207+int(i/2)*143)
    panel(Rect2(pos,Vector2(630,126)));text(entry[0] if known else "未遭遇",pos+Vector2(19,29),20,GOLD)
-   wrapped_text(entry[1] if known else "撃破すると行動と対処の記録が残る。",pos+Vector2(19,61),590,16,MUTED,24)
+   wrapped_text(entry[1]+" / "+DamageModel.hint(kind) if known else "撃破すると行動と対処の記録が残る。",pos+Vector2(19,61),590,16,MUTED,24)
    if known:text("討伐 %d"%history.enemies[kind],pos+Vector2(495,30),13,TEAL)
    i+=1
  else:
@@ -580,4 +553,4 @@ func draw_journal()->void:
    var entry=ChronicleDB.ACHIEVEMENTS[id];var done=id in history.achievements;var y=222+i*110
    panel(Rect2(105,y-26,1230,96));text(("達成 / " if done else "未達成 / ")+entry[0],Vector2(125,y+2),21,TEAL if done else GOLD)
    text(entry[1],Vector2(125,y+40),16,TEXT);i+=1
-  text("見切り %d / 5  ・  契約達成 %d  ・  発見 %d / 16"%[history.evades,history.contracts,history.legends.size()],Vector2(720,820),17,GOLD,true)
+  text("見切り %d / 5  ・  契約達成 %d  ・  発見 %d / 23"%[history.evades,history.contracts,history.legends.size()],Vector2(720,820),17,GOLD,true)

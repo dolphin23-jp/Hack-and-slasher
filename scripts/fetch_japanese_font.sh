@@ -1,22 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
+# The subset is bundled for offline/native/Web builds. Do not replace it with
+# the old upstream subset: that font omits several 0.3 weapon/oath glyphs.
 DEST="assets/fonts/NotoSansJP-Regular.subset.ttf"
-SOURCE="https://raw.githubusercontent.com/zakideee/boundsvg/67f22b683953035f4ecc7e8cc7cead595433dd4b/fixtures/fonts/NotoSansJP-Regular.subset.ttf"
-EXPECTED_SIZE=1079300
-
-mkdir -p "$(dirname "$DEST")"
-if [ -s "$DEST" ] && [ "$(wc -c < "$DEST" | tr -d ' ')" = "$EXPECTED_SIZE" ]; then
-  exit 0
-fi
-
-tmp="${DEST}.tmp"
-rm -f "$tmp"
-curl -L --fail --retry 3 --retry-delay 1 -o "$tmp" "$SOURCE"
-actual="$(wc -c < "$tmp" | tr -d ' ')"
-if [ "$actual" != "$EXPECTED_SIZE" ]; then
-  echo "Unexpected Japanese font size: $actual (expected $EXPECTED_SIZE)" >&2
-  rm -f "$tmp"
+EXPECTED_SHA256="631e3b9873fb83ca5b4572991b7ceebe8189bd05914ae1340b2d7257b0d35e1e"
+if [ ! -s "$DEST" ]; then
+  echo "Bundled Japanese font missing. Restore $DEST from this repository." >&2
   exit 1
 fi
-mv "$tmp" "$DEST"
+actual="$(sha256sum "$DEST" | cut -d ' ' -f 1)"
+if [ "$actual" != "$EXPECTED_SHA256" ]; then
+  echo "Japanese subset changed. Verify glyph coverage and update its pinned hash." >&2
+  exit 1
+fi
