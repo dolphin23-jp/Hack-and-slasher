@@ -9,10 +9,13 @@ static func strike(p)->void:
   var previous=p.equipment[Loadout.WEAPONS[(p.combo+1)%3]]
   transition=WeaponDB.transition(previous,it)
   amount*=float(transition.damage)*(1+float(p.upgrades.get("transition_power",0)))
+  if p.has_unique("transition_echo"):amount*=1.12
  var reach=w.reach*(1.15 if int(it.tier)>=2 else 1.0)*(1.15 if p.combo==3 else 1.0)
  if p.combo==2:reach*=1+float(p.upgrades.get("slot2_range",0))
  if p.combo==3:
   amount*=1+float(p.upgrades.get("slot3_power",0))
+  if p.has_unique("shield_spend_power") and p.barrier>=10:
+   p.barrier-=10;amount*=1.25
   if WeaponDB.same_family_chain(p.equipment):amount*=1+float(p.upgrades.get("family_finisher",0))
   if WeaponDB.distinct_primary_chain(p.equipment):amount*=1+float(p.upgrades.get("triad_finisher",0))
   if transition.id=="reap_cast":amount*=1+float(p.upgrades.get("reap_cast_power",0))
@@ -33,6 +36,7 @@ static func strike(p)->void:
  var rounds=1+(1 if int(it.rarity)==4 and p.combo==3 else 0)+(1 if ((int(it.tier)>=5 and p.combo==3 and kind in ["sword","scythe"]) or (unique=="double_spin" and w.shape=="circle")) else 0)
  if p.combo==3 and WeaponDB.same_family_chain(p.equipment):rounds+=1
  if p.combo==3 and WeaponDB.distinct_primary_chain(p.equipment):rounds+=1
+ if p.has_unique("full_shield_magic_double") and "magic" in w.types and p.stats.shield_max>0 and p.barrier>=p.stats.shield_max*.9:rounds+=1
  var landed=0
  for repeat in range(rounds):
   if w.shape in ["bolt","wave"]:
@@ -50,7 +54,8 @@ static func strike(p)->void:
      var inside=delta.length()<reach and (w.shape=="circle" or absf(p.facing.angle_to(delta))<w.arc)
      if w.shape=="line":inside=delta.dot(p.facing)>0 and delta.dot(p.facing)<reach and absf(delta.cross(p.facing))<22+e.radius
      if not inside or not g.dungeon.line_clear(p.position,e.position):continue
-     var crit=g.rng.randf()<p.stats.crit
+     var crit_chance=float(p.stats.crit)+(.08 if not String(transition.id).is_empty() and p.has_unique("transition_crit") else 0.0)
+     var crit=g.rng.randf()<minf(.95,crit_chance)
      var damage=(amount+p.stats.attack if p.combo==3 and p.has_effect("execution") and e.hp/e.max_hp<.3 else amount)*DamageModel.multiplier(e.kind,w.types,p.stats)*(1+p.stats.crit_damage if crit else 1)
      if int(it.tier)>=3 and kind=="spear" and landed>0:damage*=1.2
      if transition.id=="sunder" and e.kind in ["warden","elite","boss"]:damage*=float(transition.guard)
