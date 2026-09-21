@@ -100,6 +100,16 @@ func valid_run(v:Variant)->bool:
   for key in v.active_oaths:
    if not key is String or not OathBoard.PATHS.has(key) or key in seen:return false
    seen.append(key)
+ if v.has("oath_board"):
+  if not v.oath_board is Dictionary:return false
+  var board=OathBoard.sanitize(v.oath_board)
+  if not v.oath_board.get("nodes",[]) is Array:return false
+  var clean_nodes=OathBoard.sanitize_node_ids(v.oath_board.get("nodes",[]))
+  var requested=[]
+  for id in v.oath_board.get("nodes",[]):
+   if not id is String or OathBoard.node_info(id).is_empty() or id in requested:return false
+   requested.append(id)
+  if clean_nodes!=requested:return false
  if not v.equipment is Dictionary or not v.inventory is Array or v.inventory.size()>84 or not v.upgrades is Dictionary:return false
  for slot in ItemDB.SLOTS:
   if not ItemDB.valid(v.equipment.get(slot)):return false
