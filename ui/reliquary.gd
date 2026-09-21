@@ -151,12 +151,12 @@ func delta_color(u,value:float)->Color:
  if value>.0001:return u.TEAL
  if value<-.0001:return u.RED
  return u.MUTED
-func draw_compare_panel(u,p,it:Dictionary,target_slot:String,r:Rect2,title:String="交換比較")->void:
+func draw_compare_panel(u,p,it:Dictionary,target_slot:String,r:Rect2,title:String="交換比較",show_detail_button:bool=true)->void:
  var snap=EquipmentCompare.snapshot(p,it,target_slot)
  u.panel(r,u.PANEL,ItemDB.COLORS[int(it.rarity)])
  var x=r.position.x+18;var y=r.position.y+26
  u.text(title+" / "+ItemDB.slot_text(target_slot),Vector2(x,y),14,u.GOLD)
- u.button(Rect2(r.end.x-200,r.position.y+11,180,34),"詳細を拡大","detail_toggle")
+ if show_detail_button:u.button(Rect2(r.end.x-200,r.position.y+11,180,34),"詳細を拡大","detail_toggle")
  draw_item_art(u,it,Rect2(x,y+18,112,112))
  var current=p.equipment[target_slot]
  draw_item_art(u,current,Rect2(x+126,y+42,72,72))
@@ -253,7 +253,7 @@ func draw_focus_detail(u)->void:
  detail(u,it,Rect2(60,95,610,650),"候補装備 / "+ItemDB.slot_text(String(it.slot)))
  if not target_slot.is_empty():
   detail(u,p.equipment[target_slot],Rect2(690,95,690,285),"現在装備 / "+ItemDB.slot_text(target_slot))
-  draw_compare_panel(u,p,it,target_slot,Rect2(690,395,690,350),"交換後の変化")
+  draw_compare_panel(u,p,it,target_slot,Rect2(690,395,690,350),"交換後の変化",false)
  u.button(Rect2(1160,108,195,42),"一覧へ戻る","detail_toggle")
  u.button(Rect2(920,770,210,48),"保管庫へ","vault_store")
  u.button(Rect2(1150,770,210,48),"ジャンク "+("ON" if it.get("junk",false) else "OFF"),"junk",it.get("junk",false))
@@ -273,7 +273,7 @@ func draw_vault(u)->void:
  if vault_selected<start_index or vault_selected>=end_index:vault_selected=start_index
  var it=list[vault_selected];var compare_slot=p.item_upgrade_target(it)
  if compare_slot.is_empty():detail(u,it,Rect2(640,300,748,455),"保管庫")
- else:draw_compare_panel(u,p,it,compare_slot,Rect2(640,300,748,455),"保管庫から比較")
+ else:draw_compare_panel(u,p,it,compare_slot,Rect2(640,300,748,455),"保管庫から比較",false)
  u.button(Rect2(940,785,448,52),"所持品へ取り出す","vault_take",p.inventory.size()<80)
 func detail(u,it:Dictionary,r:Rect2,label:String)->void:
  u.panel(r,u.PANEL,ItemDB.COLORS[int(it.rarity)])
