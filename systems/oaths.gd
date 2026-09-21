@@ -16,6 +16,7 @@ static func sanitize(value:Variant)->Dictionary:
   out.active=[]
   for key in value.active:
    if key is String and PATHS.has(key) and key not in out.active and out.active.size()<3:out.active.append(key)
+ if out.active.is_empty():out.active=["dance"]
  if value.get("ranks") is Dictionary:
   for key in PATHS:
    var rank=value.ranks.get(key,0)
