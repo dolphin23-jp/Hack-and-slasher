@@ -19,6 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Fetch Japanese font
+        run: bash scripts/fetch_japanese_font.sh
+
       - name: Install runtime dependencies
         run: |
           # Hosted runners sometimes carry third-party APT feeds that can fail
