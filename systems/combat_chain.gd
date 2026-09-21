@@ -10,6 +10,7 @@ static func strike(p)->void:
   transition=WeaponDB.transition(previous,it)
   amount*=float(transition.damage)*(1+float(p.upgrades.get("transition_power",0)))
   if p.has_unique("transition_echo"):amount*=1.12
+  if int(p.equipment.accessory.tier)>=5:amount*=1.08
  var reach=w.reach*(1.15 if int(it.tier)>=2 else 1.0)*(1.15 if p.combo==3 else 1.0)
  if p.combo==2:reach*=1+float(p.upgrades.get("slot2_range",0))
  if p.combo==3:
@@ -33,7 +34,8 @@ static func strike(p)->void:
   if p.upgrades.get("storm_counter",0)>0:g.chain_lightning(p.position,p.stats.attack*.8,null,2)
   p.counter_time=0
  p.attack_cd=w.cooldown/(1+p.stats.haste);p.attack_time=.2
- var rounds=1+(1 if int(it.rarity)==4 and p.combo==3 else 0)+(1 if ((int(it.tier)>=5 and p.combo==3 and kind in ["sword","scythe"]) or (unique=="double_spin" and w.shape=="circle")) else 0)
+ var mythic_round=int(it.rarity)==4 and p.combo==3 and kind in ["sword","scythe","fist"]
+ var rounds=1+(1 if mythic_round else 0)+(1 if ((int(it.tier)>=5 and p.combo==3 and kind in ["sword","scythe"]) or (unique=="double_spin" and w.shape=="circle")) else 0)
  if p.combo==3 and WeaponDB.same_family_chain(p.equipment):rounds+=1
  if p.combo==3 and WeaponDB.distinct_primary_chain(p.equipment):rounds+=1
  if p.has_unique("full_shield_magic_double") and "magic" in w.types and p.stats.shield_max>0 and p.barrier>=p.stats.shield_max*.9:rounds+=1
@@ -41,7 +43,7 @@ static func strike(p)->void:
  for repeat in range(rounds):
   if w.shape in ["bolt","wave"]:
    var angles=[0.0]
-   if int(it.rarity)==4 or (int(it.tier)>=5 and p.combo==3 and kind=="staff"):angles=[-.13,0.0,.13]
+   if (int(it.rarity)==4 and kind=="staff") or (int(it.tier)>=5 and p.combo==3 and kind=="staff"):angles=[-.13,0.0,.13]
    for a in angles:
     var bolt=g.fire(p.position+p.facing*20,p.facing.rotated(a)*780,amount/(1.7 if angles.size()>1 else 1),true,6 if (int(it.tier)>=4 and kind in ["staff","spellblade"]) else (4 if int(it.tier)>=4 else 2),Color("bfabff"))
     bolt.tier_shield=int(it.tier)>=3 and kind in ["spellblade"];bolt.damage_types=w.types;bolt.life=reach/780;bolt.radius=22 if w.shape=="wave" else 9
@@ -82,8 +84,19 @@ static func strike(p)->void:
     var side=g.fire(p.position+p.facing*20,p.facing.rotated(a)*760,amount*.48,true,4,Color("d9e7ff"));side.damage_types=w.types;side.life=.55
   if int(it.tier)>=5 and kind=="spellblade":
    g.queue_blast(p.position+p.facing*minf(reach*.7,280.0),120,amount*.75,.25,Color("c9b5ff"))
+  if int(p.equipment.head.tier)>=5 and "magic" in w.types:g.queue_blast(p.position+p.facing*85,105,amount*.35,.18,Color("d6c8ff"))
+  if int(p.equipment.armor.tier)>=5:p.barrier=minf(p.barrier+8,maxf(25,p.stats.shield_max));p.barrier_time=5
+  if int(p.equipment.hands.tier)>=5:g.area_damage(p.position,120,amount*.25,true)
+  if int(p.equipment.feet.tier)>=5:p.dash_cd=maxf(0,p.dash_cd-.25)
+  if int(p.equipment.accessory2.tier)>=5:p.heal(p.stats.hp*.015)
   for slot in ItemDB.SLOTS:
-   if slot not in Loadout.WEAPONS and (int(p.equipment[slot].tier)>=5 or p.equipment[slot].get("unique","")=="chain_guard"):p.barrier=minf(p.barrier+(8 if int(p.equipment[slot].rarity)==4 else 4),maxf(25,p.stats.shield_max));p.barrier_time=5
+   if slot not in Loadout.WEAPONS and p.equipment[slot].get("unique","")=="chain_guard":p.barrier=minf(p.barrier+4,maxf(25,p.stats.shield_max));p.barrier_time=5
+  if int(it.rarity)==4:
+   if kind=="spear":
+    for a in [-.27,.27]:
+     var myth_lance=g.fire(p.position+p.facing*18,p.facing.rotated(a)*800,amount*.42,true,5,Color("f2d7ff"));myth_lance.damage_types=w.types;myth_lance.life=.55
+   elif kind=="mace":g.area_damage(p.position,220,amount*.55,true)
+   elif kind=="spellblade":g.queue_blast(p.position+p.facing*210,145,amount*.7,.18,Color("e0b8ff"))
  if w.shape=="circle":g.fx.ring(p.position,reach,Color("d4fff0"),.25);g.fx.slash(p.position,p.facing,reach,Color("b4ecdf"),true,true)
  elif w.shape=="line":g.fx.lightning(p.position,p.position+p.facing*reach)
  else:g.fx.slash(p.position,p.facing,minf(reach,160),Color("b4ecdf"),p.combo==3,true)
