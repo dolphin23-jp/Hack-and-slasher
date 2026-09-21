@@ -2,6 +2,7 @@ class_name ItemDB
 extends RefCounted
 const RARITIES=["Common","Rare","Epic","Legendary","Mythic"]
 const COLORS=[Color("b6c5c8"),Color("78b5ed"),Color("dcacd9"),Color("f4be68"),Color("ff80bd")]
+const ABSOLUTE_STATS=["attack","hp","armor","shield_max","shield_regen"]
 const SLOTS=["weapon","weapon2","weapon3","head","armor","hands","feet","accessory","accessory2"]
 const SLOT_LABELS={"weapon":"武器1","weapon2":"武器2","weapon3":"武器3","head":"頭","armor":"胴","hands":"手","feet":"足","accessory":"装飾1","accessory2":"装飾2"}
 const AFFIXES={"attack":["攻撃力",3.0,7.0],"haste":["攻撃速度",.04,.09],"crit":["クリティカル率",.025,.05],"crit_damage":["クリティカル威力",.12,.25],"hp":["最大生命",13.0,27.0],"speed":["移動速度",.025,.055],"cdr":["クールダウン短縮",.025,.055],"armor":["防御力",4.0,10.0],"skill":["スキル威力",.06,.12],"slash":["斬撃威力",.04,.12],"blunt":["打撃威力",.04,.12],"pierce":["貫撃威力",.04,.12],"magic":["魔撃威力",.04,.12],"penetration":["防御貫通",.03,.1],"stagger":["怯ませ性能",.05,.15],"shield_max":["障壁最大値",5,15],"shield_regen":["障壁回復",1,3],"fatal_resist":["致命撃耐性",.03,.1],"knock_resist":["押出耐性",.05,.15],"healing":["回復補正",.04,.12],"dodge_cdr":["回避短縮",.03,.09],"dodge_distance":["回避距離",.04,.12],"drop_rate":["ドロップ率",.05,.15],"rarity_find":["希少品発見",.05,.15],"material_find":["素材発見",.05,.15],"salvage":["分解効率",.05,.15]}
@@ -77,6 +78,27 @@ static func legendary_unique(entry:Dictionary,kind:String)->String:
 static func unique_text(item:Dictionary)->String:
  var id=String(item.get("unique",""))
  return WeaponDB.UNIQUE_TEXT.get(id,ARMOR_UNIQUE_TEXT.get(id,"固有能力"))
+static func default_art_id(item:Dictionary)->String:
+ var effect=String(item.get("effect",""))
+ if int(item.get("rarity",0))>=3 and not effect.is_empty():return "legend_"+effect
+ var slot=String(item.get("slot","weapon"));var grade=clampi(int(item.get("grade",1)),1,6)
+ if slot in Loadout.WEAPONS:return "weapon_"+String(item.get("weapon_type","sword"))+"_g"+str(grade)
+ return slot+"_g"+str(grade)
+static func art_path(item:Dictionary)->String:
+ var id=String(item.get("art_id",default_art_id(item)))
+ for extension in ["png","webp","svg"]:
+  var path="res://assets/items/"+id+"."+extension
+  if ResourceLoader.exists(path):return path
+ return "res://assets/icons/chest.svg"
+static func art_ready(item:Dictionary)->bool:
+ return art_path(item).begins_with("res://assets/items/")
+static func stat_name(key:String)->String:return String(AFFIXES.get(key,[key])[0])
+static func stat_value(key:String,value:float)->String:
+ return str(roundi(value)) if key in ABSOLUTE_STATS else "%d%%"%roundi(value*100)
+static func stat_delta(key:String,value:float)->String:
+ if absf(value)<.0001:return "±0"
+ var prefix="+" if value>0 else ""
+ return prefix+stat_value(key,value)
 static func affix_weight(key:String,slot:String,kind:String)->float:
  var source=kind if slot=="weapon" else slot
  var table=AFFIX_BIAS.get(source,{})
@@ -125,7 +147,9 @@ static func generate(rng:RandomNumberGenerator,depth:int,rarity:int=-1,legend:in
   affixes[key]=snappedf(rng.randf_range(ranges[key][0],ranges[key][1]),.001)
  var final_unique=""
  if rarity>=3:final_unique=legendary_unique(legend_info(effect),kind)
- return {"schema":3,"id":str(rng.randi())+"-"+str(rng.randi()),"name":name,"rarity":rarity,"slot":slot,"weapon_type":kind,"grade":grade,"tier":tier,"enhance":0,"fusion":0,"base":base,"affixes":affixes,"rolls":ranges,"effect":effect,"unique":final_unique,"description":description,"locked":false,"favorite":false}
+ var item={"schema":4,"id":str(rng.randi())+"-"+str(rng.randi()),"name":name,"rarity":rarity,"slot":slot,"weapon_type":kind,"grade":grade,"tier":tier,"enhance":0,"fusion":0,"base":base,"affixes":affixes,"rolls":ranges,"effect":effect,"unique":final_unique,"description":description,"locked":false,"favorite":false,"art_id":"","art_variant":"default"}
+ item.art_id=default_art_id(item)
+ return item
 static func roll_rarity(rng:RandomNumberGenerator,find:float)->int:
  var weights=[55.0,28.0,13.0,3.6,.4];var bonus=1+clampf(find,0,2)
  var total=weights[0]
@@ -144,7 +168,7 @@ static func initial_items()->Dictionary:
   else:it.name="巡礼者の"+SLOT_LABELS[slot]
   if slot=="armor":it.base={"armor":7.0,"hp":14.0}
   if slot=="accessory":it.base={"crit":.02}
-  it.rolls={}
+  it.rolls={};it.art_id=default_art_id(it);it.art_variant="default"
   out[slot]=it
  return out
 static func slot_text(slot:String)->String:
@@ -171,10 +195,11 @@ static func valid(item:Variant)->bool:
   for key in ["schema","grade","enhance","fusion"]:
    if not (item.get(key) is int or item.get(key) is float):return false
    if not is_finite(float(item[key])) or item[key]!=int(item[key]):return false
-  if item.schema!=3 or item.grade<1 or item.grade>6 or item.enhance<0 or item.enhance>10 or item.fusion<0 or item.fusion>100000 or item.tier>5:return false
+  if item.schema!=4 or item.grade<1 or item.grade>6 or item.enhance<0 or item.enhance>10 or item.fusion<0 or item.fusion>100000 or item.tier>5:return false
   if not item.get("weapon_type") is String or not WeaponDB.TYPES.has(item.weapon_type):return false
   if not item.get("locked") is bool or not item.get("favorite") is bool:return false
   if not item.get("unique") is String or not item.get("rolls") is Dictionary:return false
+  if not item.get("art_id") is String or String(item.art_id).is_empty() or not item.get("art_variant") is String:return false
   for key in item.rolls:
    var limits=item.rolls[key]
    if not limits is Array or limits.size()!=2:return false
