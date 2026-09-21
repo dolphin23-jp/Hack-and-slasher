@@ -287,7 +287,7 @@ func draw_hud()->void:
  panel(Rect2(24,20,323,69),Color(.045,.08,.12,.94),LINE);icon("crest",Rect2(35,28,47,47))
  text("ASHEN VOW",Vector2(94,51),20,TEXT,false,true)
  var oath_line="誓約者 / LV %02d"%p.level
- if game.ascension>0:oath_line+=" / ASC %02d"%game.ascension
+ if game.ascension>0:oath_line+=" / アセンション %02d"%game.ascension
  text(oath_line,Vector2(94,74),12,GOLD)
  var id=game.dungeon.room_at(p.position);var room=game.dungeon.rooms[id] if id>=0 else null
  text(room.name if room!=null else "闇の回廊",Vector2(720,47),19,TEXT,true,true)
