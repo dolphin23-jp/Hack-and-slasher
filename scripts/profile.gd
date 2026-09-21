@@ -83,7 +83,7 @@ func valid_run(v:Variant)->bool:
   for key in v.active_oaths:
    if not key is String or not OathBoard.PATHS.has(key) or key in seen:return false
    seen.append(key)
- if not v.equipment is Dictionary or not v.inventory is Array or v.inventory.size()>44 or not v.upgrades is Dictionary:return false
+ if not v.equipment is Dictionary or not v.inventory is Array or v.inventory.size()>84 or not v.upgrades is Dictionary:return false
  for slot in ItemDB.SLOTS:
   if not ItemDB.valid(v.equipment.get(slot)):return false
  for item in v.inventory:
