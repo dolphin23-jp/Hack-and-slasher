@@ -86,7 +86,7 @@ func act(u,action:String)->bool:
   return true
  if action=="store":
   if u.selected<0 or u.selected>=p.inventory.size():return true
-  if g.profile.vault.size()>=120:g.toast("保管庫が満杯です");return true
+  if g.profile.vault.size()>=120:g.toast("VAULTが満杯です");return true
   g.profile.vault.append(p.inventory[u.selected]);p.inventory.remove_at(u.selected)
   u.selected=clampi(u.selected,0,maxi(0,p.inventory.size()-1));g.save_run();return true
  if action=="retrieve":
@@ -102,7 +102,7 @@ func act(u,action:String)->bool:
 func draw(u)->void:
  var p=u.game.player
  u.dim();u.text("聖遺物庫 / 三連の誓い",Vector2(40,55),30)
- u.button(Rect2(780,24,150,48),"保管庫","tab:storage",tab=="storage")
+ u.button(Rect2(780,24,150,48),"VAULT","tab:storage",tab=="storage")
  u.button(Rect2(940,24,140,48),"装備","tab:equipment",tab=="equipment")
  u.button(Rect2(1090,24,140,48),"鍛冶","tab:forge",tab=="forge")
  u.button(Rect2(1240,24,150,48),"戻る","return_victory" if u.game.mode=="victory_inventory" else "inventory")
@@ -126,14 +126,14 @@ func draw(u)->void:
  for cell in range(24):
   if start+cell>=ids.size():break
   var i=int(ids[start+cell]);var it=p.inventory[i];var r=Rect2(40+(cell%6)*92,331+int(cell/6)*72,84,64)
-  var mark=("保" if Forge.protected(it) else "")+("廃" if it.get("junk",false) else "")
+  var mark=("保" if Forge.protected(it) else "")+("J" if it.get("junk",false) else "")
   u.button(r,mark+str(i+1),"item:"+str(i),u.selected==i)
   u.text(WeaponDB.type_name(it) if it.slot in Loadout.WEAPONS else ItemDB.slot_text(it.slot),r.position+Vector2(7,56),12,ItemDB.COLORS[int(it.rarity)])
   u.draw_rect(r,ItemDB.COLORS[int(it.rarity)],false,2)
  u.button(Rect2(40,630,120,40),"前頁","page_prev")
  u.text("%d / %d"%[inventory_page+1,pages],Vector2(202,657),14,u.MUTED,true)
  u.button(Rect2(245,630,120,40),"次頁","page_next")
- u.button(Rect2(380,630,225,40),"ジャンク一括分解","bulk")
+ u.button(Rect2(380,630,225,40),"JUNK一括分解","bulk")
  u.button(Rect2(40,703,255,48),"誓印盤","oaths")
  u.button(Rect2(310,703,295,48),["攻撃ステータス","防御ステータス","探索ステータス"][stats_group],"stats_group")
  var groups=[["attack","haste","crit","crit_damage","slash","blunt","pierce","magic","penetration","skill","cdr","stagger"],["hp","armor","shield_max","shield_regen","fatal_resist","knock_resist","healing"],["speed","dodge_cdr","dodge_distance","drop_rate","rarity_find","material_find","salvage"]]
@@ -149,10 +149,10 @@ func draw(u)->void:
   u.text("比較: "+p.item_comparison_text(it),Vector2(660,722),17,u.TEAL)
  u.button(Rect2(640,748,350,48),"この枠へ装備" if valid else "上で適合する部位を選択","equip_target",valid)
  u.button(Rect2(1000,748,185,48),"分解","salvage")
- u.button(Rect2(1195,748,193,48),"保管庫へ","store")
+ u.button(Rect2(1195,748,193,48),"VAULTへ","store")
  u.button(Rect2(640,813,235,48),"ロック / "+("有効" if it.locked else "無効"),"lock")
  u.button(Rect2(885,813,235,48),"お気に入り / "+("有効" if it.favorite else "無効"),"favorite")
- u.button(Rect2(1130,813,258,48),"ジャンク / "+("指定" if it.get("junk",false) else "未指定"),"junk")
+ u.button(Rect2(1130,813,258,48),"JUNK / "+("ON" if it.get("junk",false) else "OFF"),"junk")
 func detail(u,it:Dictionary,r:Rect2,label:String)->void:
  u.panel(r,u.PANEL,ItemDB.COLORS[int(it.rarity)])
  var x=r.position.x+18;var y=r.position.y+27
@@ -203,8 +203,8 @@ func draw_oaths(u)->void:
 
 func draw_storage(u)->void:
  var p=u.game.player;var vault=u.game.profile.vault;var pages=maxi(1,ceili(vault.size()/24.0));vault_page=clampi(vault_page,0,pages-1)
- u.text("永続保管庫 %d / 120"%vault.size(),Vector2(40,303),18,u.GOLD)
- u.text("Runをまたいで残ります。装備候補を退避して所持品を軽くできます。",Vector2(240,303),14,u.MUTED)
+ u.text("VAULT %d / 120"%vault.size(),Vector2(40,303),18,u.GOLD)
+ u.text("装備を保存できます。",Vector2(240,303),14,u.MUTED)
  var start=vault_page*24
  for cell in range(24):
   var i=start+cell
@@ -217,8 +217,8 @@ func draw_storage(u)->void:
  u.text("%d / %d"%[vault_page+1,pages],Vector2(202,657),14,u.MUTED,true)
  u.button(Rect2(245,630,120,40),"次頁","vault_next")
  u.button(Rect2(40,703,255,48),"誓印盤","oaths")
- if vault.is_empty():u.text("保管中の装備はありません。",Vector2(1014,500),23,u.MUTED,true);return
+ if vault.is_empty():u.text("VAULTに装備はありません。",Vector2(1014,500),23,u.MUTED,true);return
  vault_selected=clampi(vault_selected,0,vault.size()-1)
  var it=vault[vault_selected]
- detail(u,it,Rect2(640,283,748,410),"保管庫 / "+ItemDB.slot_text(it.slot))
+ detail(u,it,Rect2(640,283,748,410),"VAULT / "+ItemDB.slot_text(it.slot))
  u.button(Rect2(640,748,748,50),"所持品へ戻す","retrieve",p.inventory.size()<60)
