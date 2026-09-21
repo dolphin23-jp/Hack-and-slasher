@@ -36,10 +36,15 @@ static func strike(p,linked:bool=false)->void:
  var chain_kinds=[]
  for slot in Loadout.WEAPONS:chain_kinds.append(String(p.equipment[slot].get("weapon_type","sword")))
  var transition=transition_profile(p.last_chain_weapon,kind,chain_kinds,p.chain_streak,linked)
- var amount=(p.stats.attack-p.average_weapon_power()+p.weapon_power(it))*w.damage*float(transition.damage)
+ var amount=(p.stats.attack-p.average_weapon_power()+p.weapon_power(it))*w.damage*float(transition.damage)*(1+p.upgrades.get("master_"+kind,0))
+ if linked:amount*=1+p.upgrades.get("transition_power",0)
+ if String(transition.label).contains("三相"):amount*=1+p.upgrades.get("triune_mastery",0)
+ if String(transition.label).contains("同型"):amount*=1+p.upgrades.get("same_family_mastery",0)
+ if linked and p.last_chain_weapon=="scythe" and kind=="staff":amount*=1+p.upgrades.get("harvest_cast_mastery",0)
  if tier>=3 and kind=="sword" and linked:amount*=1.12
  var tier2_reach={"sword":1.10,"scythe":1.16,"spear":1.18,"staff":1.10,"fist":1.08,"mace":1.12,"spellblade":1.12}
- var reach=w.reach*(tier2_reach.get(kind,1.0) if tier>=2 else 1.0)*(1.15 if p.combo==3 else 1.0)*float(transition.reach)
+ var reach=w.reach*(tier2_reach.get(kind,1.0) if tier>=2 else 1.0)*(1.15 if p.combo==3 else 1.0)*float(transition.reach)*(1+p.upgrades.get("slot2_reach",0) if p.combo==2 else 1.0)
+ if linked and p.last_chain_weapon=="scythe" and kind=="staff":reach*=1+p.upgrades.get("harvest_cast_mastery",0)
  var arc=float(w.arc)*(1.25 if tier>=4 and kind=="sword" else 1.0)
  var strike_knock=w.knock*float(transition.knock)*(1.22 if tier>=4 and kind=="fist" else 1.0)
  if tier>=4 and kind=="mace":reach*=1.15
@@ -77,7 +82,8 @@ static func strike(p,linked:bool=false)->void:
      if tier>=3 and kind=="spear" and landed>0:damage*=1.20
      if "blunt" in w.types and e.kind=="warden":e.shield_break=maxf(e.shield_break,2.4 if tier>=3 and kind=="mace" else 1.2)
      e.take_damage(damage,delta.normalized()*maxf(strike_knock,350 if tier>=4 and w.shape!="circle" else 0)*(1+p.stats.stagger),crit)
-     if not e.dead and p.has_effect("ash_edge"):e.ignite(p.stats.attack*.35,2.5)
+     if not e.dead and p.has_effect("ash_edge"):e.ignite(p.stats.attack*(.45 if p.has_effect("flame_cap") else .35),4.2 if p.has_effect("burn_long") else 2.5)
+     if crit and p.has_effect("burn_burst"):g.area_damage(e.position,72,p.stats.attack*.24,true)
      if tier>=4 and kind=="scythe" and not e.dead:e.velocity=-delta.normalized()*160
      if crit:g.critical_effect(e.position)
      landed+=1
@@ -104,6 +110,10 @@ static func strike(p,linked:bool=false)->void:
   if unique=="chain_guard":p.barrier+=12;p.barrier_time=5
   if unique=="fist_nova":g.area_damage(p.position,155,amount*.8,true);g.fx.ring(p.position,155,Color("ffcc8a"),.3)
  if p.chain_streak>=3 and p.chain_streak%3==0:
+  if p.has_effect("weapon_echo"):g.queue_blast(p.position+p.facing*55,120,p.stats.attack*.55,.14,Color("d7ccff"))
+  if p.has_effect("fortress_cap"):p.barrier=minf(p.barrier+6,maxf(20,p.stats.shield_max));p.barrier_time=5
+  if p.has_effect("shield_burst") and p.barrier>=8:
+   var spent=minf(p.barrier,12);p.barrier-=spent;g.area_damage(p.position,135,p.stats.attack*.35+spent*1.5,true);g.fx.ring(p.position,135,Color("c8e6ef"),.25)
   for slot in ItemDB.SLOTS:
    if slot in Loadout.WEAPONS:continue
    var gear=p.equipment[slot]
