@@ -187,11 +187,75 @@ func draw_compare_panel(u,it:Dictionary,target_slot:String,r:Rect2)->void:
  var ability_gain=" / ".join(snap.gained_abilities.slice(0,2));var ability_loss=" / ".join(snap.lost_abilities.slice(0,2))
  u.text("能力 + "+("変化なし" if ability_gain.is_empty() else ability_gain),Vector2(r.position.x+18,ability_y),11,u.TEAL if not ability_gain.is_empty() else u.MUTED)
  u.text("能力 - "+("変化なし" if ability_loss.is_empty() else ability_loss),Vector2(r.position.x+18,ability_y+18),11,u.RED if not ability_loss.is_empty() else u.MUTED)
+var art_cache={}
+func art_texture(it:Dictionary):
+ var path=ItemDB.art_path(it)
+ if not art_cache.has(path):art_cache[path]=load(path)
+ return art_cache[path]
+func draw_item_art(u,it:Dictionary,r:Rect2)->void:
+ u.panel(r,Color("0b1720"),ItemDB.COLORS[int(it.rarity)])
+ var tex=art_texture(it)
+ if tex!=null:u.draw_texture_rect(tex,r.grow(-5),false)
+ if not ItemDB.art_ready(it):
+  u.panel(Rect2(r.position+Vector2(5,r.size.y-25),Vector2(r.size.x-10,20)),Color(.03,.06,.08,.88),Color(.2,.3,.32,.5))
+  u.text("ART PLACEHOLDER",Vector2(r.get_center().x,r.end.y-10),9,u.MUTED,true)
+func draw_inventory_card(u,it:Dictionary,index:int,r:Rect2,selected:bool,action_prefix:String="item")->void:
+ u.button(r,"",action_prefix+":"+str(index),selected)
+ draw_item_art(u,it,Rect2(r.position+Vector2(6,6),Vector2(42,42)))
+ var title=WeaponDB.type_name(it) if String(it.slot) in Loadout.WEAPONS else ItemDB.slot_text(String(it.slot))
+ u.text(title,Vector2(r.position.x+53,r.position.y+21),11,ItemDB.COLORS[int(it.rarity)])
+ u.text("階%d T%d +%d"%[it.grade,it.tier,it.enhance],Vector2(r.position.x+53,r.position.y+39),10,u.TEXT)
+ var mark=("★" if it.get("favorite",false) else "")+("🔒" if it.get("locked",false) else "")+(" J" if it.get("junk",false) else "")
+ if not mark.is_empty():u.text(mark,Vector2(r.position.x+53,r.position.y+57),9,u.GOLD)
+func comparison_target(p,it:Dictionary)->String:
+ if Loadout.accepts(it,target):return target
+ return p.item_upgrade_target(it)
+func delta_color(u,value:float)->Color:
+ if value>.0001:return u.TEAL
+ if value<-.0001:return u.RED
+ return u.MUTED
+func draw_compare_panel(u,p,it:Dictionary,target_slot:String,r:Rect2,title:String="交換比較")->void:
+ var snap=EquipmentCompare.snapshot(p,it,target_slot)
+ u.panel(r,u.PANEL,ItemDB.COLORS[int(it.rarity)])
+ var x=r.position.x+18;var y=r.position.y+26
+ u.text(title+" / "+ItemDB.slot_text(target_slot),Vector2(x,y),14,u.GOLD)
+ u.button(Rect2(r.end.x-200,r.position.y+11,180,34),"詳細を拡大","detail_toggle")
+ draw_item_art(u,it,Rect2(x,y+18,112,112))
+ var current=p.equipment[target_slot]
+ draw_item_art(u,current,Rect2(x+126,y+42,72,72))
+ u.text("候補",Vector2(x,y+151),11,u.MUTED);u.text("現在",Vector2(x+126,y+132),10,u.MUTED)
+ u.text(it.name,Vector2(x+216,y+44),20,ItemDB.COLORS[int(it.rarity)])
+ u.text("%s / 階%d T%d +%d"%[ItemDB.RARITIES[int(it.rarity)],it.grade,it.tier,it.enhance],Vector2(x+216,y+69),13,u.GOLD)
+ u.text("現在: "+String(current.name),Vector2(x+216,y+93),13,u.MUTED)
+ if String(it.slot) in Loadout.WEAPONS:
+  u.text("武器列  "+String(snap.before_order),Vector2(x+216,y+116),11,u.MUTED)
+  if snap.before_order!=snap.after_order:u.text("交換後  "+String(snap.after_order),Vector2(x+216,y+135),11,u.TEAL)
+ var table_y=y+178
+ u.text("能力",Vector2(x,table_y),11,u.MUTED)
+ u.text("現在",Vector2(x+195,table_y),11,u.MUTED,true)
+ u.text("交換後",Vector2(x+282,table_y),11,u.MUTED,true)
+ u.text("差分",Vector2(x+369,table_y),11,u.MUTED,true)
+ u.text("装備寄与  現→新",Vector2(x+525,table_y),11,u.MUTED,true)
+ var keys=EquipmentCompare.key_stats(snap,6)
+ for i in range(keys.size()):
+  var key=String(keys[i]);var row_y=table_y+24+i*22
+  var before=float(snap.before_stats.get(key,0));var after=float(snap.after_stats.get(key,0));var delta=float(snap.delta.get(key,0))
+  var old_con=float(snap.current_contribution.get(key,0));var new_con=float(snap.candidate_contribution.get(key,0))
+  u.text(ItemDB.stat_name(key),Vector2(x,row_y),12,u.TEXT)
+  u.text(ItemDB.stat_value(key,before),Vector2(x+195,row_y),12,u.TEXT,true)
+  u.text(ItemDB.stat_value(key,after),Vector2(x+282,row_y),12,u.TEXT,true)
+  u.text(ItemDB.stat_delta(key,delta),Vector2(x+369,row_y),12,delta_color(u,delta),true)
+  u.text(ItemDB.stat_value(key,old_con)+" → "+ItemDB.stat_value(key,new_con),Vector2(x+525,row_y),11,u.MUTED,true)
+ var build_y=table_y+164
+ var gains=[];gains.append_array(snap.gained_abilities);gains.append_array(snap.gained_build)
+ var losses=[];losses.append_array(snap.lost_abilities);losses.append_array(snap.lost_build)
+ u.wrapped_text("得る: "+("なし" if gains.is_empty() else " / ".join(gains)),Vector2(x,build_y),r.size.x-36,12,u.TEAL,17)
+ u.wrapped_text("失う: "+("なし" if losses.is_empty() else " / ".join(losses)),Vector2(x,build_y+37),r.size.x-36,12,u.RED if not losses.is_empty() else u.MUTED,17)
 func draw(u)->void:
  if forge_screen.opened:forge_screen.draw(u);return
  if salvage_screen.opened:salvage_screen.draw(u);return
  var p=u.game.player
- u.dim();u.text("聖遺物庫 / Equipment UI 2.0",Vector2(40,55),30)
+ u.dim();u.text("聖遺物庫 / Equipment 2.0",Vector2(40,55),30)
  u.button(Rect2(790,24,140,48),"保管庫","tab:vault",tab=="vault")
  u.button(Rect2(940,24,140,48),"装備","tab:equipment",tab=="equipment")
  u.button(Rect2(1090,24,140,48),"鍛冶","tab:forge",tab=="forge")
@@ -200,115 +264,101 @@ func draw(u)->void:
  for i in range(3):
   var slot=Loadout.WEAPONS[i];var it=p.equipment[slot];var x=40+i*455
   u.panel(Rect2(x,94,430,105),u.PANEL,ItemDB.COLORS[int(it.rarity)])
-  item_art(u,it,Rect2(x+10,104,52,52))
-  u.button(Rect2(x+70,104,240,48),"%d %s / T%d +%d"%[i+1,WeaponDB.type_name(it),it.tier,it.enhance],"slot:"+slot,target==slot)
+  u.button(Rect2(x+10,104,300,48),"      %d  %s / T%d +%d"%[i+1,WeaponDB.type_name(it),it.tier,it.enhance],"slot:"+slot,target==slot)
+  draw_item_art(u,it,Rect2(x+15,109,38,38))
   u.button(Rect2(x+321,104,98,48),"順序→","swap:"+str(i))
-  u.text("寄与 "+compact_contribution(it,2),Vector2(x+70,171),11,u.TEAL)
+  u.text(WeaponDB.attributes(it)+" / Q: "+WeaponActionResolver.ARTS[it.weapon_type].name,Vector2(x+18,169),12,u.TEAL)
   var next=p.equipment[Loadout.WEAPONS[(i+1)%3]].weapon_type
-  var recipes=ChainResolver.matches(it.weapon_type,next).map(func(recipe):return recipe.name)
-  u.text("→ %d  "%[(i+1)%3+1]+("・".join(recipes) if not recipes.is_empty() else "通常連携"),Vector2(x+70,191),11,u.GOLD)
+  var recipes=ChainResolver.matches(it.weapon_type,next).map(func(v):return v.name)
+  u.text("→ %d: "%[(i+1)%3+1]+("・".join(recipes) if not recipes.is_empty() else "通常連携"),Vector2(x+18,189),12,u.GOLD)
  for i in range(6):
-  var slot=ItemDB.SLOTS[i+3];var it=p.equipment[slot];var x=40+i*227;var r=Rect2(x,215,215,52)
-  u.button(r,"","slot:"+slot,target==slot);item_art(u,it,Rect2(x+5,220,42,42))
-  u.text(ItemDB.slot_text(slot)+" / T%d +%d"%[it.tier,it.enhance],Vector2(x+54,236),12,ItemDB.COLORS[int(it.rarity)])
-  u.text(compact_contribution(it,1),Vector2(x+54,256),10,u.MUTED)
+  var slot=ItemDB.SLOTS[i+3];var it=p.equipment[slot]
+  u.button(Rect2(40+i*227,215,215,48),"%s / 階%d T%d +%d"%[ItemDB.slot_text(slot),it.grade,it.tier,it.enhance],"slot:"+slot,target==slot)
  if tab=="forge":draw_forge(u);return
  if tab=="vault":draw_vault(u);return
- var visible=filtered_inventory(p);var per_page=15;var max_page=maxi(0,ceili(visible.size()/float(per_page))-1);inventory_page=mini(inventory_page,max_page)
- u.text("所持品 %d / 80  ・ 表示 %d  ・ 選択すると最適枠と自動比較"%[p.inventory.size(),visible.size()],Vector2(40,303),15,u.GOLD)
+ var visible=filtered_inventory(p);var per_page=20;var max_page=maxi(0,ceili(visible.size()/float(per_page))-1);inventory_page=mini(inventory_page,max_page)
+ u.text("所持品 %d / 80  ・ 表示 %d  ・ 選択すると右で交換後まで比較"%[p.inventory.size(),visible.size()],Vector2(40,303),15,u.GOLD)
  u.button(Rect2(40,274,150,42),"表示: "+filter_label(),"filter")
  u.button(Rect2(210,274,140,42),"並べ替え","sort")
  u.button(Rect2(365,274,240,42),"ジャンク一括分解","bulk")
- var start=inventory_page*per_page;var page_items=visible.slice(start,mini(start+per_page,visible.size()))
+ var start_index=inventory_page*per_page;var page_items=visible.slice(start_index,mini(start_index+per_page,visible.size()))
  for display_i in range(page_items.size()):
-  var index=int(page_items[display_i]);var it=p.inventory[index]
-  var r=Rect2(40+(display_i%3)*195,331+int(display_i/3)*64,185,58)
-  draw_inventory_card(u,it,r,"item:"+str(index),u.selected==index)
+  var i=int(page_items[display_i]);var it=p.inventory[i];var rr=Rect2(40+(display_i%5)*112,331+int(display_i/5)*79,104,71)
+  draw_inventory_card(u,it,i,rr,u.selected==i)
  u.button(Rect2(40,660,190,35),"自動分解ルール "+("ON" if u.game.profile.settings.get("auto_salvage_rare",false) else "OFF"),"auto_salvage",u.game.profile.settings.get("auto_salvage_rare",false))
  u.button(Rect2(245,660,90,35),"◀","page:-1",inventory_page>0)
  u.button(Rect2(345,660,160,35),"%d / %d ▶"%[inventory_page+1,max_page+1],"page:1",inventory_page<max_page)
  u.button(Rect2(40,703,255,48),"誓印盤","oaths")
  u.button(Rect2(310,703,295,48),["攻撃ステータス","防御ステータス","探索ステータス"][stats_group],"stats_group")
+ var groups=[["attack","haste","crit","crit_damage","slash","blunt","pierce","magic","penetration","skill","cdr","stagger"],["hp","armor","shield_max","shield_regen","fatal_resist","knock_resist","healing"],["speed","dodge_cdr","dodge_distance","drop_rate","rarity_find","material_find","salvage"]]
+ for i in range(groups[stats_group].size()):
+  var key=groups[stats_group][i]
+  u.text(ItemDB.stat_text(key,p.stats.get(key,0)),Vector2(40+(i%3)*196,780+int(i/3)*24),12,u.MUTED)
  if u.selected<0 or u.selected>=p.inventory.size():
-  detail(u,p.equipment[target],Rect2(640,283,748,440),"装備中 / "+ItemDB.slot_text(target));return
- var it=p.inventory[u.selected]
- if not Loadout.accepts(it,target):
-  var auto_target=p.item_upgrade_target(it)
-  if not auto_target.is_empty():target=auto_target;forge_slot=auto_target
- draw_compare_panel(u,it,target,Rect2(640,283,748,440))
- u.button(Rect2(1190,294,178,32),"拡大比較","detail_toggle")
- u.button(Rect2(1000,294,178,32),"保管庫へ","vault_store")
- u.button(Rect2(810,294,178,32),"ジャンク "+("ON" if it.get("junk",false) else "OFF"),"junk",it.get("junk",false))
+  detail(u,p.equipment[target],Rect2(640,283,748,468),"装備中 / "+ItemDB.slot_text(target));return
+ var it=p.inventory[u.selected];var compare_slot=comparison_target(p,it)
+ if compare_slot.is_empty():
+  detail(u,it,Rect2(640,283,748,410),"所持品");return
+ draw_compare_panel(u,p,it,compare_slot,Rect2(640,283,748,410))
+ u.button(Rect2(1188,336,180,34),"保管庫へ","vault_store")
+ u.button(Rect2(1188,378,180,34),"ジャンク "+("ON" if it.get("junk",false) else "OFF"),"junk",it.get("junk",false))
  var valid=Loadout.accepts(it,target)
- u.button(Rect2(640,748,350,48),"この枠へ装備" if valid else "適合する部位を選択","equip_target",valid)
+ var signals=p.item_comparison(it,compare_slot)
+ u.text("比較要約: "+" / ".join(signals.slice(0,5)),Vector2(660,722),15,u.TEAL)
+ u.button(Rect2(640,748,350,48),"この枠へ装備" if valid else "比較先の部位を上で選択","equip_target",valid)
  u.button(Rect2(1000,748,388,48),"分解して素材獲得","salvage")
  u.button(Rect2(640,813,350,48),"ロック / "+("有効" if it.locked else "無効"),"lock")
  u.button(Rect2(1000,813,388,48),"お気に入り / "+("有効" if it.favorite else "無効"),"favorite")
-
 func draw_focus_detail(u)->void:
  var p=u.game.player
  if u.selected<0 or u.selected>=p.inventory.size():focus_detail=false;return
- var it=p.inventory[u.selected];var target_slot=target if Loadout.accepts(it,target) else p.item_upgrade_target(it)
- if target_slot.is_empty():target_slot=String(it.slot)
- var snap=EquipmentCompare.snapshot(p,it,target_slot)
- u.dim();u.text("拡大比較 / "+ItemDB.slot_text(target_slot),Vector2(55,60),29)
- u.button(Rect2(1160,35,220,48),"一覧へ戻る","detail_toggle")
- if snap.is_empty():
-  detail(u,it,Rect2(60,100,1320,630),"交換候補");return
- detail(u,snap.current,Rect2(45,100,650,625),"現在装備 / "+ItemDB.slot_text(target_slot))
- detail(u,snap.candidate,Rect2(715,100,680,625),"交換候補")
- var gained=" / ".join(snap.gained_build);var lost=" / ".join(snap.lost_build)
- u.text("Build獲得: "+("なし" if gained.is_empty() else gained),Vector2(70,760),14,u.TEAL)
- u.text("Build失う: "+("なし" if lost.is_empty() else lost),Vector2(70,786),14,u.RED if not lost.is_empty() else u.MUTED)
+ var it=p.inventory[u.selected];var target_slot=comparison_target(p,it)
+ detail(u,it,Rect2(60,95,610,650),"候補装備 / "+ItemDB.slot_text(String(it.slot)))
+ if not target_slot.is_empty():
+  detail(u,p.equipment[target_slot],Rect2(690,95,690,285),"現在装備 / "+ItemDB.slot_text(target_slot))
+  draw_compare_panel(u,p,it,target_slot,Rect2(690,395,690,350),"交換後の変化")
+ u.button(Rect2(1160,108,195,42),"一覧へ戻る","detail_toggle")
  u.button(Rect2(920,770,210,48),"保管庫へ","vault_store")
  u.button(Rect2(1150,770,210,48),"ジャンク "+("ON" if it.get("junk",false) else "OFF"),"junk",it.get("junk",false))
-
 func draw_vault(u)->void:
- var g=u.game;var p=g.player;var list=g.profile.vault;var per_page=15
+ var g=u.game;var p=g.player;var list=g.profile.vault;var per_page=24
  var max_page=maxi(0,ceili(list.size()/float(per_page))-1);vault_page=mini(vault_page,max_page)
- u.text("保管庫 %d / 120  ・ アート/比較データを保持してRunをまたいで保存"%list.size(),Vector2(40,303),16,u.GOLD)
- var start=vault_page*per_page;var end=mini(start+per_page,list.size())
- for display_i in range(end-start):
-  var index=start+display_i;var it=list[index];var r=Rect2(40+(display_i%3)*195,331+int(display_i/3)*64,185,58)
-  draw_inventory_card(u,it,r,"vault_item:"+str(index),vault_selected==index)
- u.button(Rect2(40,660,110,38),"◀","vault_page:-1",vault_page>0)
- u.button(Rect2(165,660,180,38),"▶ %d / %d"%[vault_page+1,max_page+1],"vault_page:1",vault_page<max_page)
+ u.text("保管庫 %d / 120  ・ 画像と比較情報はInventoryと共通"%list.size(),Vector2(40,303),17,u.GOLD)
+ var start_index=vault_page*per_page;var end_index=mini(start_index+per_page,list.size())
+ for display_i in range(end_index-start_index):
+  var i=start_index+display_i;var it=list[i];var rr=Rect2(40+(display_i%5)*112,335+int(display_i/5)*79,104,71)
+  draw_inventory_card(u,it,i,rr,vault_selected==i,"vault_item")
+ u.button(Rect2(40,750,110,38),"◀","vault_page:-1",vault_page>0)
+ u.button(Rect2(165,750,160,38),"▶ %d / %d"%[vault_page+1,max_page+1],"vault_page:1",vault_page<max_page)
  if list.is_empty():
-  u.text("保管庫は空です。装備画面の「保管庫へ」から移動できます。",Vector2(1010,510),19,u.MUTED,true);return
+  u.text("保管庫は空です。装備画面の「保管庫へ」から移動できます。",Vector2(720,510),21,u.MUTED,true);return
  vault_selected=clampi(vault_selected,0,list.size()-1)
- if vault_selected<start or vault_selected>=end:vault_selected=start
- var it=list[vault_selected];var target_slot=p.item_upgrade_target(it)
- if target_slot.is_empty():target_slot=String(it.slot)
- draw_compare_panel(u,it,target_slot,Rect2(640,283,748,440))
+ if vault_selected<start_index or vault_selected>=end_index:vault_selected=start_index
+ var it=list[vault_selected];var compare_slot=p.item_upgrade_target(it)
+ if compare_slot.is_empty():detail(u,it,Rect2(640,300,748,455),"保管庫")
+ else:draw_compare_panel(u,p,it,compare_slot,Rect2(640,300,748,455),"保管庫から比較")
  u.button(Rect2(940,785,448,52),"所持品へ取り出す","vault_take",p.inventory.size()<80)
-
 func detail(u,it:Dictionary,r:Rect2,label:String)->void:
  u.panel(r,u.PANEL,ItemDB.COLORS[int(it.rarity)])
- var x=r.position.x+18;var y=r.position.y+26
+ var x=r.position.x+18;var y=r.position.y+27
  u.text(label,Vector2(x,y),14,u.MUTED)
- var art_size=minf(150.0,minf(r.size.x*.24,r.size.y*.31));var art_r=Rect2(x,y+18,art_size,art_size)
- item_art(u,it,art_r)
- u.text("ART "+String(it.get("art_id","legacy")),Vector2(x+art_size/2,art_r.end.y+18),9,u.MUTED,true)
- var tx=x+art_size+28;var tw=r.size.x-art_size-64
- u.text(it.name,Vector2(tx,y+34),22,ItemDB.COLORS[int(it.rarity)])
- u.text("%s / 階級%d / T%d / +%d / %s"%[ItemDB.RARITIES[int(it.rarity)],it.grade,it.tier,it.enhance,WeaponDB.attributes(it) if it.slot in Loadout.WEAPONS else ItemDB.slot_text(it.slot)],Vector2(tx,y+60),14,u.GOLD)
- u.text("装備寄与: "+compact_contribution(it,3),Vector2(tx,y+86),13,u.TEAL)
+ var art_size=minf(145,r.size.x*.26);draw_item_art(u,it,Rect2(x,y+14,art_size,art_size))
+ var tx=x+art_size+18
+ u.text(it.name,Vector2(tx,y+48),21,ItemDB.COLORS[int(it.rarity)])
+ u.text("%s / 階級%d / T%d / +%d"%[ItemDB.RARITIES[int(it.rarity)],it.grade,it.tier,it.enhance],Vector2(tx,y+76),14,u.GOLD)
+ u.text((WeaponDB.attributes(it)+" / "+WeaponDB.type_name(it)) if String(it.slot) in Loadout.WEAPONS else ItemDB.slot_text(String(it.slot)),Vector2(tx,y+100),13,u.TEAL)
+ u.text("Art: "+String(it.get("art_id",""))+(" ✓" if ItemDB.art_ready(it) else " / placeholder"),Vector2(tx,y+124),10,u.MUTED)
+ y+=art_size+38
  var rows=[]
  for table in [it.base,it.affixes]:
   for key in table:
    var limits=it.get("rolls",{}).get(key,[0,table[key]])
-   rows.append(ItemDB.stat_text(key,table[key])+"  / max "+ItemDB.stat_value(key,float(limits[1])))
- for i in range(rows.size()):
-  u.text(rows[i],Vector2(tx+(i%2)*(tw/2),y+116+int(i/2)*22),12,u.TEXT)
- var content_y=maxf(art_r.end.y+42,y+130+ceilf(rows.size()/2.0)*22)
- if String(it.get("slot","")) in Loadout.WEAPONS:
-  var kind=String(it.get("weapon_type","sword"))
-  u.text("Weapon Art: "+String(WeaponActionResolver.ARTS[kind].name),Vector2(x,content_y),13,u.GOLD);content_y+=22
- for tier in range(2,mini(5,int(it.tier))+1):
-  u.text("T%d  %s"%[tier,WeaponDB.tier_text(it,tier)],Vector2(x,content_y),12,u.TEAL);content_y+=19
- if String(it.get("unique",""))!="":
-  u.wrapped_text("固有: "+ItemDB.unique_text(it),Vector2(x,content_y+4),r.size.x-36,13,ItemDB.COLORS[int(it.rarity)],20)
-
+   rows.append(ItemDB.stat_text(key,table[key])+"   %.2f / %.2f"%[table[key],limits[1]])
+ for i in range(rows.size()):u.text(rows[i],Vector2(x+(i%2)*(r.size.x/2),y+int(i/2)*22),13,u.TEXT)
+ y+=ceilf(rows.size()/2.0)*22+8
+ for tier in range(1,int(it.tier)+1):
+  u.text("T%d %s"%[tier,WeaponDB.tier_text(it,tier)],Vector2(x,y),11,u.TEAL);y+=16
+ if int(it.rarity)>=3:u.wrapped_text("固有: "+ItemDB.unique_text(it)+(" / 神話: 武器系統または固有能力のルールを追加変化" if int(it.rarity)==4 else ""),Vector2(x,y+5),r.size.x-36,13,ItemDB.COLORS[int(it.rarity)],19)
 func draw_forge(u)->void:
  var p=u.game.player;var it=p.equipment[forge_slot]
  detail(u,it,Rect2(40,290,780,535),"鍛冶対象 / "+ItemDB.slot_text(forge_slot))
