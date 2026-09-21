@@ -20,7 +20,7 @@ static func generate(rng:RandomNumberGenerator,tier:int,rarity:int=-1,legend:int
  else:
   var bases={"weapon":["ピルグリム・エッジ","ヴィジル・ブレード","グレイヴ・サーベル","オーススティール"],"armor":["ヴェスパー・メイル","ウォーデン・プレート","アッシュウィーヴ","セパルクラル・コート"],"accessory":["シンダー・シール","ムーン・レリクアリ","モーニング・ノット","アイボリー・タリスマン"]}
   item_name=bases[slot][rng.randi_range(0,3)]
-  if rarity>0:item_name=["鋭利な ","聖別された ","復讐の ","共鳴する "][rng.randi_range(0,3)]+item_name
+  if rarity>0:item_name=["鋭利な","聖別された","復讐の","共鳴する"][rng.randi_range(0,3)]+item_name
  var power=1.0+maxi(0,tier-1)*.18;var base={}
  if slot=="weapon":base.attack=round((10+rarity*3.8)*power*rng.randf_range(.9,1.12))
  if slot=="armor":base={"armor":round((9+rarity*4)*power),"hp":round((16+rarity*6)*power)}
