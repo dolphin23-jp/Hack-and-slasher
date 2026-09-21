@@ -331,6 +331,9 @@ func tick_delayed_blasts(dt:float)->void:
 func chain_lightning(p:Vector2,amount:float,source=null,limit:int=3)->void:
  var count=0
  if player.synergy("storm"):limit+=2
+ if player.has_effect("wide_lightning"):limit+=2
+ if player.has_effect("storm_cap"):limit+=1;amount*=1.10
+ if player.has_effect("high_voltage"):amount*=1.25
  for e in enemies.duplicate():
   if e==source or e.dead or e.position.distance_to(p)>270 or not dungeon.line_clear(p,e.position):continue
   fx.lightning(p,e.position);e.take_damage(amount,Vector2.ZERO,false,true);count+=1
