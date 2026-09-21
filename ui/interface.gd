@@ -89,7 +89,7 @@ func _input(event:InputEvent)->void:
    if event.keycode==KEY_DELETE:act("salvage")
    if event.keycode==KEY_RIGHT:selected=mini(game.player.inventory.size()-1,selected+1)
    if event.keycode==KEY_LEFT:selected=maxi(0,selected-1)
-  if game.mode=="title" and event.keycode==KEY_ENTER:game.start_run()
+  if game.mode=="title" and event.keycode==KEY_ENTER:game.mode="build_confirm"
  if event is InputEventJoypadMotion:
   if absf(event.axis_value)>.25:pad_active=true
   if game.mode!="play":
@@ -184,6 +184,8 @@ func pad_back()->bool:
   "inventory":game.mode="play";game.save_run();salvage_confirm=-1;return true
   "victory_inventory":game.mode="victory";salvage_confirm=-1;return true
   "settings","help","journal":game.mode=settings_return;return true
+  "oaths":game.mode=reliquary.back;return true
+  "build_confirm":game.mode="title";return true
  return false
 
 func pointer_blocked()->bool:
@@ -220,7 +222,11 @@ func act(action:String)->void:
   game.sound.update_volume();game.profile.write_save();return
  game.sound.play("ui")
  match action:
-  "start":game.start_run()
+  "start":
+   if game.mode=="title":game.mode="build_confirm"
+   else:game.start_run()
+  "confirm_start":game.start_run()
+  "cancel_start":game.mode="title"
   "continue":game.start_run(true)
   "resume":game.mode="play"
   "pause":game.mode="pause"
@@ -271,6 +277,7 @@ func _draw()->void:
   "help":draw_help()
   "journal":draw_journal()
   "oaths":reliquary.draw_oaths(self)
+  "build_confirm":reliquary.draw_build_confirm(self)
   "event":draw_event()
   "play":
    if big_map:draw_map(Rect2(280,195,880,440),true)
