@@ -11,7 +11,15 @@ const TYPES={
  "spellblade":{"name":"魔刃","shape":"wave","types":["slash","magic"],"reach":380.0,"arc":1.1,"damage":1.3,"knock":190.0,"cooldown":.25,"hits":1}}
 const NAMES={"sword":["ボロの剣","青銅の剣","鉄の剣","鋼の剣","ミスリルの剣","星銀の剣"],"scythe":["欠けた鎌","墓守の鎌","黒鉄の鎌","月弧の鎌","霊樹の大鎌","星を刈る鎌"],"spear":["折れた槍","狩人の槍","鉄翼の槍","城塞の槍","白金の槍","天穿つ槍"],"staff":["枯枝の杖","巡礼の杖","水晶の杖","賢者の杖","月樹の杖","星詠みの杖"],"fist":["古い籠手","革巻の拳","鉄拳","鋼拳","聖銀の拳","流星の拳"],"mace":["朽ちた棍","青銅の棍","鉄のメイス","破城の槌","聖堂の槌","星砕き"],"spellblade":["鈍い魔刃","刻印の魔刃","霊鉄の魔刃","月影の魔刃","虚空の魔刃","黎明の魔刃"]}
 const ATTRIBUTES={"slash":"斬撃","blunt":"打撃","pierce":"貫撃","magic":"魔撃"}
-const TIERS=["基礎性能","攻撃範囲 +15% / 防具は障壁回復","複数命中で障壁 / 防具は回復強化","集敵・貫通・防御崩し / 防具は致命撃耐性","3番目に追加攻撃 / 防具はチェイン障壁"]
+const TIERS=["基礎性能","攻撃範囲 +15% / 防具は障壁回復","武器固有の中核能力 / 防具は回復強化","武器固有の制圧能力 / 防具は致命撃耐性","武器固有フィニッシュ / 防具はチェイン障壁"]
+const TIER_TEXT_BY_WEAPON={
+ "sword":["基礎性能","間合い +15%","複数命中で障壁","強ノックバックで前線維持","3番目に追い斬り"],
+ "scythe":["基礎性能","回転半径 +15%","3体以上を巻き込むと追い薙ぎ","命中敵を中心へ引き寄せ","3番目に追加回転"],
+ "spear":["基礎性能","刺突距離 +15%","2体目以降への威力 +20%","直線制圧と強ノックバック","3番目に側方貫通波"],
+ "staff":["基礎性能","射程 +15%","魔力弾が壁で1回反射","貫通数増加","3番目に三方向魔撃"],
+ "fist":["基礎性能","踏み込み間合い +15%","連打命中で障壁","怯ませ性能を強化","3番目に周囲打撃"],
+ "mace":["基礎性能","打撃範囲 +15%","複数命中で強障壁","盾持ちを強く崩す","3番目に震撃波"],
+ "spellblade":["基礎性能","魔刃射程 +15%","貫通命中で障壁","貫通数増加","3番目に遅延魔爆"]}
 static func get_weapon(item:Dictionary)->Dictionary:return TYPES.get(item.get("weapon_type","sword"),TYPES.sword)
 static func type_name(item:Dictionary)->String:return get_weapon(item).name
 static func attributes(item:Dictionary)->String:
@@ -49,3 +57,8 @@ static func chain_synergy_score(equipment:Dictionary)->int:
  if same_family_chain(equipment):score+=2
  if distinct_primary_chain(equipment):score+=2
  return score
+
+static func tier_text(item:Dictionary,tier:int)->String:
+ if item.slot not in Loadout.WEAPONS:return TIERS[clampi(tier,1,5)-1]
+ var kind=String(item.get("weapon_type","sword"))
+ return TIER_TEXT_BY_WEAPON.get(kind,TIERS)[clampi(tier,1,5)-1]
