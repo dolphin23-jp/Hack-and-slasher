@@ -26,6 +26,12 @@ func act(u,action:String)->bool:
   if rank<3 and g.profile.oaths.points>=price:g.profile.oaths.points-=price;g.profile.oaths.ranks[key]=rank+1;g.profile.write_save()
   else:g.toast("誓片が不足、または解放済みです")
   return true
+ if action.begins_with("choice:"):
+  if back!="title":g.toast("分岐の選択は次の探索の出発前に行えます");return true
+  var path=action.get_slice(":",1);var picked=action.get_slice(":",2)
+  if int(g.profile.oaths.ranks.get(path,0))<2:g.toast("ランク2で分岐を解放できます");return true
+  if not OathBoard.CHOICES.get(path,{}).has(picked):return true
+  g.profile.oaths.choices[path]=picked;g.profile.write_save();return true
  if action.begins_with("tab:"):tab=action.get_slice(":",1);return true
  if action.begins_with("slot:"):target=action.get_slice(":",1);forge_slot=target;inheritance="";return true
  if action.begins_with("swap:"):
@@ -119,10 +125,16 @@ func draw_oaths(u)->void:
  u.button(Rect2(1160,35,230,50),"戻る","oath_back")
  var i=0
  for key in OathBoard.PATHS:
-  var d=OathBoard.PATHS[key];var x=60+(i%3)*450;var y=165+int(i/3)*340;var index=b.active.find(key);var rank=int(b.ranks.get(key,0))
-  u.panel(Rect2(x,y,420,305),u.PANEL,u.GOLD if index>=0 else u.LINE)
-  u.text(d.name+" / "+("主誓印" if index==0 else ("副誓印" if index>0 else "未選択")),Vector2(x+20,y+40),24,u.TEAL)
-  u.wrapped_text(d.text,Vector2(x+20,y+85),380,18,u.TEXT,28)
-  u.button(Rect2(x+20,y+165,380,48),"選択を解除" if index>=0 else "選択","oath:"+key,index>=0)
-  u.button(Rect2(x+20,y+230,380,48),"刻印 %d/3 / 誓片%d"%[rank,(rank+1)*3],"rank:"+key)
+  var d=OathBoard.PATHS[key];var x=60+(i%3)*450;var y=155+int(i/3)*350;var index=b.active.find(key);var rank=int(b.ranks.get(key,0))
+  u.panel(Rect2(x,y,420,330),u.PANEL,u.GOLD if index>=0 else u.LINE)
+  u.text(d.name+" / "+("主誓印" if index==0 else ("副誓印" if index>0 else "未選択")),Vector2(x+20,y+36),22,u.TEAL)
+  u.wrapped_text(d.text,Vector2(x+20,y+72),380,16,u.TEXT,24)
+  var choices=OathBoard.choice_keys(key);var picked=String(b.get("choices",{}).get(key,""))
+  for j in range(choices.size()):
+   var ck=String(choices[j])
+   u.button(Rect2(x+20+j*195,y+137,185,38),OathBoard.choice_name(key,ck),"choice:"+key+":"+ck,picked==ck and rank>=2)
+  u.button(Rect2(x+20,y+188,380,42),"選択を解除" if index>=0 else "主/副に選択","oath:"+key,index>=0)
+  u.button(Rect2(x+20,y+239,380,42),"刻印 %d/3 / 誓片%d"%[rank,(rank+1)*3],"rank:"+key)
+  var cap="Capstone: "+OathBoard.capstone_text(key) if rank>=3 else "ランク3の主誓印でCapstone解放"
+  u.text(cap,Vector2(x+20,y+307),12,u.GOLD if rank>=3 and index==0 else u.MUTED)
   i+=1
