@@ -76,6 +76,12 @@ func run()->void:
    values.append(item.base)
   check("rarity roll bounds "+str(r),low>0 and high>low)
  check("random roll diversity",values[0]!=values[1])
+ var weighted=RandomNumberGenerator.new();weighted.seed=7711;var pierce_rolls=0;var magic_rolls=0
+ for i in range(1200):
+  var key=ItemDB.weighted_affix(weighted,["pierce","magic","crit"],"weapon","spear")
+  if key=="pierce":pierce_rolls+=1
+  elif key=="magic":magic_rolls+=1
+ check("weapon affix pools strongly prefer relevant stats",pierce_rolls>magic_rolls*8)
  clear();it=weapon("sword");p.materials=100000;p.inventory=[]
  for i in range(10):Forge.apply(p,it,"enhance")
  check("enhance reaches +10",it.enhance==10)
@@ -86,6 +92,7 @@ func run()->void:
  it.affixes={"crit":.1};Forge.apply(p,it,"evolve","crit")
  check("grade evolution resets enhancement",it.grade==2 and it.enhance==0)
  check("chosen affix inherited",is_equal_approx(it.affixes.crit,.108) and it.inherited=="crit")
+ check("evolution refreshes inherited affix roll bounds",it.rolls.has("crit") and it.rolls.crit[1]>=it.affixes.crit)
  var before=p.materials;donor.locked=true;p.inventory=[donor];game.salvage(0)
  check("lock protects salvage",p.inventory.size()==1 and p.materials==before)
  donor.locked=false;game.salvage(0)
@@ -172,6 +179,7 @@ func run()->void:
  p.rebuild_stats()
  var candidate=ItemDB.generate(game.rng,1,0);candidate.slot="weapon";candidate.weapon_type="sword";candidate.base={"attack":9.0};candidate.affixes={}
  check("field comparison considers all three weapon slots",p.item_upgrade_ratio(candidate)>0.0)
+ check("item comparison reports the best target slot",p.item_comparison(candidate).target=="weapon")
  var jp=load("res://assets/fonts/NotoSansJP-Regular.subset.ttf")
  var missing_glyphs=[]
  for folder in ["actors","data","scripts","systems","ui","world"]:
