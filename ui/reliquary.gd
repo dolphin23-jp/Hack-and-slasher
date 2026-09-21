@@ -17,6 +17,8 @@ const NODE_EFFECT_TEXT={
  "wide_lightning":"連鎖数を強化",
  "storm_cap":"雷撃連携を強化"
 }
+var forge_screen=ForgeScreen.new()
+var salvage_screen=SalvageScreen.new()
 var tab="equipment"
 var target="weapon"
 var forge_slot="weapon"
@@ -29,8 +31,15 @@ var inventory_page=0
 var vault_selected=0
 var vault_page=0
 var focus_detail=false
+func modal_active()->bool:return forge_screen.opened or salvage_screen.opened
+func close_modal()->void:
+ forge_screen.opened=false;forge_screen.pending={};forge_screen.selected={}
+ salvage_screen.opened=false;salvage_screen.preview=[]
 func act(u,action:String)->bool:
  var g=u.game;var p=g.player
+ if g.mode not in ["inventory","victory_inventory"]:close_modal()
+ if forge_screen.opened:return forge_screen.act(u,action)
+ if salvage_screen.opened:return salvage_screen.act(u,action)
  if action=="oaths":back=g.mode;g.mode="oaths";return true
  if action=="oath_back":g.mode=back;return true
  if action.begins_with("oath:"):
@@ -76,7 +85,7 @@ func act(u,action:String)->bool:
    p.inventory[u.selected].junk=not p.inventory[u.selected].get("junk",false);g.save_run()
   return true
  if action=="auto_salvage":
-  g.profile.settings.auto_salvage_rare=not g.profile.settings.get("auto_salvage_rare",false);g.profile.write_save();return true
+  salvage_screen.open(p,false);return true
  if action=="vault_store":
   if u.selected<0 or u.selected>=p.inventory.size():return true
   if g.profile.vault.size()>=120:g.toast("保管庫が満杯です / 120");return true
@@ -94,11 +103,9 @@ func act(u,action:String)->bool:
   if u.selected>=0 and u.selected<p.inventory.size():
    var it=p.inventory[u.selected];var key="locked" if action=="lock" else "favorite";it[key]=not it.get(key,false);g.save_run()
   return true
- if action=="bulk":
-  for i in range(p.inventory.size()-1,-1,-1):
-   if (int(p.inventory[i].rarity)<=1 or p.inventory[i].get("junk",false)) and not Forge.protected(p.inventory[i]):g.salvage(i)
-  return true
+ if action=="bulk":salvage_screen.open(p,true);return true
  if action.begins_with("inherit:"):inheritance=action.get_slice(":",1);return true
+ if action=="forge:fuse":forge_screen.open(forge_slot);return true
  if action.begins_with("forge:"):
   g.toast(Forge.apply(p,p.equipment[forge_slot],action.get_slice(":",1),inheritance));return true
  if action=="stats_group":stats_group=(stats_group+1)%3;return true
@@ -118,6 +125,8 @@ func filtered_inventory(p)->Array:
 func filter_label()->String:
  return {"all":"すべて","weapon":"武器","armor":"防具・装飾","legendary":"Legendary+","junk":"ジャンク"}.get(filter_mode,"すべて")
 func draw(u)->void:
+ if forge_screen.opened:forge_screen.draw(u);return
+ if salvage_screen.opened:salvage_screen.draw(u);return
  var p=u.game.player
  u.dim();u.text("聖遺物庫 / 三連の誓い",Vector2(40,55),30)
  u.button(Rect2(790,24,140,48),"保管庫","tab:vault",tab=="vault")
@@ -143,7 +152,7 @@ func draw(u)->void:
  u.text("所持品 %d / 80  ・ 表示 %d"%[p.inventory.size(),visible.size()],Vector2(40,303),16,u.GOLD)
  u.button(Rect2(40,274,150,42),"表示: "+filter_label(),"filter")
  u.button(Rect2(210,274,140,42),"並べ替え","sort")
- u.button(Rect2(365,274,240,42),"Rare以下/ジャンク分解","bulk")
+ u.button(Rect2(365,274,240,42),"ジャンク一括分解","bulk")
  var start=inventory_page*40;var page_items=visible.slice(start,mini(start+40,visible.size()))
  for display_i in range(page_items.size()):
   var i=int(page_items[display_i]);var it=p.inventory[i];var r=Rect2(40+(display_i%8)*70,331+int(display_i/8)*66,62,58)
@@ -151,7 +160,7 @@ func draw(u)->void:
   u.button(r,mark+str(i+1),"item:"+str(i),u.selected==i)
   u.text(WeaponDB.type_name(it) if it.slot in Loadout.WEAPONS else ItemDB.slot_text(it.slot),r.position+Vector2(5,51),11,ItemDB.COLORS[int(it.rarity)])
   u.draw_rect(r,ItemDB.COLORS[int(it.rarity)],false,2)
- u.button(Rect2(40,660,190,35),"Rare以下自動分解 "+("ON" if u.game.profile.settings.get("auto_salvage_rare",false) else "OFF"),"auto_salvage",u.game.profile.settings.get("auto_salvage_rare",false))
+ u.button(Rect2(40,660,190,35),"自動分解ルール "+("ON" if u.game.profile.settings.get("auto_salvage_rare",false) else "OFF"),"auto_salvage",u.game.profile.settings.get("auto_salvage_rare",false))
  u.button(Rect2(245,660,90,35),"◀","page:-1",inventory_page>0)
  u.button(Rect2(345,660,160,35),"%d / %d"%[inventory_page+1,max_page+1],"page:1",inventory_page<max_page)
  u.button(Rect2(40,703,255,48),"誓印盤","oaths")

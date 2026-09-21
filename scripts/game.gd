@@ -464,7 +464,7 @@ func spawn_chest(p:Vector2,tier:int,gilded:bool)->void:
  var d=DropScript.new();add_child(d);d.setup(self,p,{"tier":tier,"gilded":gilded},"chest");d.z_index=1400;drops.append(d)
 func collect(d)->bool:
  if d.taken or d.kind!="item":return false
- if profile.settings.get("auto_salvage_rare",false) and int(d.item.rarity)<=1:
+ if profile.settings.get("auto_salvage_rare",false) and SalvagePolicy.matches(d.item,profile.settings.get("salvage_rules",{})):
   player.materials+=Forge.yield_for(d.item,player.stats);metrics.pickups+=1;sound.play("equip",.45);toast("自動分解: "+d.item.name);d.take();save_run();return true
  if player.inventory.size()>=80:
   if toast_time<.3:toast("所持品が満杯です。[I] フィルタ・保管庫・分解で整理してください。")

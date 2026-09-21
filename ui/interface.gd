@@ -37,7 +37,7 @@ var menu_ready_at=0
 var pressed_actions={}
 func _process(_dt:float)->void:
  if input_mode!=game.mode:
-  input_mode=game.mode;reset_touch();menu_ready_at=Time.get_ticks_msec()+180
+  input_mode=game.mode;reliquary.close_modal();reset_touch();menu_ready_at=Time.get_ticks_msec()+180
 func reset_touch()->void:
  touch_id=-1;attack_touch_id=-1;pressed_actions.clear()
  if is_instance_valid(game.player):game.player.touch_move=Vector2.ZERO;game.player.touch_attack=false
@@ -76,6 +76,7 @@ func _input(event:InputEvent)->void:
   if event.keycode==KEY_F11:DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if DisplayServer.window_get_mode()==DisplayServer.WINDOW_MODE_FULLSCREEN else DisplayServer.WINDOW_MODE_FULLSCREEN)
   if event.is_action("inventory") and game.mode in ["play","inventory"]:game.toggle_inventory();salvage_confirm=-1;return
   if event.is_action("pause"):
+   if reliquary.modal_active():reliquary.close_modal();return
    match game.mode:
     "play":game.mode="pause"
     "pause","inventory":game.mode="play";game.save_run()
@@ -83,7 +84,7 @@ func _input(event:InputEvent)->void:
    return
   if event.is_action("map") and game.mode=="play":big_map=not big_map
   if game.mode=="upgrade" and event.keycode in [KEY_1,KEY_2,KEY_3]:game.choose_upgrade(event.keycode-KEY_1)
-  if game.mode in ["inventory","victory_inventory"]:
+  if game.mode in ["inventory","victory_inventory"] and not reliquary.modal_active():
    if event.keycode==KEY_ENTER:game.player.equip(selected);salvage_confirm=-1
    if event.keycode==KEY_DELETE:act("salvage")
    if event.keycode==KEY_RIGHT:selected=mini(game.player.inventory.size()-1,selected+1)
@@ -112,7 +113,7 @@ func _input(event:InputEvent)->void:
    if event.button_index==JOY_BUTTON_B:
     if pad_back():get_viewport().set_input_as_handled()
     return
-   if game.mode in ["inventory","victory_inventory"] and event.button_index==JOY_BUTTON_X:
+   if game.mode in ["inventory","victory_inventory"] and event.button_index==JOY_BUTTON_X and not reliquary.modal_active():
     game.player.equip(selected);salvage_confirm=-1;get_viewport().set_input_as_handled();return
    if game.mode in ["inventory","victory_inventory"] and event.button_index==JOY_BUTTON_Y:
     act("salvage");get_viewport().set_input_as_handled();return
@@ -177,6 +178,7 @@ func pad_move(direction:Vector2)->void:
   pad_focus=best;hover=Vector2(-10,-10);game.sound.play("ui",.35);queue_redraw()
 
 func pad_back()->bool:
+ if reliquary.modal_active():reliquary.close_modal();return true
  match game.mode:
   "pause":game.mode="play";game.save_run();return true
   "inventory":game.mode="play";game.save_run();salvage_confirm=-1;return true

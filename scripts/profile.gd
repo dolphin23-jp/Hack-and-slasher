@@ -8,7 +8,7 @@ static func empty_run_metrics()->Dictionary:
  return out
 var recovery_notice=""
 var path="user://ashen_vow_v1.json"
-var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false,"touch_size":.5,"touch_inset":.5,"hitstop":true,"auto_salvage_rare":false}
+var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false,"touch_size":.5,"touch_inset":.5,"hitstop":true,"auto_salvage_rare":false,"salvage_rules":SalvagePolicy.defaults()}
 var records={"runs":0,"wins":0,"best_level":1,"best_ascension":0,"total_kills":0}
 var run={}
 var oaths=OathBoard.empty()
@@ -30,6 +30,7 @@ func read_save()->void:
    if not incoming.has(k):continue
    if settings[k] is bool and incoming[k] is bool:settings[k]=incoming[k]
    elif not settings[k] is bool and (incoming[k] is float or incoming[k] is int):settings[k]=clampf(incoming[k],0,1)
+ settings.salvage_rules=SalvagePolicy.sanitize(incoming.get("salvage_rules",{}) if incoming is Dictionary else {})
  var rec=data.get("records",{})
  if rec is Dictionary:
   for k in records:

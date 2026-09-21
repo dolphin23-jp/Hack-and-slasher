@@ -7,6 +7,8 @@
 
 **Skill 2.0:** Qは現在武器の武技、Eは装備順の三器連携、Rは通常攻撃の3連続命中を4回で蓄積する三連奥義。10種類のChain Recipeと複合属性対応。詳細は[スキル統合仕様](docs/SKILL_2.md)。
 
+**鍛冶・分解の改善:** 合成素材の選択と消費確認、自動分解の品質/Tier/階級ルール、ジャンク一括分解の確認を追加。[操作と保存互換](docs/FORGE_SAFETY.md)。
+
 以下は維持している0.2基盤の概要です（旧装備セットの炎・雷は0.3で誓印盤へ移行）。
 
 A playable top-down action RPG / hack-and-slasher vertical slice built in Godot 4.5.1.
@@ -32,8 +34,8 @@ See [the update and design notes](docs/CATHEDRAL_REBORN.md) for rules, controls 
 - 50 expansion behavior checks covering real combat, skill/equipment interactions, contracts, legacy saves, disk restart and discovery.
 - Original ten-room campaign, including treasury and boss, using movement and normal attacks for combat.
 - Southern-route campaign using normal attacks, skills, dodge and healing; both paid contracts must complete before the boss.
-- 55 Skill 2.0 and recipe behavior checks; 108 item / forge / oath / migration checks.
-- 38 rendered UI captures with click/gamepad/touch checks, including journal, contracts, awakened boss, equipment synergy and simultaneous stick/attack at iPad-class aspect ratio.
+- 40 forge/salvage safety checks; 55 Skill 2.0 and recipe behavior checks; 108 item / forge / oath / migration checks.
+- Rendered UI captures with click/gamepad/touch checks, including journal, contracts, awakened boss, equipment synergy and simultaneous stick/attack at iPad-class aspect ratio.
 - Script errors and resource leaks fail CI. Web export and Chromium / touch / PWA runtime gates remain required before merging.
 
 ## Play locally
