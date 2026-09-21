@@ -159,7 +159,7 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
   profile.records.runs+=1
   match profile.chronicle.start:
    "lance":
-    if "first_clear" in profile.chronicle.achievements:player.equipment.weapon.weapon_type="spear";player.upgrades.art_power=.18;player.upgrades.haste=-.1
+    if "first_clear" in profile.chronicle.achievements:player.equipment.weapon.weapon_type="spear";player.equipment.weapon.art_id=ItemDB.default_art_id(player.equipment.weapon);player.upgrades.art_power=.18;player.upgrades.haste=-.1
    "ember":
     if "collector" in profile.chronicle.achievements:player.upgrades.ember_start=1;player.upgrades.hp=-15
   player.rebuild_stats();player.hp=player.stats.hp

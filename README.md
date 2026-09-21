@@ -9,6 +9,8 @@
 
 **鍛冶・分解の改善:** 合成素材の選択と消費確認、自動分解の品質/Tier/階級ルール、ジャンク一括分解の確認を追加。[操作と保存互換](docs/FORGE_SAFETY.md)。
 
+**Equipment / Inventory UI 2.0:** 装備候補を現在値→交換後→差分→装備寄与まで比較し、Weapon Art・Tier能力・固有能力・Chain Recipeの得失も表示。Item schema 4で将来の個別装備画像を共通利用できます。[比較UIとArt schema](docs/EQUIPMENT_UI_2.md)。
+
 以下は維持している0.2基盤の概要です（旧装備セットの炎・雷は0.3で誓印盤へ移行）。
 
 A playable top-down action RPG / hack-and-slasher vertical slice built in Godot 4.5.1.
