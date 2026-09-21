@@ -443,14 +443,14 @@ func salvage(i:int)->void:
  toast("分解素材を獲得し、少し生命を回復しました。");ui.selected=clampi(ui.selected,0,maxi(0,player.inventory.size()-1));save_run()
 func weapon_native_upgrades()->Array:
  var out=[
-  {"name":"第二連環","detail":"第2武器の攻撃範囲 +20%。中継武器を制圧向けにする。","icon":"sword","key":"slot2_range","value":.20},
-  {"name":"終端の誓い","detail":"第3武器の威力 +18%。チェインの締めを強化する。","icon":"cleave","key":"slot3_power","value":.18}]
+  {"name":"2連環","detail":"2番目の武器の攻撃範囲 +20%。中継武器を広い攻撃向けにする。","icon":"sword","key":"slot2_range","value":.20},
+  {"name":"終端の誓い","detail":"3番目の武器の威力 +18%。チェインの最後を強化する。","icon":"cleave","key":"slot3_power","value":.18}]
  if WeaponDB.chain_synergy_score(player.equipment)>0:
-  out.append({"name":"連携の律","detail":"武器間遷移が発動する攻撃の威力 +12%。","icon":"bolt","key":"transition_power","value":.12})
+  out.append({"name":"連携強化","detail":"武器間連携が発動する攻撃の威力 +12%。","icon":"bolt","key":"transition_power","value":.12})
  if WeaponDB.same_family_chain(player.equipment):
-  out.append({"name":"一門皆伝","detail":"同武器3連のフィニッシュ威力 +24%。","icon":"sword","key":"family_finisher","value":.24})
+  out.append({"name":"同型連環","detail":"同武器3連のフィニッシュ威力 +24%。","icon":"sword","key":"family_finisher","value":.24})
  if WeaponDB.distinct_primary_chain(player.equipment):
-  out.append({"name":"三相循環","detail":"3属性すべて異なるチェインの第3武器威力 +24%。","icon":"nova","key":"triad_finisher","value":.24})
+  out.append({"name":"三種循環","detail":"3属性すべて異なるチェインの3番目の武器威力 +24%。","icon":"nova","key":"triad_finisher","value":.24})
  for i in range(3):
   var a=player.equipment[Loadout.WEAPONS[i]];var b=player.equipment[Loadout.WEAPONS[(i+1)%3]]
   if WeaponDB.transition(a,b).id=="reap_cast":
