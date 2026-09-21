@@ -8,7 +8,8 @@ static func empty_run_metrics()->Dictionary:
  return out
 var recovery_notice=""
 var path="user://ashen_vow_v1.json"
-var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false,"touch_size":.5,"touch_inset":.5,"hitstop":true}
+var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false,"touch_size":.5,"touch_inset":.5,"hitstop":true,"auto_salvage":0.0}
+var vault=[]
 var records={"runs":0,"wins":0,"best_level":1,"best_ascension":0,"total_kills":0}
 var run={}
 var oaths=OathBoard.empty()
@@ -29,6 +30,11 @@ func read_save()->void:
    if not incoming.has(k):continue
    if settings[k] is bool and incoming[k] is bool:settings[k]=incoming[k]
    elif not settings[k] is bool and (incoming[k] is float or incoming[k] is int):settings[k]=clampf(incoming[k],0,1)
+ var stored=data.get("vault",[])
+ if stored is Array:
+  for item in stored:
+   if vault.size()>=120:break
+   if ItemDB.valid(item):vault.append(item.duplicate(true))
  var rec=data.get("records",{})
  if rec is Dictionary:
   for k in records:
@@ -77,7 +83,7 @@ func valid_run(v:Variant)->bool:
   for key in v.active_oaths:
    if not key is String or not OathBoard.PATHS.has(key) or key in seen:return false
    seen.append(key)
- if not v.equipment is Dictionary or not v.inventory is Array or v.inventory.size()>44 or not v.upgrades is Dictionary:return false
+ if not v.equipment is Dictionary or not v.inventory is Array or v.inventory.size()>64 or not v.upgrades is Dictionary:return false
  for slot in ItemDB.SLOTS:
   if not ItemDB.valid(v.equipment.get(slot)):return false
  for item in v.inventory:
@@ -124,5 +130,5 @@ func vector_valid(v:Variant)->bool:
 func write_save()->bool:
  var f=FileAccess.open(path+".tmp",FileAccess.WRITE)
  if f==null:return false
- f.store_string(JSON.stringify({"version":VERSION,"settings":settings,"records":records,"run":run,"chronicle":chronicle,"oaths":oaths}));f.flush();f.close()
+ f.store_string(JSON.stringify({"version":VERSION,"settings":settings,"records":records,"run":run,"vault":vault,"chronicle":chronicle,"oaths":oaths}));f.flush();f.close()
  return DirAccess.rename_absolute(path+".tmp",path)==OK
