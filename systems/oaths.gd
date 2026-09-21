@@ -8,11 +8,11 @@ const PATHS={
  "storm":{"name":"雷霆","stats":{"haste":.08,"pierce":.12},"effects":["chain","storm_guard","conductor"],"text":"撃破で連鎖雷。主誓印で見切り雷撃。"},
  "seek":{"name":"探究","stats":{"drop_rate":.2,"rarity_find":.25,"material_find":.3,"salvage":.25},"effects":[],"text":"戦利品と素材の発見。鍛冶コスト軽減。"}}
 const CHOICES={
- "dance":{"flow":{"name":"流転","stats":{"haste":.08},"text":"速度を高めて連携回数を増やす。"},"impact":{"name":"重奏","stats":{"crit_damage":.18},"text":"一撃ごとの威力を高める。"}},
+ "dance":{"flow":{"name":"流転","stats":{"haste":.08},"text":"速度を高めて連携回数を増す。"},"impact":{"name":"重撃","stats":{"crit_damage":.18},"text":"一撃ごとの威力を高める。"}},
  "arcane":{"focus":{"name":"収束","stats":{"magic":.12},"text":"魔撃そのものを強化する。"},"reserve":{"name":"循環","stats":{"cdr":.06},"text":"スキルの再使用を早める。"}},
  "fortress":{"bulwark":{"name":"不落","stats":{"shield_max":18.0},"text":"障壁最大値を高める。"},"plate":{"name":"重装","stats":{"armor":8.0},"text":"常時防御を高める。"}},
  "flame":{"smolder":{"name":"残火","stats":{"skill":.12},"text":"継続火力とスキルを高める。"},"burst":{"name":"爆炎","stats":{"crit_damage":.18},"text":"高火力へ寄せる。"}},
- "storm":{"voltage":{"name":"雷威","stats":{"pierce":.12},"text":"1体への貫撃を高める。"},"cascade":{"name":"連鎖","stats":{"haste":.08},"text":"手数を増やして雷撃機会を作る。"}},
+ "storm":{"voltage":{"name":"雷威","stats":{"pierce":.12},"text":"1体への貫撃を高める。"},"cascade":{"name":"連鎖","stats":{"haste":.08},"text":"手数を増して雷撃機会を作る。"}},
  "seek":{"hunter":{"name":"探索","stats":{"rarity_find":.18},"text":"高レア発見へ寄せる。"},"smith":{"name":"鍛冶","stats":{"material_find":.20,"salvage":.15},"text":"素材循環へ寄せる。"}}}
 const CAPSTONES={
  "dance":{"crit":.05},"arcane":{"skill":.15},"fortress":{"hp":30.0,"shield_regen":2.0},
