@@ -69,16 +69,45 @@ func average_weapon_power(loadout:Dictionary=equipment)->float:
  return value
 func weapon_power(it:Dictionary)->float:return Loadout.equipped_stats(it).get("attack",0)
 func build_score(loadout:Dictionary=equipment)->float:
- var s:Dictionary=calculated(loadout)
- var dps:float=float(s.attack)*(1.0+float(s.haste))
- dps*=1.0+float(s.crit)*float(s.crit_damage)
- var score:float=dps+float(s.hp)*.018+float(s.armor)*.10+float(s.speed)*5.0
+ var s:Dictionary=calculated(loadout);var avg_power=average_weapon_power(loadout);var offense=0.0
+ for slot in Loadout.WEAPONS:
+  var it:Dictionary=loadout[slot];var w:Dictionary=WeaponDB.get_weapon(it)
+  var per_hit=(float(s.attack)-avg_power+weapon_power(it))*float(w.damage)
+  var type_bonus=1.0
+  for damage_type in w.types:type_bonus=maxf(type_bonus,1.0+float(s.get(damage_type,0)))
+  var coverage=1.0+clampf((float(w.reach)-110.0)/520.0,0,.24)
+  if String(w.shape)=="circle":coverage+=.12
+  elif String(w.shape)=="line":coverage+=.07
+  var tier_factor=1.0+maxi(0,int(it.tier)-1)*.025
+  if int(it.tier)>=5:tier_factor+=.05
+  offense+=per_hit*(1.0+float(s.haste))/maxf(.13,float(w.cooldown))*type_bonus*coverage*tier_factor/3.0
+ offense*=1.0+float(s.crit)*float(s.crit_damage)
+ offense*=1.0+WeaponDB.chain_synergy_score(loadout)*.045
+ var special=0.0
  for slot in ItemDB.SLOTS:
-  match String(loadout[slot].effect):
-   "echo":score+=dps*.28
-   "crit_blast":score+=dps*.16
-   "chain":score+=dps*.12
- return score
+  var it:Dictionary=loadout[slot];var unique=String(it.get("unique",""))
+  match unique:
+   "wide_chain":special+=.05
+   "double_spin":special+=.22
+   "split_lance":special+=.13
+   "ricochet":special+=.13
+   "fist_nova":special+=.12
+   "shield_reach":special+=.06
+   "chain_guard":special+=.05
+   "full_shield_magic_double":special+=.10
+   "shield_spend_power":special+=.09
+   "transition_crit":special+=.07
+   "dodge_skip":special+=.07
+   "transition_echo":special+=.08
+  if int(it.rarity)==4:special+=.025
+  match String(it.effect):
+   "echo":special+=.12
+   "crit_blast":special+=.08
+   "chain":special+=.06
+ offense*=1.0+minf(.65,special)
+ var defense=float(s.hp)*.020+float(s.armor)*.11+float(s.shield_max)*.05+float(s.shield_regen)*.45
+ defense+=float(s.speed)*6.0+float(s.dodge_cdr)*8.0+float(s.fatal_resist)*12.0
+ return offense+defense
 func best_item_target(item:Dictionary)->String:
  if not ItemDB.valid(item):return ""
  var slot=String(item.slot)
@@ -102,7 +131,8 @@ func item_comparison(item:Dictionary)->Dictionary:
  if target.is_empty():return {}
  var loadout=equipment.duplicate(true);loadout[target]=item
  var next=calculated(loadout)
- var out={"target":target,"attack":next.attack-stats.attack,"hp":next.hp-stats.hp,"armor":next.armor-stats.armor,"range":0.0,"chain":0}
+ var current_item=equipment[target]
+ var out={"target":target,"attack":next.attack-stats.attack,"hp":next.hp-stats.hp,"armor":next.armor-stats.armor,"range":0.0,"chain":0,"tier":int(item.tier)-int(current_item.tier),"unique":not String(item.get("unique","")).is_empty() and String(item.get("unique",""))!=String(current_item.get("unique","")),"mythic":int(item.rarity)==4 and int(current_item.rarity)<4}
  if target in Loadout.WEAPONS:
   var old_reach=float(WeaponDB.get_weapon(equipment[target]).reach);var new_reach=float(WeaponDB.get_weapon(item).reach)
   out.range=new_reach/maxf(1.0,old_reach)-1.0
@@ -118,6 +148,9 @@ func item_comparison_text(item:Dictionary)->String:
  elif c.range<-.08:bits.append("範囲-")
  if int(c.chain)>0:bits.append("連携+")
  elif int(c.chain)<0:bits.append("連携-")
+ if bool(c.unique):bits.append("固有+")
+ if bool(c.mythic):bits.append("神話")
+ elif int(c.tier)>0:bits.append("Tier+")
  var durability=float(c.hp)*.02+float(c.armor)*.1
  if durability>1.0:bits.append("防御+")
  elif durability< -1.0:bits.append("防御-")
