@@ -73,15 +73,40 @@ func average_weapon_power(loadout:Dictionary=equipment)->float:
  return value
 func weapon_power(it:Dictionary)->float:return Loadout.equipped_stats(it).get("attack",0)
 func build_score(loadout:Dictionary=equipment)->float:
+ # This is only an internal replacement-slot heuristic. The UI deliberately
+ # exposes multidimensional tags instead of claiming one definitive strength %.
  var s:Dictionary=calculated(loadout)
  var dps:float=float(s.attack)*(1.0+float(s.haste))
  dps*=1.0+float(s.crit)*float(s.crit_damage)
  var score:float=dps+float(s.hp)*.018+float(s.armor)*.10+float(s.speed)*5.0
+ score+=chain_affinity(loadout)*dps*.035
+ var has_magic=false
+ for weapon_slot in Loadout.WEAPONS:
+  if "magic" in WeaponDB.get_weapon(loadout[weapon_slot]).types:has_magic=true
+  var gear=loadout[weapon_slot];var kind=String(gear.get("weapon_type","sword"));var tier=int(gear.get("tier",1))
+  if tier>=3:score+=dps*({"scythe":.055,"spear":.045,"fist":.035,"mace":.04}.get(kind,.025))
+  if tier>=4:score+=dps*({"staff":.065,"scythe":.045,"mace":.04,"spellblade":.04}.get(kind,.025))
+  if tier>=5:score+=dps*.055
  for slot in ItemDB.SLOTS:
-  match String(loadout[slot].effect):
+  var item=loadout[slot]
+  match String(item.get("effect","")):
    "echo":score+=dps*.28
    "crit_blast":score+=dps*.16
    "chain":score+=dps*.12
+  match String(item.get("unique","")):
+   "double_spin":score+=dps*.16
+   "split_lance":score+=dps*.10
+   "ricochet":score+=dps*.12
+   "fist_nova":score+=dps*.12
+   "shield_reach":score+=dps*.07
+   "wide_chain":score+=dps*.07
+   "chain_guard","chain_aegis":score+=dps*.045
+   "crit_repeat":score+=dps*.11
+   "dodge_skip":score+=dps*.065
+   "chain_cooldown":score+=dps*.085
+   "barrier_burst_armor":score+=dps*.075
+   "full_shield_double_magic":
+    if has_magic:score+=dps*.12
  return score
 func chain_affinity(loadout:Dictionary)->float:
  var kinds=[];var attrs=[];var score=0.0
