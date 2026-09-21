@@ -100,7 +100,7 @@ func item_upgrade_ratio(item:Dictionary)->float:
  return build_score(loadout)/current-1.0
 func rebuild_stats()->void:stats=calculated();hp=minf(hp,stats.hp)
 func has_effect(effect:String)->bool:
- if OathBoard.has_effect(active_oaths,effect):return true
+ if OathBoard.has_effect(game.profile.oaths,active_oaths,effect):return true
  for slot in ItemDB.SLOTS:
   if effect in ["echo","reaper","execution","judgement_echo","lance_fork","lance_return","echo_guard","dash_nova"] and equipment[slot].effect==effect:return true
  return false
