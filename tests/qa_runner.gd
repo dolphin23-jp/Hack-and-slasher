@@ -153,7 +153,7 @@ func _run() -> void:
 	_expect("collecting adds the item to the pack", game.player.inventory.size() == inventory_before + 1)
 	_expect("pickup metric records collection", int(game.metrics.pickups) == pickup_metric + 1)
 
-	while game.player.inventory.size() < 40:
+	while game.player.inventory.size() < 80:
 		game.player.inventory.append(ItemDB.generate(game.rng, 2, 1))
 	var overflow = game.spawn_drop(game.player.position, ItemDB.generate(game.rng, 2, 1))
 	_expect("full pack rejects overflow loot", not game.collect(overflow))
