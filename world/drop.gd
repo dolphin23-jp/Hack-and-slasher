@@ -11,7 +11,11 @@ func setup(g,p:Vector2,value:Dictionary,type:String="item")->void:
  game=g;position=p;item=value;kind=type
  if font.fallbacks.is_empty():
   var jp_path="res://assets/fonts/NotoSansJP-Regular.subset.ttf"
-  if ResourceLoader.exists(jp_path):font.fallbacks=[load(jp_path)]
+  var extra_path="res://assets/fonts/NotoSansJP-Extra.ttf"
+  var fallbacks=[]
+  if ResourceLoader.exists(jp_path):fallbacks.append(load(jp_path))
+  if ResourceLoader.exists(extra_path):fallbacks.append(load(extra_path))
+  if not fallbacks.is_empty():font.fallbacks=fallbacks
  icon=load("res://assets/icons/"+("potion" if kind=="health" else ("chest" if kind=="chest" else ("sword" if item.slot in Loadout.WEAPONS else ("accessory" if item.slot in ["accessory","accessory2"] else "armor"))))+".svg")
 func tick(dt:float)->void:
  age+=dt
