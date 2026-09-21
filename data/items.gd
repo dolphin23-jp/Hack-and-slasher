@@ -3,6 +3,7 @@ extends RefCounted
 const RARITIES=["コモン","マジック","レア","レジェンダリー"]
 const COLORS=[Color("b6c5c8"),Color("78b5ed"),Color("dcacd9"),Color("f4be68")]
 const SLOTS=["weapon","armor","accessory"]
+const SLOT_LABELS={"weapon":"武器","armor":"防具","accessory":"装飾品"}
 const AFFIXES={"attack":["攻撃力",3.0,7.0],"haste":["攻撃速度",.04,.09],"crit":["クリティカル率",.025,.05],"crit_damage":["クリティカル威力",.12,.25],"hp":["最大生命",13.0,27.0],"speed":["移動速度",.025,.055],"cdr":["クールダウン短縮",.025,.055],"armor":["防御力",4.0,10.0],"skill":["スキル威力",.06,.12]}
 const LEGENDS=[
  {"name":"サンダー・テスタメント","slot":"weapon","effect":"chain","text":"敵を倒すと近くの敵最大3体へ、攻撃力90%の雷撃。雷撃では連鎖しない。"},
@@ -36,6 +37,8 @@ static func initial_items()->Dictionary:
  for i in range(3):
   out[SLOTS[i]]={"id":"starter-"+SLOTS[i],"name":["古びたオースブレード","巡礼者のマント","破れぬ誓い"][i],"rarity":0,"slot":SLOTS[i],"tier":1,"base":[{"attack":9},{"armor":7,"hp":14},{"crit":.02}][i],"affixes":{},"effect":"","description":""}
  return out
+static func slot_text(slot:String)->String:
+ return SLOT_LABELS.get(slot,slot)
 static func stat_text(key:String,value:float)->String:
  return ("+%d %s"%[roundi(value),AFFIXES[key][0]]) if key in ["attack","hp","armor"] else ("+%d%% %s"%[roundi(value*100),AFFIXES[key][0]])
 static func valid(item:Variant)->bool:
