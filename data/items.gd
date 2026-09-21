@@ -42,7 +42,12 @@ const LEGENDS=[
  {"name":"反響の水晶杖","slot":"weapon","effect":"weapon_staff","set":"","weapon_type":"staff","text":"魔力弾が壁で反射"},
  {"name":"轟く拳誓","slot":"weapon","effect":"weapon_fist","set":"","weapon_type":"fist","text":"3番目に周囲打撃"},
  {"name":"城塞を拓く槌","slot":"weapon","effect":"weapon_mace","set":"","weapon_type":"mace","text":"障壁消費で範囲拡大"},
- {"name":"巡る守護の魔刃","slot":"weapon","effect":"weapon_spellblade","set":"","weapon_type":"spellblade","text":"チェイン完了で障壁"}]
+ {"name":"巡る守護の魔刃","slot":"weapon","effect":"weapon_spellblade","set":"","weapon_type":"spellblade","text":"チェイン完了で障壁"},
+ {"name":"満ちる星冠","slot":"head","effect":"threefold_crown","set":"","text":"障壁最大時、魔撃武器が二重化する。"},
+ {"name":"尽きぬ城壁","slot":"armor","effect":"threefold_armor","set":"","text":"3番目の攻撃で障壁を消費して威力へ変換する。"},
+ {"name":"反奏の籠手","slot":"hands","effect":"threefold_hands","set":"","text":"武器遷移中のクリティカル率を高める。"},
+ {"name":"跳躍の脚甲","slot":"feet","effect":"threefold_feet","set":"","text":"回避後、次の武器を1つ飛ばして順番を変える。"},
+ {"name":"連環の環","slot":"accessory","effect":"threefold_ring","set":"","text":"武器遷移攻撃の威力を増幅する。"}]
 static func legend_info(effect:String)->Dictionary:
  for l in LEGENDS:
   if l.effect==effect:return l
@@ -52,6 +57,16 @@ static func set_of(item:Dictionary)->String:
 const GRADES=[1.0,1.24,1.54,1.91,2.37,2.94]
 const ROLLS=[[.88,1.12],[1.05,1.25],[1.20,1.45],[1.40,1.70],[1.70,2.05]]
 const UNIQUE=["wide_chain","double_spin","split_lance","ricochet","fist_nova","shield_reach","chain_guard"]
+const NONWEAPON_UNIQUES={"head":"full_shield_magic_double","armor":"shield_spend_power","hands":"transition_crit","feet":"dodge_skip","accessory":"transition_echo","accessory2":"transition_echo"}
+const UNIQUE_TEXT={
+ "full_shield_magic_double":"障壁がほぼ最大なら魔撃武器の攻撃回数 +1",
+ "shield_spend_power":"3番目で障壁10を消費し威力 +25%",
+ "transition_crit":"武器遷移中のクリティカル率 +8%",
+ "dodge_skip":"回避後の次攻撃は武器を1枠飛ばす",
+ "transition_echo":"武器遷移攻撃の威力 +12%"}
+static func unique_text(item:Dictionary)->String:
+ var key=String(item.get("unique",""))
+ return WeaponDB.UNIQUE_TEXT.get(key,UNIQUE_TEXT.get(key,"継承された固有能力"))
 static func generate(rng:RandomNumberGenerator,depth:int,rarity:int=-1,legend:int=-1)->Dictionary:
  if rarity<0:rarity=roll_rarity(rng,0)
  rarity=clampi(rarity,0,4)
@@ -67,7 +82,8 @@ static func generate(rng:RandomNumberGenerator,depth:int,rarity:int=-1,legend:in
   var l=LEGENDS[legend_index]
   kind=l.get("weapon_type",WeaponDB.TYPES.keys()[legend_index%7])
   slot=l.slot;name=l.name;effect=l.effect
-  description=WeaponDB.UNIQUE_TEXT[UNIQUE[WeaponDB.TYPES.keys().find(kind)] if slot=="weapon" else "chain_guard"]
+  var preview_unique=UNIQUE[WeaponDB.TYPES.keys().find(kind)] if slot=="weapon" else NONWEAPON_UNIQUES.get(slot,"transition_echo")
+  description=WeaponDB.UNIQUE_TEXT.get(preview_unique,UNIQUE_TEXT.get(preview_unique,"固有能力"))
  var ranges={};var base={};var power=GRADES[grade-1]
  var templates={"weapon":{"attack":10.0},"armor":{"armor":9.0,"hp":16.0},"head":{"hp":10.0},"hands":{"haste":.035},"feet":{"speed":.03},"accessory":{"crit":.02,"skill":.04}}
  for key in templates[slot]:
@@ -80,7 +96,8 @@ static func generate(rng:RandomNumberGenerator,depth:int,rarity:int=-1,legend:in
   var key=weighted_affix(rng,keys,slot,kind);keys.erase(key)
   ranges[key]=affix_range(key,grade,rarity)
   affixes[key]=snappedf(rng.randf_range(ranges[key][0],ranges[key][1]),.001)
- return {"schema":3,"id":str(rng.randi())+"-"+str(rng.randi()),"name":name,"rarity":rarity,"slot":slot,"weapon_type":kind,"grade":grade,"tier":tier,"enhance":0,"fusion":0,"base":base,"affixes":affixes,"rolls":ranges,"effect":effect,"unique":(UNIQUE[WeaponDB.TYPES.keys().find(kind)] if slot=="weapon" else "chain_guard") if rarity>=3 else "","description":description,"locked":false,"favorite":false}
+ var unique=(UNIQUE[WeaponDB.TYPES.keys().find(kind)] if slot=="weapon" else NONWEAPON_UNIQUES.get(slot,"transition_echo")) if rarity>=3 else ""
+ return {"schema":3,"id":str(rng.randi())+"-"+str(rng.randi()),"name":name,"rarity":rarity,"slot":slot,"weapon_type":kind,"grade":grade,"tier":tier,"enhance":0,"fusion":0,"base":base,"affixes":affixes,"rolls":ranges,"effect":effect,"unique":unique,"description":description,"locked":false,"favorite":false}
 static func affix_range(key:String,grade:int,rarity:int)->Array:
  var def=AFFIXES[key]
  var scale=GRADES[clampi(grade,1,6)-1] if key in ["attack","hp","armor","shield_max","shield_regen"] else 1.0
