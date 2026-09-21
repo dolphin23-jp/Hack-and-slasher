@@ -285,7 +285,7 @@ func draw_focus_detail(u)->void:
 func draw_vault(u)->void:
  var g=u.game;var p=g.player;var list=g.profile.vault;var per_page=24
  var max_page=maxi(0,ceili(list.size()/float(per_page))-1);vault_page=mini(vault_page,max_page)
- u.text("保管庫 %d / 120  ・ 画像と比較情報はInventoryと共通"%list.size(),Vector2(40,303),17,u.GOLD)
+ u.text("保管庫 %d / 120  ・ アートと比較内容はInventoryと共通"%list.size(),Vector2(40,303),17,u.GOLD)
  var start_index=vault_page*per_page;var end_index=mini(start_index+per_page,list.size())
  for display_i in range(end_index-start_index):
   var i=start_index+display_i;var it=list[i];var rr=Rect2(40+(display_i%5)*112,335+int(display_i/5)*79,104,71)
