@@ -8,7 +8,7 @@ The current slice contains a ten-room cathedral run, optional treasury, room-spe
 
 The repository keeps the vertical slice reproducible in GitHub Actions.
 
-- 57 gameplay/save checks: combat, elite affixes, Ascension Vows, Chronicle records, persisted run-summary metrics, loot, equip/salvage, growth, save/resume, restart-safe victory checkpoints, boss rewards.
+- 64 gameplay/save checks: combat, elite affixes, Ascension Vows, Chronicle records, persisted run-summary metrics, loot, equip/salvage, growth, save/resume, restart-safe victory checkpoints, boss rewards.
 - Deterministic full-run campaign: visits all 10 rooms including the optional treasury and defeats the boss using movement + normal attacks for combat while using collected gear and level growth.
 - Rendered UI smoke: title, settings, help, gameplay, map, inventory comparison/equip, pause, upgrades, boss HUD, victory, touch HUD, and 4:3 coverage.
 - Shutdown leak gate: Godot resource/object leak warnings fail CI.

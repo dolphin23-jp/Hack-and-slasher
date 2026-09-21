@@ -224,12 +224,33 @@ func _run() -> void:
 	victory_reload.read_save()
 	_expect("victory checkpoint reloads from disk", victory_reload.valid_run(victory_reload.run) and bool(victory_reload.run.get("victory_ready", false)))
 
+	# Victory inventory edits used to bypass save_run because victory modes were
+	# excluded from normal checkpoints. Exercise both mutation paths so the
+	# post-boss build remains restart-safe after inspection.
+	game.mode = "victory_inventory"
+	var victory_edit_item: Dictionary = game.player.inventory[0].duplicate(true)
+	var victory_edit_slot: String = String(victory_edit_item.slot)
+	game.player.equip(0)
+	var victory_equip_reload := ProfileStore.new()
+	victory_equip_reload.path = game.profile.path
+	victory_equip_reload.read_save()
+	_expect("victory inventory equipment edits persist immediately", victory_equip_reload.valid_run(victory_equip_reload.run) and bool(victory_equip_reload.run.get("victory_ready", false)) and String(victory_equip_reload.run.equipment[victory_edit_slot].id) == String(victory_edit_item.id))
+	var victory_pack_before_salvage: int = game.player.inventory.size()
+	game.salvage(0)
+	var victory_salvage_reload := ProfileStore.new()
+	victory_salvage_reload.path = game.profile.path
+	victory_salvage_reload.read_save()
+	_expect("victory inventory salvage persists immediately", victory_salvage_reload.valid_run(victory_salvage_reload.run) and bool(victory_salvage_reload.run.get("victory_ready", false)) and victory_salvage_reload.run.inventory.size() == victory_pack_before_salvage - 1)
+	game.mode = "victory"
+	victory_pack_size = game.player.inventory.size()
+	victory_weapon_id = game.player.equipment.weapon.id
+
 	game.return_to_title()
 	game.start_run(true)
 	_expect("continue restores the victory screen with rewards intact", game.mode == "victory" and game.player.inventory.size() == victory_pack_size and game.player.equipment.weapon.id == victory_weapon_id)
 
-	if checks != 62:
-		failures.append("expected 62 checks, executed %d" % checks)
+	if checks != 64:
+		failures.append("expected 64 checks, executed %d" % checks)
 		printerr("QA FAIL check count: ", checks)
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts"))

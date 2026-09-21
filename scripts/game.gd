@@ -109,7 +109,7 @@ func clear_world()->void:
   if child is Node2D:remove_child(child);child.queue_free()
  enemies.clear();projectiles.clear();drops.clear();hazards.clear()
  pending_upgrades=0;victory_pending=false;wave=0;encounter_room=-1;room_modifier_timer=0;last_room=-1;hitstop=0;shake_amount=0;toast_time=0;banner_time=0
- metrics={"hits_taken":0,"damage_dealt":0.0,"kills":0,"drops":0,"pickups":0,"equips":0,"level_ups":0,"boss_patterns":0}
+ metrics=ProfileStore.empty_run_metrics()
 func start_run(resume:bool=false,ascend:bool=false)->void:
  if ascend and is_instance_valid(player) and player.inventory.size()>40:
   toast("Salvage to 40 items before descending again.");return
@@ -393,12 +393,16 @@ func finish_run()->void:
  dungeon.active=-1;profile.records.wins+=1;profile.records.best_level=maxi(profile.records.best_level,player.level);profile.records.best_ascension=maxi(profile.records.best_ascension,ascension);profile.records.total_kills+=kills
  for d in drops.duplicate():
   if d.kind=="item" and d.item.get("boss_reward",false):player.inventory.append(d.item.duplicate(true));metrics.pickups+=1;d.take()
- profile.run=run_snapshot(true);profile.write_save();sound.set_music("menu");sound.play("legendary")
-func save_run()->void:
- if not is_instance_valid(player) or player.dead or mode in ["title","dead","victory","victory_inventory"]:return
+ _persist_run_checkpoint(true);sound.set_music("menu");sound.play("legendary")
+func _persist_run_checkpoint(victory_ready:bool)->bool:
  profile.records.best_ascension=maxi(profile.records.best_ascension,ascension)
- profile.run=run_snapshot(false)
- if not profile.write_save():toast("Could not write save. Check user data folder permissions.")
+ profile.run=run_snapshot(victory_ready)
+ var ok=profile.write_save()
+ if not ok:toast("Could not write save. Check user data folder permissions.")
+ return ok
+func save_run()->void:
+ if not is_instance_valid(player) or player.dead or mode in ["title","dead"]:return
+ _persist_run_checkpoint(mode in ["victory","victory_inventory"])
 func return_to_title()->void:save_run();mode="title";sound.set_music("menu")
 func _notification(what:int)->void:
  if what==NOTIFICATION_WM_CLOSE_REQUEST:shutdown()
