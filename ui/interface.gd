@@ -83,6 +83,8 @@ func _input(event:InputEvent)->void:
    if game.mode=="play":game.mode="pause"
    elif game.mode in ["pause","inventory"]:game.mode="play";game.save_run()
    get_viewport().set_input_as_handled();return
+  if event.is_action("map") and game.mode=="play":
+   big_map=not big_map;get_viewport().set_input_as_handled();return
   if game.mode!="play":
    if event.button_index==JOY_BUTTON_B:
     if pad_back():get_viewport().set_input_as_handled()
@@ -446,7 +448,48 @@ func draw_settings()->void:
  text("Click to cycle. Touch controls also enable target assistance.",Vector2(720,655),14,MUTED,true);button(Rect2(566,711,308,52),"BACK","back",true)
 func draw_help()->void:
  dim();text("KEEP YOUR PROMISE",Vector2(720,145),36,TEXT,true,true)
- var rows=[["WASD / ARROWS","Eight-way movement"],["MOUSE / RIGHT STICK","Aim your blade and Spirit Lance"],["HOLD LMB / J","Three-hit sword combo. The third strike hits harder."],["SPACE / SHIFT","Dash with brief invulnerability. 1.1s recovery."],["Q / RMB","Judgement: heavy sweeping melee strike. 5s cooldown."],["E","Soul Nova: area damage and slow. 10s cooldown."],["R","Spirit Lance: piercing ranged attack. 6s cooldown."],["F","Mend: one of three healing flasks"],["C","Open nearby reliquaries / collect nearby equipment"],["I / TAB","Compare, equip and salvage in the Reliquary"],["M / ESC","Map / pause and settings"]]
+ var touch_mode:bool=bool(game.profile.settings.touch)
+ var controller_mode:bool=pad_active and not touch_mode
+ var rows=[]
+ if touch_mode:
+  rows=[
+   ["LEFT VIRTUAL STICK","Move through the cathedral"],
+   ["STRIKE","Hold to repeat the three-hit sword combo"],
+   ["DASH","Brief invulnerability and rapid movement"],
+   ["SKILL ICON 1","Judgement: heavy sweeping melee strike"],
+   ["SKILL ICON 2","Soul Nova: area damage and slow"],
+   ["SKILL ICON 3","Spirit Lance: piercing ranged attack"],
+   ["MEND","Spend one of three healing flasks"],
+   ["COLLECT","Open nearby reliquaries and collect equipment"],
+   ["RELIQUARY","Compare, equip, sort and salvage your pack"],
+   ["MINIMAP","Tap to open the cathedral map"],
+   ["PAUSE","Pause, settings and return to title"]]
+ elif controller_mode:
+  rows=[
+   ["LEFT STICK","Eight-way movement"],
+   ["RIGHT STICK","Aim; neutral stick uses target assistance"],
+   ["HOLD X","Three-hit sword combo. Third strike hits harder."],
+   ["A","Dash with brief invulnerability"],
+   ["Y","Judgement: heavy sweeping melee strike"],
+   ["LB","Soul Nova: area damage and slow"],
+   ["RB","Spirit Lance: piercing ranged attack"],
+   ["B","Mend: one of three healing flasks"],
+   ["D-PAD UP","Open nearby reliquaries / collect equipment"],
+   ["BACK / D-PAD DOWN","Reliquary / cathedral map"],
+   ["START","Pause and settings"]]
+ else:
+  rows=[
+   ["WASD / ARROWS","Eight-way movement"],
+   ["MOUSE / RIGHT STICK","Aim your blade and Spirit Lance"],
+   ["HOLD LMB / J","Three-hit sword combo. The third strike hits harder."],
+   ["SPACE / SHIFT","Dash with brief invulnerability. 1.1s recovery."],
+   ["Q / RMB","Judgement: heavy sweeping melee strike. 5s cooldown."],
+   ["E","Soul Nova: area damage and slow. 10s cooldown."],
+   ["R","Spirit Lance: piercing ranged attack. 6s cooldown."],
+   ["F","Mend: one of three healing flasks"],
+   ["C","Open nearby reliquaries / collect nearby equipment"],
+   ["I / TAB","Compare, equip and salvage in the Reliquary"],
+   ["M / ESC","Map / pause and settings"]]
  for i in range(rows.size()):text(rows[i][0],Vector2(299,221+i*39),14,GOLD);text(rows[i][1],Vector2(535,221+i*39),16)
  text("Walk over loot to collect it. Combat pauses in inventory.",Vector2(720,687),14,MUTED,true);text("Clear a sanctuary to recover life and a flask. The treasury is optional.",Vector2(720,715),14,MUTED,true)
  button(Rect2(566,763,308,50),"I AM READY","back",true)
