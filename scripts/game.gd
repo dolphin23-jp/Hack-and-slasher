@@ -121,7 +121,7 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
  if ascend and is_instance_valid(player) and player.inventory.size()>40:
   toast("所持品を40個以下に分解してから次へ進んでください。");return
  var carry={}
- if ascend and is_instance_valid(player):carry={"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"level":player.level,"upgrades":player.upgrades.duplicate(true),"ascension":ascension+1}
+ if ascend and is_instance_valid(player):carry={"materials":player.materials,"active_oaths":player.active_oaths.duplicate(),"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"level":player.level,"upgrades":player.upgrades.duplicate(true),"ascension":ascension+1}
  clear_world();rng.randomize();run_seed=20260920 if OS.get_cmdline_user_args().has("--campaign") else rng.randi();rng.seed=run_seed
  elapsed=0;kills=0;ascension=0
  if resume and profile.valid_run(profile.run):run_seed=int(profile.run.seed)
@@ -132,7 +132,7 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
  player=PlayerScript.new();add_child(player);player.setup(self);player.position=Vector2(-240,0)
  camera=Camera2D.new();camera.position=player.position;add_child(camera);camera.make_current()
  if resume and profile.valid_run(profile.run):
-  var s=profile.run;player.equipment=s.equipment.duplicate(true);player.inventory=s.inventory.duplicate(true)
+  var s=profile.run;player.materials=int(s.get("materials",0));player.active_oaths=OathBoard.sanitize({"active":s.get("active_oaths",profile.oaths.active)}).active;player.combo=clampi(int(s.get("combo",0)),0,3);player.equipment=s.equipment.duplicate(true);player.inventory=s.inventory.duplicate(true)
   player.level=int(s.level);player.xp=int(s.xp);player.upgrades=s.upgrades.duplicate(true);player.potions=int(s.potions)
   player.rebuild_stats();player.hp=clampf(s.hp,1,player.stats.hp)
   dungeon.cleared=s.cleared.duplicate();dungeon.visited=s.get("visited",dungeon.cleared).duplicate()
@@ -148,7 +148,7 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
   for record in s.get("drops",[]):
    var d=DropScript.new();add_child(d);d.setup(self,Vector2(record.position[0],record.position[1]),record.item.duplicate(true),record.kind);d.age=1;d.z_index=1400;drops.append(d)
  elif not carry.is_empty():
-  player.equipment=carry.equipment;player.inventory=carry.inventory;player.level=carry.level;player.upgrades=carry.upgrades;ascension=carry.ascension;player.rebuild_stats();player.hp=player.stats.hp
+  player.materials=carry.materials;player.active_oaths=carry.active_oaths;player.equipment=carry.equipment;player.inventory=carry.inventory;player.level=carry.level;player.upgrades=carry.upgrades;ascension=carry.ascension;player.rebuild_stats();player.hp=player.stats.hp
  else:
   profile.records.runs+=1
   match profile.chronicle.start:
@@ -320,6 +320,7 @@ func critical_effect(p:Vector2)->void:
  if player.has_effect("crit_blast") and player.crit_blast_cd<=0:
   player.crit_blast_cd=.7;fx.ring(p,125,Color("eeaf7c"),.35);area_damage(p,125,player.stats.attack*.8,true,false)
 func queue_blast(p:Vector2,radius:float,amount:float,delay:float,color:Color)->void:
+ if delayed_blasts.size()>=64:return
  delayed_blasts.append({"p":p,"radius":radius,"damage":amount,"delay":delay,"color":color})
  fx.ring(p,radius,color,delay)
 func tick_delayed_blasts(dt:float)->void:
@@ -335,6 +336,7 @@ func chain_lightning(p:Vector2,amount:float,source=null,limit:int=3)->void:
   fx.lightning(p,e.position);e.take_damage(amount,Vector2.ZERO,false,true);count+=1
   if count>=limit:break
 func fire(p:Vector2,v:Vector2,amount:float,friendly:bool=false,pierce:int=0,color:Color=Color("e0a8d7")):
+ if projectiles.size()>=192:projectiles[0].remove()
  var bolt=ProjectileScript.new();add_child(bolt);bolt.game=self;bolt.position=p;bolt.velocity=v;bolt.damage=amount;bolt.friendly=friendly;bolt.pierce=pierce;bolt.color=color
  bolt.radius=8 if friendly else 10;bolt.z_index=1500;projectiles.append(bolt);return bolt
 func add_hazard(p:Vector2,radius:float,duration:float,amount:float,friendly:bool,delay:float)->void:
@@ -342,6 +344,7 @@ func add_hazard(p:Vector2,radius:float,duration:float,amount:float,friendly:bool
   for h in hazards:
    if h.friendly and h.p.distance_to(p)<radius*.85:
     h.life=maxf(h.life,duration);h.damage=maxf(h.damage,amount);return
+ if hazards.size()>=96:return
  hazards.append({"p":p,"radius":radius,"life":duration,"damage":amount,"friendly":friendly,"delay":delay,"max_delay":maxf(.01,delay),"tick":0.0})
 func tick_hazards(dt:float)->void:
  for i in range(hazards.size()-1,-1,-1):
@@ -368,6 +371,8 @@ func enemy_died(e,proc:bool=false)->void:
  fx.burst(e.position,Color("caad86"),85 if e.kind=="boss" else 15,200);sound.play("enemy_death",.55);player.gain_xp(e.xp if not e.spawned_minion else 0);player.heal(player.upgrades.get("leech",0))
  if player.has_effect("chain") and not proc:chain_lightning(e.position,player.stats.attack*.9,e)
  if e.spawned_minion:return
+ player.materials+=maxi(1,roundi(1+clampf(player.stats.material_find,0,2)))
+ if e.kind in ["elite","boss"]:profile.oaths.points+=3 if e.kind=="boss" else 1
  var tier=maxi(1,dungeon.rooms[e.room_id].tier+ascension*2)
  if e.kind=="boss":
   for i in range(4):
@@ -377,14 +382,14 @@ func enemy_died(e,proc:bool=false)->void:
  elif e.kind=="elite":
   spawn_drop(e.position,ItemDB.generate(rng,tier,3,-1))
   for i in range(2):spawn_drop(e.position+Vector2(i*42-20,40),ItemDB.generate(rng,tier,2))
- elif rng.randf()<.38+loot_favor:spawn_drop(e.position,roll_loot(tier))
+ elif rng.randf()<minf(.9,(.38+loot_favor)*(1+clampf(player.stats.drop_rate,0,2))):spawn_drop(e.position,roll_loot(tier))
  if rng.randf()<.2:
   var d=DropScript.new();add_child(d);d.setup(self,e.position+Vector2(25,15),{},"health");d.z_index=200;drops.append(d)
 func spawn_drop(p:Vector2,item:Dictionary):
  var d=DropScript.new();add_child(d);d.setup(self,p,item);d.z_index=1400;drops.append(d);metrics.drops+=1
  if item.rarity>=2:
-  sound.play("legendary" if item.rarity==3 else "rare",.75);fx.ring(p,110 if item.rarity==3 else 60,ItemDB.COLORS[int(item.rarity)],1);fx.burst(p,ItemDB.COLORS[int(item.rarity)],38 if item.rarity==3 else 18,210)
-  if item.rarity==3:toast("レジェンダリー  /  "+item.name)
+  sound.play("mythic" if item.rarity==4 else ("legendary" if item.rarity==3 else "rare"),.75);fx.ring(p,110 if item.rarity>=3 else 60,ItemDB.COLORS[int(item.rarity)],1);fx.burst(p,ItemDB.COLORS[int(item.rarity)],38 if item.rarity>=3 else 18,210)
+  if item.rarity>=3:toast(("ミシック  /  " if item.rarity==4 else "レジェンダリー  /  ")+item.name)
  return d
 func spawn_chest(p:Vector2,tier:int,gilded:bool)->void:
  var d=DropScript.new();add_child(d);d.setup(self,p,{"tier":tier,"gilded":gilded},"chest");d.z_index=1400;drops.append(d)
@@ -414,8 +419,10 @@ func sort_inventory()->void:
  player.inventory.sort_custom(Callable(self,"inventory_before"));sound.play("ui",.5);save_run()
 func salvage(i:int)->void:
  if i<0 or i>=player.inventory.size():return
+ if Forge.protected(player.inventory[i]):toast("保護中の装備です");return
+ player.materials+=Forge.yield_for(player.inventory[i],player.stats)
  var rarity=int(player.inventory[i].rarity);player.inventory.remove_at(i);player.heal(player.stats.hp*(.025+rarity*.0125));sound.play("equip",.6)
- toast("装備を分解し、少し生命を回復しました。");ui.selected=clampi(ui.selected,0,maxi(0,player.inventory.size()-1));save_run()
+ toast("分解素材を獲得し、少し生命を回復しました。");ui.selected=clampi(ui.selected,0,maxi(0,player.inventory.size()-1));save_run()
 func prepare_upgrade()->void:
  upgrade_choices.clear();var pool=UPGRADE_POOL.duplicate(true)
  # Legacy spear_count stays functional, but new characters choose an explicit path.
@@ -455,7 +462,7 @@ func run_snapshot(victory_ready:bool=false)->Dictionary:
  if not victory_ready:
   for d in drops:
    if not d.taken and d.kind!="health":saved_drops.append({"kind":d.kind,"item":d.item.duplicate(true),"position":[d.position.x,d.position.y]})
- return {"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades,"victory_ready":victory_ready,"metrics":metrics.duplicate(true),"world_version":dungeon.layout_version,"event_choices":event_choices.duplicate(true),"loot_favor":loot_favor}
+ return {"materials":player.materials,"active_oaths":player.active_oaths.duplicate(),"combo":player.combo,"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades,"victory_ready":victory_ready,"metrics":metrics.duplicate(true),"world_version":dungeon.layout_version,"event_choices":event_choices.duplicate(true),"loot_favor":loot_favor}
 func finish_run()->void:
  victory_pending=false;mode="victory"
  if 9 not in dungeon.cleared:dungeon.cleared.append(9)
@@ -511,7 +518,7 @@ func roll_loot(tier:int,rarity:int=-1)->Dictionary:
  if rarity<0 and loot_favor>0:
   var roll=rng.randf()
   rarity=3 if roll<.035 else (2 if roll<.30 else -1)
- return ItemDB.generate(rng,tier,rarity)
+ return ItemDB.generate(rng,tier,ItemDB.roll_rarity(rng,player.stats.rarity_find) if rarity<0 else rarity)
 func risk_damage_multiplier()->float:return 1.2 if "danger" in event_choices.values() else 1.0
 func choose_contract(choice:String)->void:
  if mode!="event" or event_room not in [10,11] or event_choices.has(str(event_room)):return
@@ -540,7 +547,7 @@ func resolve_contract(id:int)->void:
   reward=ItemDB.generate(rng,dungeon.rooms[id].tier+1,3,weapon_legends[rng.randi_range(0,weapon_legends.size()-1)])
  spawn_drop(dungeon.rooms[id].center+Vector2(70,80),reward);toast("契約達成 / 聖遺物が現れた")
 func record_item(item:Dictionary)->void:
- if int(item.get("rarity",0))!=3:return
+ if int(item.get("rarity",0))<3:return
  var effect=String(item.effect)
  if not effect.is_empty() and effect not in profile.chronicle.legends:profile.chronicle.legends.append(effect);check_achievements()
 func check_achievements()->void:

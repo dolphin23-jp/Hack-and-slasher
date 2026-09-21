@@ -12,7 +12,7 @@ func setup(g,p:Vector2,value:Dictionary,type:String="item")->void:
  if font.fallbacks.is_empty():
   var jp_path="res://assets/fonts/NotoSansJP-Regular.subset.ttf"
   if ResourceLoader.exists(jp_path):font.fallbacks=[load(jp_path)]
- icon=load("res://assets/icons/"+("potion" if kind=="health" else ("chest" if kind=="chest" else ("sword" if item.slot=="weapon" else item.slot)))+".svg")
+ icon=load("res://assets/icons/"+("potion" if kind=="health" else ("chest" if kind=="chest" else ("sword" if item.slot in Loadout.WEAPONS else ("accessory" if item.slot in ["accessory","accessory2"] else "armor"))))+".svg")
 func tick(dt:float)->void:
  age+=dt
  if taken:return
@@ -32,9 +32,13 @@ func _draw()->void:
  if kind=="item" and rarity>0:
   draw_colored_polygon(PackedVector2Array([Vector2(-13,4),Vector2(13,4),Vector2(3,-120-rarity*14),Vector2(-3,-120-rarity*14)]),Color(c,.06+rarity*.024))
   draw_line(Vector2.ZERO,Vector2(0,-102-rarity*17),Color(c,.3),2,true);draw_arc(Vector2.ZERO,22+sin(age*2)*2,0,TAU,40,Color(c,.55),2,true)
+ if kind=="item" and rarity==4:
+  draw_arc(Vector2.ZERO,38,0,TAU,48,c,3,true)
+  draw_line(Vector2(-7,0),Vector2(-7,-270),Color(c,.65),3,true)
+  draw_line(Vector2(7,0),Vector2(7,-270),Color(c,.65),3,true)
  var size=52 if kind=="chest" else (29 if kind=="health" else 36)
  draw_texture_rect(icon,Rect2(-size/2.0,-size+12+sin(age*3)*3,size,size),false)
- if kind=="item" and rarity==3:
+ if kind=="item" and rarity>=3:
   var pulse=.65+.35*sin(age*3)
   draw_line(Vector2(0,4),Vector2(0,-205),Color(c,.5+pulse*.3),4,true)
   draw_arc(Vector2(0,-44),18+sin(age*2)*3,0,TAU,32,Color("fff0c1"),2,true)
@@ -51,7 +55,7 @@ func _draw()->void:
     detail+="  /  ▼ 弱体 %d%%"%roundi(delta*100.0);detail_color=Color("dc8f84")
    else:
     detail+="  /  ≈ 同等";detail_color=Color("c9c3a5")
-  if rarity==3:detail+=" / "+BuildDB.SET_NAMES.get(ItemDB.set_of(item),"固有効果")
+  if rarity>=3:detail+=" / "+BuildDB.SET_NAMES.get(ItemDB.set_of(item),"固有効果")
   var name_w:float=font.get_string_size(item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,13).x
   var detail_w:float=font.get_string_size(detail,HORIZONTAL_ALIGNMENT_LEFT,-1,11).x
   var w:float=maxf(name_w,detail_w)

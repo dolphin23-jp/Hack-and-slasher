@@ -6,6 +6,7 @@ const SUBSTEPS_PER_FRAME = 120
 const MAX_SIM_SECONDS = 2400.0
 var route = [1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
 var southern = false
+var chain_build=[]
 
 var game
 var route_index = 0
@@ -26,9 +27,15 @@ func _ready() -> void:
 func _run() -> void:
 	game.profile.run = {}
 	game.profile.chronicle.start = "blade"
+	game.profile.oaths=OathBoard.empty()
 	southern = OS.get_cmdline_user_args().has("--southern")
 	if southern: route = [1, 2, 10, 11, 7, 8, 9]
 	game.start_run()
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--chain="):chain_build=arg.trim_prefix("--chain=").split(",")
+	if chain_build.size()==3:
+		for i in range(3):game.player.equipment[Loadout.WEAPONS[i]].weapon_type=chain_build[i]
+		game.player.rebuild_stats()
 	game.set_physics_process(false)
 	game.set_process(false)
 	game.player.controlled_by_test = true
@@ -553,8 +560,9 @@ func _equip_best_collected_gear() -> void:
 		var best_score: float = _build_score(player.equipment)
 		for i in range(player.inventory.size()):
 			var item = player.inventory[i]
-			if String(item.slot) != slot:
+			if not Loadout.accepts(item,slot):
 				continue
+			if chain_build.size()==3 and slot in Loadout.WEAPONS and item.weapon_type!=chain_build[Loadout.WEAPONS.find(slot)]:continue
 			var loadout: Dictionary = player.equipment.duplicate(true)
 			loadout[slot] = item
 			var score: float = _build_score(loadout)
@@ -563,19 +571,19 @@ func _equip_best_collected_gear() -> void:
 				best_index = i
 		if best_index >= 0:
 			var item_name: String = String(player.inventory[best_index].name)
-			player.equip(best_index)
+			player.equip(best_index,slot)
 			print("CAMPAIGN EQUIP slot=", slot, " item=", item_name, " score=", snapped(best_score, 0.1))
 
 func _choose_survival_blessing() -> void:
 	if game.upgrade_choices.is_empty():
 		return
-	var priorities = ["HEARTWOOD", "SOUL TAKER", "WAYFARER", "OATH OF STEEL", "TEMPERED EDGE", "EXECUTIONER", "QUICKENING", "COLD SUN", "FORKED PROMISE"]
+	var priorities = ["hp", "leech", "speed", "attack", "haste", "crit", "cdr", "nova_radius", "spear_count"]
 	if game.player.level >= 8:
-		priorities = ["OATH OF STEEL", "TEMPERED EDGE", "HEARTWOOD", "WAYFARER", "EXECUTIONER", "SOUL TAKER", "QUICKENING", "COLD SUN", "FORKED PROMISE"]
+		priorities = ["attack", "haste", "hp", "speed", "crit", "leech", "cdr", "nova_radius", "spear_count"]
 	var choice = 0
 	var best_rank = priorities.size() + 1
 	for i in range(game.upgrade_choices.size()):
-		var name: String = game.upgrade_choices[i].name
+		var name: String = game.upgrade_choices[i].key
 		var rank = priorities.find(name)
 		if rank >= 0 and rank < best_rank:
 			best_rank = rank

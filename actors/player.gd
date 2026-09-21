@@ -6,6 +6,8 @@ var facing=Vector2.RIGHT
 var last_move=Vector2.RIGHT
 var dash_direction=Vector2.RIGHT
 var stats={}
+var materials=0
+var active_oaths=[]
 var equipment=ItemDB.initial_items()
 var inventory=[]
 var upgrades={}
@@ -43,17 +45,32 @@ var touch_attack=false
 var test_move=Vector2.ZERO
 var controlled_by_test=false
 var texture=preload("res://assets/characters/player.svg")
+var weapon_art={}
 var sword=preload("res://assets/icons/sword.svg")
-func setup(g)->void:game=g;rebuild_stats();hp=stats.hp
+func setup(g)->void:
+ for kind in WeaponDB.TYPES:weapon_art[kind]=load("res://assets/icons/"+kind+".svg")
+ game=g;active_oaths=game.profile.oaths.active.duplicate();rebuild_stats();hp=stats.hp
 func calculated(loadout:Dictionary=equipment)->Dictionary:
  var s={"attack":13.0+(level-1)*2.1,"hp":146.0+(level-1)*14,"armor":0.0,"haste":0.0,"crit":.06,"crit_damage":.55,"speed":0.0,"cdr":0.0,"skill":0.0}
+ for key in ItemDB.AFFIXES:
+  if not s.has(key):s[key]=0.0
  for slot in ItemDB.SLOTS:
-  for table in [loadout[slot].base,loadout[slot].affixes]:
-   for k in table:s[k]=s.get(k,0)+float(table[k])
+  var table=Loadout.equipped_stats(loadout[slot])
+  for k in table:
+   if slot in Loadout.WEAPONS and k=="attack":continue
+   s[k]=s.get(k,0)+float(table[k])
+ s.attack+=average_weapon_power(loadout)
+ var oath_stats=OathBoard.stats(game.profile.oaths,active_oaths) if game!=null else {}
+ for k in oath_stats:s[k]=s.get(k,0)+oath_stats[k]
  for k in upgrades:
   if s.has(k):s[k]+=upgrades[k]
  s.haste=clampf(s.haste,0,1.8);s.crit=clampf(s.crit,0,.8);s.speed=clampf(s.speed,0,.65);s.cdr=clampf(s.cdr,0,.55)
  return s
+func average_weapon_power(loadout:Dictionary=equipment)->float:
+ var value=0.0
+ for slot in Loadout.WEAPONS:value+=weapon_power(loadout[slot])/3.0
+ return value
+func weapon_power(it:Dictionary)->float:return Loadout.equipped_stats(it).get("attack",0)
 func build_score(loadout:Dictionary=equipment)->float:
  var s:Dictionary=calculated(loadout)
  var dps:float=float(s.attack)*(1.0+float(s.haste))
@@ -76,15 +93,16 @@ func item_upgrade_ratio(item:Dictionary)->float:
  return build_score(loadout)/current-1.0
 func rebuild_stats()->void:stats=calculated();hp=minf(hp,stats.hp)
 func has_effect(effect:String)->bool:
+ if OathBoard.has_effect(active_oaths,effect):return true
  for slot in ItemDB.SLOTS:
-  if equipment[slot].effect==effect:return true
+  if effect in ["echo","reaper","execution","judgement_echo","lance_fork","lance_return","echo_guard","dash_nova"] and equipment[slot].effect==effect:return true
  return false
 func set_count(family:String,loadout:Dictionary=equipment)->int:
  var count=0
  for slot in ItemDB.SLOTS:
   if ItemDB.set_of(loadout[slot])==family:count+=1
  return count
-func synergy(family:String)->bool:return set_count(family)>=2
+func synergy(family:String)->bool:return ("storm" in active_oaths if family=="storm" else ("flame" in active_oaths if family=="cinder" else "dance" in active_oaths))
 func perfect_evade()->void:
  if dash_evaded:return
  dash_evaded=true;counter_time=2.0;dash_cd=maxf(0,dash_cd-(.35 if upgrades.get("riposte",0)>0 else .2))
@@ -95,11 +113,11 @@ func tick(dt:float)->void:
  if dead:return
  counter_time=maxf(0,counter_time-dt);dash_attack_time=maxf(0,dash_attack_time-dt);dash_nova_cd=maxf(0,dash_nova_cd-dt)
  barrier_time=maxf(0,barrier_time-dt)
- if barrier_time<=0:barrier=0
+ if barrier_time<=0:barrier=minf(barrier,stats.shield_max)
+ barrier=minf(maxf(barrier,0)+stats.shield_regen*dt,maxf(barrier,stats.shield_max))
  for i in range(3):cooldowns[i]=maxf(0,cooldowns[i]-dt)
  dash_cd=maxf(0,dash_cd-dt);attack_cd=maxf(0,attack_cd-dt);invulnerable=maxf(0,invulnerable-dt);flash=maxf(0,flash-dt)
  crit_blast_cd=maxf(0,crit_blast_cd-dt);attack_time=maxf(0,attack_time-dt);combo_expire=maxf(0,combo_expire-dt)
- if combo_expire<=0:combo=0
  var move=Input.get_vector("move_left","move_right","move_up","move_down")
  if touch_move.length()>.1:move=touch_move
  if controlled_by_test:move=test_move.limit_length()
@@ -116,7 +134,7 @@ func tick(dt:float)->void:
    if mouse.length()>10:facing=mouse.normalized()
  if move.length()>.1:last_move=move.normalized()
  if dash_time>0:
-  dash_time-=dt;velocity=dash_direction*850;fire_tick-=dt
+  dash_time-=dt;velocity=dash_direction*850*(1+clampf(stats.dodge_distance,0,.5));fire_tick-=dt
   if fire_tick<=0:
    game.fx.burst(position,Color("85e3d4"),4,32)
    if has_effect("fire_dash") or upgrades.get("ember_start",0)>0:game.add_hazard(position,47,3.0,stats.attack*(1.1 if has_effect("fire_dash") else .35),true,0)
@@ -136,17 +154,8 @@ func tick(dt:float)->void:
 func attack()->bool:
  if dead or attack_cd>0 or dash_time>0:return false
  combo=combo%3+1;combo_expire=1.25;swing_count+=1
- var strike=COMBO[combo-1]
- attack_cd=strike.cooldown/(1+stats.haste);attack_time=.22 if combo<3 else .3
- var amount=stats.attack*strike.damage
- if counter_time>0:
-  amount*=1.75 if upgrades.get("riposte",0)>0 else 1.35
-  if upgrades.get("storm_counter",0)>0:game.chain_lightning(position,stats.attack*.8,null,2)
-  counter_time=0
- var reach=strike.reach+(35 if dash_attack_time>0 and upgrades.get("dash_hunter",0)>0 else 0)
- game.melee(position,facing,reach,strike.arc,amount,strike.knock)
- game.fx.slash(position,facing,reach-12,Color("b4ecdf") if combo<3 else Color("ffdb9c"),combo==3,combo==2)
- game.sound.play("slash" if combo<3 else "heavy",.8,[1.18,.87,.8][combo-1])
+ CombatChain.strike(self)
+ var amount=stats.attack
  if combo==3:
   if has_effect("reaper"):game.area_damage(position,165,stats.attack*.75);game.fx.ring(position,165,Color("cbd4ff"),.4)
   if upgrades.get("finisher_wave",0)>0:
@@ -159,7 +168,7 @@ func attack()->bool:
  return true
 func dash()->bool:
  if dead or dash_cd>0 or dash_time>0:return false
- dash_time=.19;invulnerable=maxf(invulnerable,.24);dash_cd=1.1*(1-stats.cdr*.55)*(.8 if upgrades.get("dash_hunter",0)>0 else 1.0)
+ dash_time=.19;invulnerable=maxf(invulnerable,.24);dash_cd=1.1*(1-clampf(stats.dodge_cdr,0,.6))*(1-stats.cdr*.55)*(.8 if upgrades.get("dash_hunter",0)>0 else 1.0)
  dash_evaded=false;dash_attack_time=.9;attack_time=0;attack_cd=minf(attack_cd,.12)
  dash_direction=last_move if velocity.length()>20 else facing;fire_tick=0
  game.fx.ring(position,45,Color("a4ebe0"),.3);game.sound.play("dash");return true
@@ -206,12 +215,13 @@ func cast_lance(dmg:float)->void:
  if has_effect("lance_fork"):
   for a in [-.35,.35]:
    var bolt=game.fire(position+facing*25,facing.rotated(a)*680,dmg*1.26,true,5,Color("c7b8ff"));bolt.secondary_effect=true
-func take_damage(amount:float,knock:Vector2=Vector2.ZERO)->bool:
+func take_damage(amount:float,knock:Vector2=Vector2.ZERO,fatal:bool=false)->bool:
  if dead:return false
  if invulnerable>0:
   if dash_time>0:perfect_evade()
   return false
- var damage=amount*100/(100+stats.armor)
+ var damage=amount*100/(100+stats.armor)*(1-clampf(stats.fatal_resist,0,.7) if fatal else 1.0)
+ knock*=1-clampf(stats.knock_resist,0,.8)
  var absorbed=minf(barrier,damage);barrier-=absorbed;damage-=absorbed
  hp=maxf(0,hp-damage);invulnerable=.52;flash=.16;velocity+=knock
  position=game.dungeon.move_body(position,knock*.06,18)
@@ -219,7 +229,7 @@ func take_damage(amount:float,knock:Vector2=Vector2.ZERO)->bool:
  game.shake(8);game.sound.play("hurt");game.metrics.hits_taken+=1
  if hp<=0:dead=true;game.player_died()
  return true
-func heal(amount:float)->void:hp=minf(stats.hp,hp+amount)
+func heal(amount:float)->void:hp=minf(stats.hp,hp+amount*(1+clampf(stats.healing,0,2)))
 func drink()->bool:
  if dead or potions<=0 or hp>=stats.hp:return false
  potions-=1;heal(stats.hp*.48);game.fx.ring(position,82,Color("a4d5a0"),.7);game.fx.number(position,"回復",Color("b5dfa9"));game.sound.play("heal")
@@ -228,9 +238,12 @@ func drink()->bool:
   for e in game.enemies:
    if e.position.distance_to(position)<220:e.ignite(stats.attack*.35,3)
  return true
-func equip(index:int)->bool:
+func equip(index:int,target:String="")->bool:
  if index<0 or index>=inventory.size():return false
- var item=inventory[index];var old=equipment[item.slot];equipment[item.slot]=item;inventory[index]=old
+ var item=inventory[index]
+ var slot=target if not target.is_empty() else String(item.slot)
+ if not Loadout.accepts(item,slot):return false
+ var old=equipment[slot];equipment[slot]=item;inventory[index]=old
  rebuild_stats();game.sound.play("equip");game.metrics.equips+=1;game.save_run();return true
 func xp_required()->int:return 60+(level-1)*45+int(pow(level-1,1.65)*16)
 func gain_xp(amount:int)->void:
@@ -251,9 +264,9 @@ func _draw()->void:
  draw_set_transform(Vector2(0,bob-25),velocity.x*.000035,Vector2(sx,1))
  draw_texture_rect_region(texture,Rect2(-42,-42,84,56),Rect2(0,0,128,85),tint);draw_set_transform(Vector2.ZERO)
  var a=facing.angle()
- if attack_time>0:a+=lerpf(1.2,-1.1,attack_time/.3)
+ if attack_time>0:a+=lerpf(TAU,0,attack_time/.2) if equipment[Loadout.WEAPONS[maxi(0,combo-1)]].weapon_type=="scythe" else lerpf(1.2,-1.1,attack_time/.3)
  draw_set_transform(Vector2.from_angle(a)*29+Vector2(0,-24),a+PI*.25,Vector2(.67,.67))
- draw_texture_rect(sword,Rect2(-26,-78,64,64),false,tint);draw_set_transform(Vector2.ZERO)
+ draw_texture_rect(weapon_art.get(equipment[Loadout.WEAPONS[maxi(0,combo-1)]].weapon_type,sword),Rect2(-26,-78,64,64),false,tint);draw_set_transform(Vector2.ZERO)
  if barrier>0:draw_arc(Vector2.ZERO,40,0,TAU,48,Color("c9b5ff"),3,true)
  if counter_time>0:draw_arc(Vector2.ZERO,30,0,TAU,48,Color("eeecad"),2,true)
  if dash_time>0:draw_arc(Vector2.ZERO,35,0,TAU,40,Color("94e8db"),2,true)

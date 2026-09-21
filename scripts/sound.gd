@@ -9,7 +9,7 @@ var fade=1.0
 var settings={}
 var last_sound={}
 func _ready()->void:
- for key in ["slash","heavy","hit","crit","dash","hurt","death","enemy_death","loot","rare","legendary","equip","ui","nova","bolt","level","boss","heal","chest"]:effects[key]=load("res://assets/audio/"+key+".wav")
+ for key in ["slash","heavy","hit","crit","dash","hurt","death","enemy_death","loot","mythic","rare","legendary","equip","ui","nova","bolt","level","boss","heal","chest"]:effects[key]=load("res://assets/audio/"+key+".wav")
  for i in range(16):
   var v=AudioStreamPlayer.new();add_child(v);voices.append(v)
  music=AudioStreamPlayer.new();add_child(music)

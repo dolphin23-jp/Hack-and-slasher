@@ -116,10 +116,10 @@ func _run() -> void:
 	_expect("reliquary click", game.mode == "inventory")
 	await _frames(3)
 	await _shot("06_inventory")
-	await _click(Vector2(625, 157))
+	await _click(Vector2(280, 294))
 	_expect("Sort Pack puts legendary before rare and common", int(game.player.inventory[0].rarity) == 3 and int(game.player.inventory[1].rarity) == 2 and int(game.player.inventory[2].rarity) == 0)
 	await _shot("06b_inventory_sorted")
-	await _click(Vector2(380, 226))
+	await _click(Vector2(71, 356))
 	_expect("inventory item click selects first item", game.ui.selected == 0)
 	var slot: String = game.player.inventory[0].slot
 	var old_id: String = game.player.equipment[slot].id
@@ -305,6 +305,37 @@ func _run() -> void:
 	game.player.inventory.append(ItemDB.generate(game.rng, 5, 3, 4))
 	game.ui.selected = game.player.inventory.size()-1
 	await _shot("24_synergy_comparison_ipad")
+
+	game.player.materials=9999
+	game.player.equipment.weapon.tier=5
+	game.player.equipment.weapon.enhance=10
+	game.player.equipment.weapon.affixes={"crit":.08,"haste":.1}
+	await _click(Vector2(1160,48))
+	await _shot("25_forge_ipad")
+	game.ui.reliquary.inheritance="crit"
+	await _click(Vector2(1080,574))
+	_expect("forge evolve click changes real grade",game.player.equipment.weapon.grade==2)
+	await _shot("26_evolution_ipad")
+	game.player.equipment.weapon.tier=2
+	game.player.equipment.weapon.fusion=10
+	await _click(Vector2(1100,508))
+	_expect("forge Tier button consumes material and unlocks",game.player.equipment.weapon.tier==3)
+	await _shot("27_tier_ipad")
+	await _click(Vector2(1010,48))
+	var order_before=game.player.equipment.weapon.id
+	await _click(Vector2(410,130))
+	_expect("reorder button changes actual chain",game.player.equipment.weapon2.id==order_before)
+	await _shot("28_chain_reordered_ipad")
+	await _click(Vector2(140,723))
+	_expect("oath board opens from inventory",game.mode=="oaths")
+	await _shot("29_oath_board_ipad")
+	await _click(Vector2(1260,60))
+	game.mode="play"
+	var myth=ItemDB.generate(game.rng,8,4,0)
+	game.spawn_drop(game.player.position+Vector2(110,70),myth)
+	await _shot("30_mythic_drop_ipad")
+	game.mode="inventory";game.player.inventory.append(myth);game.ui.selected=game.player.inventory.size()-1
+	await _shot("31_mythic_detail_ipad")
 
 	var summary := "VISUAL_SMOKE shots=%d failures=%d\n" % [shots, failures.size()]
 	for failure in failures:

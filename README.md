@@ -1,4 +1,11 @@
-# ASHEN VOW — 灰冠の再誓 (0.2)
+# ASHEN VOW — 灰冠の再誓 (0.3)
+
+
+**0.3 — 三連の誓い:** 3武器を並べて通常攻撃を自動循環。7武器系統・9装備枠・鍛冶・誓印盤・Mythicを追加。旧セーブはバックアップ付きで移行します。
+
+[0.3の仕様・操作・セーブ互換・検証](docs/THREEFOLD_VOW.md)
+
+以下は維持している0.2基盤の概要です（旧装備セットの炎・雷は0.3で誓印盤へ移行）。
 
 A playable top-down action RPG / hack-and-slasher vertical slice built in Godot 4.5.1.
 

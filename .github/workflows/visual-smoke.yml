@@ -15,7 +15,7 @@ permissions:
 jobs:
   visual-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -68,6 +68,18 @@ jobs:
           set -o pipefail
           timeout 240s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --campaign --southern \
             2>&1 | tee test-artifacts/southern.log
+
+      - name: Run 0.3 item, forge, migration and combat regression
+        run: |
+          set -o pipefail
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/v03_runner.gd -- --test 2>&1 | tee test-artifacts/v03.log
+
+      - name: Play four weapon chains through the cathedral
+        run: |
+          set -o pipefail
+          for chain in sword,scythe,staff spear,spear,scythe fist,mace,fist staff,spellblade,staff; do
+            timeout 240s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --campaign --southern --chain="$chain" 2>&1 | tee "test-artifacts/chain-$chain.log"
+          done
 
       - name: Render and click through UI
         if: always()
