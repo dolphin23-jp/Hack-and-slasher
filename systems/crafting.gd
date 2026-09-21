@@ -40,8 +40,8 @@ static func apply(p,it:Dictionary,action:String,inherit:String="")->String:
     var mapped=remap_roll(float(it.base[key]),it.rolls.get(key,[it.base[key],it.base[key]]),ratio)
     it.base[key]=mapped.value;it.rolls[key]=mapped.limits
    for key in it.affixes:
-    var mapped=remap_roll(float(it.affixes[key]),it.rolls.get(key,[it.affixes[key],it.affixes[key]]),ratio)
-    it.affixes[key]=mapped.value;it.rolls[key]=mapped.limits
+    var mapped_affix=remap_roll(float(it.affixes[key]),it.rolls.get(key,[it.affixes[key],it.affixes[key]]),ratio)
+    it.affixes[key]=mapped_affix.value;it.rolls[key]=mapped_affix.limits
    # Preserve roll percentile across the whole item; the chosen heirloom affix gains an extra 8%.
    if it.affixes.has(inherit):
     it.affixes[inherit]*=1.08;it.rolls[inherit][1]*=1.08;it.inherited=inherit
