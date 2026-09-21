@@ -7,6 +7,7 @@ var forge_slot="weapon"
 var inheritance=""
 var stats_group=0
 var back="title"
+var oath_view="dance"
 func act(u,action:String)->bool:
  var g=u.game;var p=g.player
  if action=="oaths":back=g.mode;g.mode="oaths";return true
@@ -20,6 +21,18 @@ func act(u,action:String)->bool:
   elif active.size()<3:active.append(key)
   else:g.toast("主誓印1・副誓印2までです")
   g.profile.write_save();return true
+ if action.begins_with("oath_view:"):
+  oath_view=action.get_slice(":",1);return true
+ if action.begins_with("oath_main:"):
+  if back!="title":g.toast("誓印の選択は次の探索の出発前に行えます");return true
+  var key=action.get_slice(":",1);var active=g.profile.oaths.active
+  if key in active:active.erase(key)
+  elif active.size()>=3:active.pop_back()
+  active.insert(0,key);g.profile.write_save();return true
+ if action.begins_with("node:"):
+  if back!="title":g.toast("誓印盤の強化は出発前に行えます");return true
+  var path=action.get_slice(":",1);var id=action.get_slice(":",2)
+  g.toast(OathBoard.unlock_node(g.profile.oaths,path,id));g.profile.write_save();return true
  if action.begins_with("rank:"):
   if back!="title":g.toast("刻印の強化は出発前に行えます");return true
   var key=action.get_slice(":",1);var rank=int(g.profile.oaths.ranks.get(key,0));var price=(rank+1)*3
@@ -116,15 +129,38 @@ func draw_forge(u)->void:
  u.text("全Affixを保持。選択した1つはさらに8%強化。",Vector2(45,859),15,u.MUTED)
 func draw_oaths(u)->void:
  u.dim();var b=u.game.profile.oaths
- u.text("誓印盤 / 出発前に主1・副2を選択",Vector2(60,70),30)
- u.text("誓片 %d / 最初に選んだ系統が主誓印。Run中の選択変更不可。"%b.points,Vector2(60,111),18,u.GOLD)
+ u.text("誓印盤 / 分岐する永続ビルド",Vector2(60,60),30)
+ u.text("誓片 %d / 主誓印1・副誓印2。ノードは永続解放。"%b.points,Vector2(60,98),17,u.GOLD)
  u.button(Rect2(1160,35,230,50),"戻る","oath_back")
- var i=0
- for key in OathBoard.PATHS:
-  var d=OathBoard.PATHS[key];var x=60+(i%3)*450;var y=165+int(i/3)*340;var index=b.active.find(key);var rank=int(b.ranks.get(key,0))
-  u.panel(Rect2(x,y,420,305),u.PANEL,u.GOLD if index>=0 else u.LINE)
-  u.text(d.name+" / "+("主誓印" if index==0 else ("副誓印" if index>0 else "未選択")),Vector2(x+20,y+40),24,u.TEAL)
-  u.wrapped_text(d.text,Vector2(x+20,y+85),380,18,u.TEXT,28)
-  u.button(Rect2(x+20,y+165,380,48),"選択を解除" if index>=0 else "選択","oath:"+key,index>=0)
-  u.button(Rect2(x+20,y+230,380,48),"刻印 %d/3 / 誓片%d"%[rank,(rank+1)*3],"rank:"+key)
-  i+=1
+ var keys=OathBoard.PATHS.keys()
+ for i in range(keys.size()):
+  var key=String(keys[i]);var active_index=b.active.find(key)
+  u.button(Rect2(55+i*220,125,205,48),OathBoard.PATHS[key].name+(" / 主" if active_index==0 else (" / 副" if active_index>0 else "")),"oath_view:"+key,oath_view==key)
+ var path=oath_view
+ if not OathBoard.PATHS.has(path):path="dance";oath_view=path
+ var info=OathBoard.PATHS[path];var active_index=b.active.find(path)
+ u.panel(Rect2(60,205,300,610),u.PANEL,u.GOLD if active_index>=0 else u.LINE)
+ u.text(info.name,Vector2(85,252),30,u.TEAL)
+ u.wrapped_text(info.text,Vector2(85,290),250,17,u.TEXT,27)
+ u.text("状態: "+("主誓印" if active_index==0 else ("副誓印" if active_index>0 else "未選択")),Vector2(85,382),17,u.GOLD)
+ u.button(Rect2(85,415,250,48),"選択を解除" if active_index>=0 else "副誓印として選択","oath:"+path,active_index>=0)
+ u.button(Rect2(85,475,250,48),"主誓印にする","oath_main:"+path,active_index==0)
+ u.text("解放済み %d / 7"%OathBoard.TREES[path].filter(func(n):return n.id in b.nodes).size(),Vector2(85,555),15,u.MUTED)
+ u.wrapped_text("中央の枝は二者択一です。片方を選ぶと反対側はその探索者では解放できません。最下段がCapstone。",Vector2(85,600),250,14,u.MUTED,22)
+ var positions=[
+  Vector2(615,220),Vector2(615,310),
+  Vector2(430,420),Vector2(800,420),
+  Vector2(430,530),Vector2(800,530),
+  Vector2(615,665)]
+ var nodes=OathBoard.TREES[path]
+ for pair in [[0,1],[1,2],[1,3],[2,4],[3,5],[4,6],[5,6]]:
+  u.draw_line(positions[pair[0]]+Vector2(130,30),positions[pair[1]]+Vector2(130,30),u.LINE,3)
+ for i in range(nodes.size()):
+  var node=nodes[i];var owned=node.id in b.nodes;var available=OathBoard.node_available(b,path,node.id)
+  var label=("✓ " if owned else ("◆ " if available else "◇ "))+node.name+" / "+str(node.cost)
+  u.button(Rect2(positions[i],Vector2(260,60)),label,"node:"+path+":"+node.id,owned)
+  var detail=[]
+  for stat in node.get("stats",{}):detail.append(ItemDB.stat_text(stat,node.stats[stat]))
+  for effect in node.get("effects",[]):detail.append(String(effect))
+  if not detail.is_empty():u.text(" / ".join(detail),positions[i]+Vector2(130,82),11,u.TEAL if owned else u.MUTED,true)
+ u.text("◆ 解放可能   ✓ 解放済み   ◇ 前提不足・排他",Vector2(850,820),14,u.MUTED,true)
