@@ -48,7 +48,7 @@ func screen_point(p:Vector2)->Vector2:return layout_offset()+p*layout_scale()
 func _input(event:InputEvent)->void:
  if event is InputEventMouseMotion:
   pad_active=false;hover=point(event.position)
- if event is InputEventMouseButton and event.pressed and event.button_index==MOUSE_BUTTオン_LEFT:
+ if event is InputEventMouseButton and event.pressed and event.button_index==MOUSE_BUTTON_LEFT:
   pad_active=false
   for b in buttons:
    if b.rect.has_point(point(event.position)):act(b.action);get_viewport().set_input_as_handled();return
@@ -90,22 +90,22 @@ func _input(event:InputEvent)->void:
    elif game.mode in ["pause","inventory"]:game.mode="play";game.save_run()
    get_viewport().set_input_as_handled();return
   if game.mode!="play":
-   if event.button_index==JOY_BUTTオン_B:
+   if event.button_index==JOY_BUTTON_B:
     if pad_back():get_viewport().set_input_as_handled()
     return
-   if game.mode in ["inventory","victory_inventory"] and event.button_index==JOY_BUTTオン_X:
+   if game.mode in ["inventory","victory_inventory"] and event.button_index==JOY_BUTTON_X:
     game.player.equip(selected);salvage_confirm=-1;get_viewport().set_input_as_handled();return
-   if game.mode in ["inventory","victory_inventory"] and event.button_index==JOY_BUTTオン_Y:
+   if game.mode in ["inventory","victory_inventory"] and event.button_index==JOY_BUTTON_Y:
     act("salvage");get_viewport().set_input_as_handled();return
    var direction=Vector2.ZERO
    match event.button_index:
-    JOY_BUTTオン_DPAD_LEFT:direction=Vector2.LEFT
-    JOY_BUTTオン_DPAD_RIGHT:direction=Vector2.RIGHT
-    JOY_BUTTオン_DPAD_UP:direction=Vector2.UP
-    JOY_BUTTオン_DPAD_DOWN:direction=Vector2.DOWN
+    JOY_BUTTON_DPAD_LEFT:direction=Vector2.LEFT
+    JOY_BUTTON_DPAD_RIGHT:direction=Vector2.RIGHT
+    JOY_BUTTON_DPAD_UP:direction=Vector2.UP
+    JOY_BUTTON_DPAD_DOWN:direction=Vector2.DOWN
    if direction!=Vector2.ZERO:
     pad_move(direction);get_viewport().set_input_as_handled();return
-   if event.button_index==JOY_BUTTオン_A and not buttons.is_empty():
+   if event.button_index==JOY_BUTTON_A and not buttons.is_empty():
     pad_focus=clampi(pad_focus,0,buttons.size()-1);act(buttons[pad_focus].action);get_viewport().set_input_as_handled();return
  if event is InputEventScreenTouch:
   pad_active=false
@@ -225,12 +225,12 @@ func _draw()->void:
   "play":
    if big_map:draw_map(Rect2(280,195,880,440),true)
  if game.toast_time>0:
-  var w=body.get_string_size(game.toast_text,HORIZオンTAL_ALIGNMENT_LEFT,-1,16).x+42
+  var w=body.get_string_size(game.toast_text,HORIZONTAL_ALIGNMENT_LEFT,-1,16).x+42
   panel(Rect2(720-w/2,108,w,36),Color(.06,.12,.17,.94),Color(.45,.58,.55,.5));text(game.toast_text,Vector2(720,132),16,TEXT,true)
 func text(s:String,p:Vector2,size:int=18,c:Color=TEXT,center:bool=false,serif:bool=false)->void:
  var f=heading if serif else body;var at=p
- if center:at.x-=f.get_string_size(s,HORIZオンTAL_ALIGNMENT_LEFT,-1,size).x/2
- draw_string(f,at,s,HORIZオンTAL_ALIGNMENT_LEFT,-1,size,c)
+ if center:at.x-=f.get_string_size(s,HORIZONTAL_ALIGNMENT_LEFT,-1,size).x/2
+ draw_string(f,at,s,HORIZONTAL_ALIGNMENT_LEFT,-1,size,c)
 func wrapped_text(s:String,p:Vector2,w:float,size:int=16,c:Color=MUTED,line_height:int=25)->float:
  var line="";var y=p.y
  var use_character_wrap=false
@@ -240,13 +240,13 @@ func wrapped_text(s:String,p:Vector2,w:float,size:int=16,c:Color=MUTED,line_heig
   for i in range(s.length()):
    var ch=s.substr(i,1)
    var test=line+ch
-   if body.get_string_size(test,HORIZオンTAL_ALIGNMENT_LEFT,-1,size).x>w and not line.is_empty():
+   if body.get_string_size(test,HORIZONTAL_ALIGNMENT_LEFT,-1,size).x>w and not line.is_empty():
     text(line,Vector2(p.x,y),size,c);y+=line_height;line=ch
    else:line=test
  else:
   for word in s.split(" "):
    var test=line+(" " if not line.is_empty() else "")+word
-   if body.get_string_size(test,HORIZオンTAL_ALIGNMENT_LEFT,-1,size).x>w and not line.is_empty():
+   if body.get_string_size(test,HORIZONTAL_ALIGNMENT_LEFT,-1,size).x>w and not line.is_empty():
     text(line,Vector2(p.x,y),size,c);y+=line_height;line=word
    else:line=test
  if not line.is_empty():text(line,Vector2(p.x,y),size,c)
@@ -352,7 +352,7 @@ func draw_critical_health(p)->void:
  draw_rect(Rect2(BASE.x-edge,0,edge,BASE.y),danger)
  var label_color:=Color(RED.r,RED.g,RED.b,.78+pulse*.18)
  var warning:String="生命 CRITICAL"
- var warning_w:float=body.get_string_size(warning,HORIZオンTAL_ALIGNMENT_LEFT,-1,12).x
+ var warning_w:float=body.get_string_size(warning,HORIZONTAL_ALIGNMENT_LEFT,-1,12).x
  draw_rect(Rect2(720-warning_w/2-12,724,warning_w+24,28),Color(.035,.02,.025,.76))
  draw_rect(Rect2(720-warning_w/2-12,724,warning_w+24,28),Color(RED.r,RED.g,RED.b,.32),false,1)
  text(warning,Vector2(720,743),12,label_color,true,true)
@@ -446,7 +446,7 @@ func draw_end(won:bool)->void:
  if won:
   wrapped_text("4つのレジェンダリーが所持品に加わりました。確認するか、このビルドでアセンションへ進めます。",Vector2(454,505),535,14,MUTED,22)
   var next_asc=game.ascension+1
-  var next_vow=game.ASCENSIオン_VOWS[(next_asc-1)%game.ASCENSIオン_VOWS.size()]
+  var next_vow=game.ASCENSION_VOWS[(next_asc-1)%game.ASCENSION_VOWS.size()]
   button(Rect2(502,541,436,54),"王の戦利品を見る","inspect_victory",true)
   button(Rect2(502,610,436,54),"アセンション %02d / %s"%[next_asc,next_vow.name],"ascend")
   text(next_vow.detail,Vector2(720,687),12,GOLD,true)
