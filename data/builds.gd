@@ -23,6 +23,27 @@ static func lance_key(upgrades:Dictionary)->String:
  for c in LANCE_PATHS:
   if upgrades.get(c.key,0)>0:return c.key
  return ""
+static func chain_choices(equipment:Dictionary,upgrades:Dictionary)->Array:
+ var kinds=[];var attrs=[]
+ for slot in Loadout.WEAPONS:
+  var kind=String(equipment[slot].get("weapon_type","sword"));kinds.append(kind)
+  var attr=String(WeaponDB.get_weapon(equipment[slot]).types[0])
+  if attr not in attrs:attrs.append(attr)
+ var out=[]
+ for kind in kinds:
+  var key="master_"+kind
+  if out.any(func(c):return c.key==key) or upgrades.get(key,0)>0:continue
+  out.append({"name":WeaponDB.TYPES[kind].name+"の研鑽","detail":WeaponDB.TYPES[kind].name+"の通常攻撃威力 +10%。現在の三連構成に直接効く。","icon":"sword","key":key,"value":.10,"max":1})
+ if upgrades.get("transition_power",0)<=0:out.append({"name":"継ぎ目を断つ","detail":"時間内の武器遷移ボーナス威力 +10%。順番を組む価値を高める。","icon":"cleave","key":"transition_power","value":.10,"max":1})
+ if upgrades.get("slot2_reach",0)<=0:out.append({"name":"第二歩の間合い","detail":"第2武器の攻撃範囲 +18%。中継武器を集団処理へ寄せる。","icon":"dash","key":"slot2_reach","value":.18,"max":1})
+ if attrs.size()==3 and upgrades.get("triune_mastery",0)<=0:out.append({"name":"三相の誓い","detail":"3属性が異なる三連フィニッシュの威力 +18%。","icon":"crit","key":"triune_mastery","value":.18,"max":1})
+ if kinds[0]==kinds[1] and kinds[1]==kinds[2] and upgrades.get("same_family_mastery",0)<=0:out.append({"name":"一器専心","detail":"同武器3連フィニッシュの威力 +22%。","icon":"crit","key":"same_family_mastery","value":.22,"max":1})
+ for i in range(3):
+  var next=(i+1)%3
+  if kinds[i]=="scythe" and kinds[next]=="staff" and upgrades.get("harvest_cast_mastery",0)<=0:
+   out.append({"name":"刈り集め、穿つ","detail":"鎌→杖の収束魔撃を強化。威力と射程をさらに +12%。","icon":"bolt","key":"harvest_cast_mastery","value":.12,"max":1})
+   break
+ return out
 static func available(upgrades:Dictionary,unlocks:Array)->Array:
  var out=[]
  if lance_key(upgrades).is_empty():out.append_array(LANCE_PATHS.duplicate(true))
