@@ -44,6 +44,9 @@ func run()->void:
  check("same weapon trio enables family finisher",WeaponDB.same_family_chain(p.equipment))
  weapon("sword","weapon");weapon("mace","weapon2");weapon("spear","weapon3")
  check("three primary attributes enable triad finisher",WeaponDB.distinct_primary_chain(p.equipment))
+ var native=game.weapon_native_upgrades();var native_keys=native.map(func(v):return v.key)
+ check("run blessings react to equipped chain","transition_power" in native_keys and "triad_finisher" in native_keys)
+ check("encounter cores pose mixed-role problems",game.ENCOUNTER_CORES[4].has("warden") and game.ENCOUNTER_CORES[4].has("summoner"))
  for kind in WeaponDB.TYPES:
   clear();weapon(kind);p.rebuild_stats();p.stats.crit=0
   var front=foe(Vector2(75,0));var back=foe(Vector2(-80,0));var far=foe(Vector2(240,0))
@@ -108,6 +111,9 @@ func run()->void:
  var board=OathBoard.sanitize({"active":["dance","dance","storm","flame","seek"],"ranks":{},"points":4})
  check("main plus two unique secondary limit",board.active==["dance","storm","flame"])
  check("oath board always keeps a main oath",OathBoard.sanitize({"active":[]}).active==["dance"])
+ var branched=OathBoard.sanitize({"active":["dance"],"ranks":{"dance":3},"choices":{"dance":"flow"}});var branch_stats=OathBoard.stats(branched,branched.active)
+ check("rank-two oath branch changes real stats",branch_stats.haste>.25)
+ check("rank-three main oath gains capstone",branch_stats.crit>.10)
  p.active_oaths=["flame"];check("flame independent of equipment",p.has_effect("ash_edge") and p.has_effect("fire_dash"))
  p.active_oaths=["storm"];check("storm independent of equipment",p.has_effect("chain"))
  p.active_oaths=[];check("inactive elemental gear gives no elemental proc",not p.has_effect("chain"))
@@ -129,6 +135,8 @@ func run()->void:
  var disk=ProfileStore.new();disk.path=game.profile.path;disk.read_save()
  check("disk save restores board",disk.oaths==board)
  check("disk save restores material and chain",disk.run.get("materials")==765 and disk.run.get("combo")==2)
+ var stored=ItemDB.generate(game.rng,4,2);game.profile.vault=[stored];game.profile.write_save();var vault_disk=ProfileStore.new();vault_disk.path=game.profile.path;vault_disk.read_save()
+ check("profile vault survives disk round trip",vault_disk.vault.size()==1 and vault_disk.vault[0].id==stored.id)
  game.profile.run=disk.run;game.start_run(true)
  check("restart restores full equipment",game.player.equipment==disk.run.equipment)
  check("restart restores active build",game.player.active_oaths==board.active)
@@ -158,12 +166,21 @@ func run()->void:
   var unique_item=ItemDB.generate(game.rng,1,3,index)
   if unique_item.weapon_type not in found_types:found_types.append(unique_item.weapon_type)
  check("all seven unique weapon behaviors are obtainable",found_types.size()==7)
+ var armor_uniques=[]
+ for index in range(ItemDB.LEGENDS.size()):
+  var spec=ItemDB.LEGENDS[index]
+  if spec.slot in ["head","armor","hands","feet","accessory"]:
+   var unique_item=ItemDB.generate(game.rng,5,3,index)
+   if unique_item.slot not in Loadout.WEAPONS:armor_uniques.append(unique_item.unique)
+ check("non-weapon legendaries no longer collapse to one chain guard",armor_uniques.duplicate().filter(func(v):return v!="chain_guard").size()==armor_uniques.size() and armor_uniques.size()>=5)
  var legacy_build=legacy.duplicate(true);legacy_build.erase("active_oaths")
  legacy_build.equipment.weapon.effect="ash_edge";legacy_build.equipment.armor.effect="fire_dash"
  var old_build=SaveMigration.migrate({"version":1,"run":legacy_build})
  check("legacy current Run keeps elemental build",old_build.run.active_oaths[0]=="flame")
  var stat_item=ItemDB.initial_items().armor;stat_item.tier=4
  check("armor T4 grants functional fatal resistance",Loadout.equipped_stats(stat_item).get("fatal_resist",0)>0)
+ var hand_item=ItemDB.initial_items().hands;hand_item.tier=4;var foot_item=ItemDB.initial_items().feet;foot_item.tier=4
+ check("armor tier paths differ by slot",Loadout.equipped_stats(hand_item).get("haste",0)>0 and Loadout.equipped_stats(foot_item).get("dodge_cdr",0)>0 and Loadout.equipped_stats(hand_item).get("shield_regen",0)==0)
  var drop_counts=[]
  for bonus in [0.0,2.0]:
   clear();p=game.player;p.stats.drop_rate=bonus;p.stats.material_find=0;p.level=99;p.xp=0;game.rng.seed=4401
@@ -176,6 +193,10 @@ func run()->void:
  for i in range(1000):
   var target=foe(Vector2(100,0));target.dead=true;game.enemy_died(target,true);target.queue_free()
  check("fractional Material Find grants stochastic extra materials",p.materials>1200 and p.materials<1400)
+ clear();p=game.player;p.inventory=[];p.materials=0;game.profile.settings.auto_salvage=.25
+ var auto_item=ItemDB.generate(game.rng,1,0);var auto_drop=game.spawn_drop(p.position+Vector2(20,0),auto_item);game.collect(auto_drop)
+ check("auto salvage converts configured low rarity without filling inventory",p.inventory.is_empty() and p.materials>0)
+ game.profile.settings.auto_salvage=0.0
  var weakest=weapon("sword","weapon");weakest.base.attack=2.0
  var middle=weapon("sword","weapon2");middle.base.attack=8.0
  var strongest=weapon("sword","weapon3");strongest.base.attack=20.0
