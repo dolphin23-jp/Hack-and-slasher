@@ -85,9 +85,17 @@ func run()->void:
  check("confirm start launches a run",game.mode=="play" and is_instance_valid(game.player))
  check("run freezes active oath selection",game.player.active_oaths==game.profile.oaths.active)
  var nodes_before=game.profile.oaths.nodes.duplicate()
+ var run_nodes_before=game.player.oath_board.nodes.duplicate()
  game.ui.reliquary.back="inventory"
  game.ui.reliquary.act(game.ui,"respec_all")
  check("respec is blocked during run",game.profile.oaths.nodes==nodes_before)
+ game.save_run();game.return_to_title()
+ OathBoard.respec_all(game.profile.oaths);game.profile.oaths.active=["storm"];game.profile.write_save()
+ check("next-build edits can differ from saved run",game.profile.oaths.nodes.is_empty() and game.profile.oaths.active==["storm"])
+ game.start_run(true);await process_frame
+ check("continued run restores frozen oath nodes",game.player.oath_board.nodes==run_nodes_before and "dance_tempo" in game.player.oath_board.nodes)
+ check("continued run restores frozen active oaths",game.player.active_oaths!=game.profile.oaths.active and game.player.active_oaths==game.player.oath_board.active)
+ check("run stats use frozen board instead of next-build board",float(game.player.stats.haste)>=.04)
 
  game.profile.write_save()
  var disk=ProfileStore.new();disk.path=game.profile.path;disk.read_save()
