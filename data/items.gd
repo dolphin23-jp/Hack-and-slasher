@@ -83,6 +83,7 @@ static func default_art_id(item:Dictionary)->String:
  if int(item.get("rarity",0))>=3 and not effect.is_empty():return "legend_"+effect
  var slot=String(item.get("slot","weapon"));var grade=clampi(int(item.get("grade",1)),1,6)
  if slot in Loadout.WEAPONS:return "weapon_"+String(item.get("weapon_type","sword"))+"_g"+str(grade)
+ if slot=="accessory2":slot="accessory"
  return slot+"_g"+str(grade)
 static func art_path(item:Dictionary)->String:
  var id=String(item.get("art_id",default_art_id(item)))
