@@ -1,14 +1,14 @@
 class_name ItemDB
 extends RefCounted
-const RARITIES=["COMMON","MAGIC","RARE","LEGENDARY"]
+const RARITIES=["コモン","マジック","レア","レジェンダリー"]
 const COLORS=[Color("b6c5c8"),Color("78b5ed"),Color("dcacd9"),Color("f4be68")]
 const SLOTS=["weapon","armor","accessory"]
-const AFFIXES={"attack":["Attack",3.0,7.0],"haste":["Attack speed",.04,.09],"crit":["Critical chance",.025,.05],"crit_damage":["Critical damage",.12,.25],"hp":["Maximum life",13.0,27.0],"speed":["Movement speed",.025,.055],"cdr":["Cooldown reduction",.025,.055],"armor":["Armor",4.0,10.0],"skill":["Skill damage",.06,.12]}
+const AFFIXES={"attack":["攻撃力",3.0,7.0],"haste":["攻撃速度",.04,.09],"crit":["クリティカル率",.025,.05],"crit_damage":["クリティカル威力",.12,.25],"hp":["最大生命",13.0,27.0],"speed":["移動速度",.025,.055],"cdr":["クールダウン短縮",.025,.055],"armor":["防御力",4.0,10.0],"skill":["スキル威力",.06,.12]}
 const LEGENDS=[
- {"name":"THUNDER TESTAMENT","slot":"weapon","effect":"chain","text":"On kill, lightning strikes up to 3 nearby foes for 90% Attack. Lightning cannot trigger itself."},
- {"name":"CINDERWAKE","slot":"armor","effect":"fire_dash","text":"Dash leaves a burning trail for 3 seconds, dealing 110% Attack each second."},
- {"name":"THE GLASS CHOIR","slot":"accessory","effect":"echo","text":"Every second sword swing releases 2 piercing spirit blades, each dealing 55% Attack."},
- {"name":"HEART OF THE PYRE","slot":"accessory","effect":"crit_blast","text":"Critical hits erupt for 80% Attack in an area. 0.7 second internal cooldown."}]
+ {"name":"サンダー・テスタメント","slot":"weapon","effect":"chain","text":"敵を倒すと近くの敵最大3体へ、攻撃力90%の雷撃。雷撃では連鎖しない。"},
+ {"name":"シンダーウェイク","slot":"armor","effect":"fire_dash","text":"回避後に3秒間の炎を残し、毎秒攻撃力110%のダメージ。"},
+ {"name":"グラス・クワイア","slot":"accessory","effect":"echo","text":"剣攻撃2回ごとに貫通する霊刃を2本放ち、それぞれ攻撃力55%のダメージ。"},
+ {"name":"ハート・オブ・パイア","slot":"accessory","effect":"crit_blast","text":"クリティカル時、周囲に攻撃力80%の爆発。内部CT 0.7秒。"}]
 static func generate(rng:RandomNumberGenerator,tier:int,rarity:int=-1,legend:int=-1)->Dictionary:
  tier=maxi(1,tier)
  if rarity<0:
@@ -18,9 +18,9 @@ static func generate(rng:RandomNumberGenerator,tier:int,rarity:int=-1,legend:int
   var l=LEGENDS[legend if legend>=0 else rng.randi_range(0,3)]
   slot=l.slot;effect=l.effect;desc=l.text;item_name=l.name
  else:
-  var bases={"weapon":["Pilgrim's Edge","Vigil Blade","Grave Sabre","Oathsteel"],"armor":["Vesper Mail","Warden Plate","Ashweave","Sepulchral Coat"],"accessory":["Cinder Seal","Moon Reliquary","Mourning Knot","Ivory Talisman"]}
+  var bases={"weapon":["ピルグリム・エッジ","ヴィジル・ブレード","グレイヴ・サーベル","オーススティール"],"armor":["ヴェスパー・メイル","ウォーデン・プレート","アッシュウィーヴ","セパルクラル・コート"],"accessory":["シンダー・シール","ムーン・レリクアリ","モーニング・ノット","アイボリー・タリスマン"]}
   item_name=bases[slot][rng.randi_range(0,3)]
-  if rarity>0:item_name=["Keen ","Hallowed ","Vengeful ","Resonant "][rng.randi_range(0,3)]+item_name
+  if rarity>0:item_name=["鋭利な ","聖別された ","復讐の ","共鳴する "][rng.randi_range(0,3)]+item_name
  var power=1.0+maxi(0,tier-1)*.18;var base={}
  if slot=="weapon":base.attack=round((10+rarity*3.8)*power*rng.randf_range(.9,1.12))
  if slot=="armor":base={"armor":round((9+rarity*4)*power),"hp":round((16+rarity*6)*power)}
@@ -34,7 +34,7 @@ static func generate(rng:RandomNumberGenerator,tier:int,rarity:int=-1,legend:int
 static func initial_items()->Dictionary:
  var out={}
  for i in range(3):
-  out[SLOTS[i]]={"id":"starter-"+SLOTS[i],"name":["Weathered Oathblade","Pilgrim's Mantle","An Unbroken Promise"][i],"rarity":0,"slot":SLOTS[i],"tier":1,"base":[{"attack":9},{"armor":7,"hp":14},{"crit":.02}][i],"affixes":{},"effect":"","description":""}
+  out[SLOTS[i]]={"id":"starter-"+SLOTS[i],"name":["古びたオースブレード","巡礼者のマント","破れぬ誓い"][i],"rarity":0,"slot":SLOTS[i],"tier":1,"base":[{"attack":9},{"armor":7,"hp":14},{"crit":.02}][i],"affixes":{},"effect":"","description":""}
  return out
 static func stat_text(key:String,value:float)->String:
  return ("+%d %s"%[roundi(value),AFFIXES[key][0]]) if key in ["attack","hp","armor"] else ("+%d%% %s"%[roundi(value*100),AFFIXES[key][0]])
