@@ -223,7 +223,7 @@ func act(action:String)->void:
  game.sound.play("ui")
  match action:
   "start":
-   if game.mode=="title":game.mode="build_confirm"
+   if game.mode in ["title","dead"]:game.mode="build_confirm"
    else:game.start_run()
   "confirm_start":game.start_run()
   "cancel_start":game.mode="title"
