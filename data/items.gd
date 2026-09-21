@@ -5,6 +5,20 @@ const COLORS=[Color("b6c5c8"),Color("78b5ed"),Color("dcacd9"),Color("f4be68"),Co
 const SLOTS=["weapon","weapon2","weapon3","head","armor","hands","feet","accessory","accessory2"]
 const SLOT_LABELS={"weapon":"武器1","weapon2":"武器2","weapon3":"武器3","head":"頭","armor":"胴","hands":"手","feet":"足","accessory":"装飾1","accessory2":"装飾2"}
 const AFFIXES={"attack":["攻撃力",3.0,7.0],"haste":["攻撃速度",.04,.09],"crit":["クリティカル率",.025,.05],"crit_damage":["クリティカル威力",.12,.25],"hp":["最大生命",13.0,27.0],"speed":["移動速度",.025,.055],"cdr":["クールダウン短縮",.025,.055],"armor":["防御力",4.0,10.0],"skill":["スキル威力",.06,.12],"slash":["斬撃威力",.04,.12],"blunt":["打撃威力",.04,.12],"pierce":["貫撃威力",.04,.12],"magic":["魔撃威力",.04,.12],"penetration":["防御貫通",.03,.1],"stagger":["怯ませ性能",.05,.15],"shield_max":["障壁最大値",5,15],"shield_regen":["障壁回復",1,3],"fatal_resist":["致命撃耐性",.03,.1],"knock_resist":["押出耐性",.05,.15],"healing":["回復補正",.04,.12],"dodge_cdr":["回避短縮",.03,.09],"dodge_distance":["回避距離",.04,.12],"drop_rate":["ドロップ率",.05,.15],"rarity_find":["希少品発見",.05,.15],"material_find":["素材発見",.05,.15],"salvage":["分解効率",.05,.15]}
+const AFFIX_BIAS={
+ "sword":{"attack":2.4,"slash":4.5,"haste":2.2,"crit":2.0,"crit_damage":1.7,"penetration":1.4},
+ "scythe":{"attack":2.2,"slash":4.8,"crit_damage":2.4,"haste":1.8,"stagger":1.5},
+ "spear":{"attack":2.3,"pierce":5.0,"penetration":3.0,"crit":1.8,"stagger":1.5},
+ "staff":{"attack":1.8,"magic":5.0,"skill":3.0,"cdr":2.3,"haste":1.6},
+ "fist":{"attack":2.0,"blunt":4.8,"haste":3.2,"crit":2.4,"stagger":2.3},
+ "mace":{"attack":2.5,"blunt":5.0,"stagger":3.3,"penetration":2.0,"crit_damage":1.7},
+ "spellblade":{"attack":2.0,"slash":3.8,"magic":3.8,"skill":2.3,"cdr":1.8,"crit":1.7},
+ "head":{"crit":3.0,"crit_damage":2.2,"skill":2.4,"cdr":2.0,"hp":1.6,"shield_max":1.4},
+ "armor":{"hp":3.5,"armor":3.5,"shield_max":2.6,"shield_regen":2.2,"fatal_resist":2.3,"knock_resist":2.0},
+ "hands":{"haste":3.6,"crit":2.8,"crit_damage":2.5,"stagger":2.0,"attack":1.8,"blunt":1.4},
+ "feet":{"speed":4.0,"dodge_cdr":3.6,"dodge_distance":3.6,"knock_resist":1.8,"hp":1.3},
+ "accessory":{"crit":2.4,"crit_damage":2.2,"skill":2.5,"cdr":2.2,"rarity_find":1.8,"drop_rate":1.6,"material_find":1.5,"salvage":1.4}
+}
 const LEGENDS=[
  {"name":"サンダー・テスタメント","slot":"weapon","effect":"chain","set":"storm","text":"撃破時に最大3体へ攻撃力90%の雷撃。雷撃は再連鎖しない。"},
  {"name":"シンダーウェイク","slot":"armor","effect":"fire_dash","set":"cinder","text":"回避に3秒の炎。毎秒攻撃力110%。同じ場所の炎は重複しない。"},
@@ -38,6 +52,21 @@ static func set_of(item:Dictionary)->String:
 const GRADES=[1.0,1.24,1.54,1.91,2.37,2.94]
 const ROLLS=[[.88,1.12],[1.05,1.25],[1.20,1.45],[1.40,1.70],[1.70,2.05]]
 const UNIQUE=["wide_chain","double_spin","split_lance","ricochet","fist_nova","shield_reach","chain_guard"]
+static func affix_weight(key:String,slot:String,kind:String)->float:
+ var source=kind if slot=="weapon" else slot
+ var table=AFFIX_BIAS.get(source,{})
+ if table.has(key):return float(table[key])
+ if slot=="weapon" and key in ["slash","blunt","pierce","magic"]:return .08
+ return .35
+static func pick_affix(rng:RandomNumberGenerator,keys:Array,slot:String,kind:String)->String:
+ var total=0.0
+ for key in keys:total+=affix_weight(String(key),slot,kind)
+ if total<=0:return String(keys[rng.randi_range(0,keys.size()-1)])
+ var roll=rng.randf()*total
+ for key in keys:
+  roll-=affix_weight(String(key),slot,kind)
+  if roll<=0:return String(key)
+ return String(keys[-1])
 static func generate(rng:RandomNumberGenerator,depth:int,rarity:int=-1,legend:int=-1)->Dictionary:
  if rarity<0:rarity=roll_rarity(rng,0)
  rarity=clampi(rarity,0,4)
@@ -63,8 +92,9 @@ static func generate(rng:RandomNumberGenerator,depth:int,rarity:int=-1,legend:in
  var affixes={};var keys=AFFIXES.keys().filter(func(k):return not base.has(k))
  if tier<4:keys=keys.filter(func(k):return k not in ["penetration","fatal_resist","shield_regen"])
  for i in range([0,1,2,3,4][rarity]):
-  var key=keys.pop_at(rng.randi_range(0,keys.size()-1));var def=AFFIXES[key]
-  var scale=power if key in ["attack","hp","armor","shield_max","shield_regen"] else 1.0
+  if keys.is_empty():break
+  var key=pick_affix(rng,keys,slot,kind);keys.erase(key);var def=AFFIXES[key]
+  var scale=power
   ranges[key]=[def[1]*scale*ROLLS[rarity][0],def[2]*scale*ROLLS[rarity][1]]
   affixes[key]=snappedf(rng.randf_range(ranges[key][0],ranges[key][1]),.001)
  return {"schema":3,"id":str(rng.randi())+"-"+str(rng.randi()),"name":name,"rarity":rarity,"slot":slot,"weapon_type":kind,"grade":grade,"tier":tier,"enhance":0,"fusion":0,"base":base,"affixes":affixes,"rolls":ranges,"effect":effect,"unique":(UNIQUE[WeaponDB.TYPES.keys().find(kind)] if slot=="weapon" else "chain_guard") if rarity>=3 else "","description":description,"locked":false,"favorite":false}
