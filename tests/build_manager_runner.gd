@@ -48,7 +48,7 @@ func run()->void:
  OathBoard.respec_all(board);board.active=["dance"]
  var total_before_load=OathBoard.total_points(board)
  var load_result=OathBoard.apply_preset(board,preset)
- check("preset load succeeds with sufficient total points",load_result.begins_with("Preset読込"))
+ check("preset load succeeds with sufficient total points",load_result.begins_with("Preset LOAD"))
  check("preset load restores active oath order",board.active==["storm","fortress","seek"])
  check("preset load restores node allocation",board.nodes==preset.nodes)
  check("preset load recalculates unspent points",board.points==total_before_load-preset_cost and OathBoard.total_points(board)==total_before_load)
