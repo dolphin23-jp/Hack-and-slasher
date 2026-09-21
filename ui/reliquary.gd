@@ -151,6 +151,12 @@ func delta_color(u,value:float)->Color:
  if value>.0001:return u.TEAL
  if value<-.0001:return u.RED
  return u.MUTED
+func compact_tokens(values:Array,max_items:int=2,max_chars:int=48)->String:
+ if values.is_empty():return "なし"
+ var shown=values.slice(0,mini(max_items,values.size()));var value=" / ".join(shown)
+ if values.size()>shown.size():value+=" / +%d"%[values.size()-shown.size()]
+ if value.length()>max_chars:value=value.substr(0,max_chars-1)+"…"
+ return value
 func draw_compare_panel(u,p,it:Dictionary,target_slot:String,r:Rect2,title:String="交換比較",show_detail_button:bool=true)->void:
  var snap=EquipmentCompare.snapshot(p,it,target_slot)
  u.panel(r,u.PANEL,ItemDB.COLORS[int(it.rarity)])
@@ -186,8 +192,27 @@ func draw_compare_panel(u,p,it:Dictionary,target_slot:String,r:Rect2,title:Strin
  var build_y=table_y+164
  var gains=[];gains.append_array(snap.gained_abilities);gains.append_array(snap.gained_build)
  var losses=[];losses.append_array(snap.lost_abilities);losses.append_array(snap.lost_build)
- u.wrapped_text("得る: "+("なし" if gains.is_empty() else " / ".join(gains)),Vector2(x,build_y),r.size.x-36,12,u.TEAL,17)
- u.wrapped_text("失う: "+("なし" if losses.is_empty() else " / ".join(losses)),Vector2(x,build_y+37),r.size.x-36,12,u.RED if not losses.is_empty() else u.MUTED,17)
+ u.text("得る: "+compact_tokens(gains),Vector2(x,build_y),11,u.TEAL)
+ u.text("失う: "+compact_tokens(losses),Vector2(x,build_y+20),11,u.RED if not losses.is_empty() else u.MUTED)
+func draw_focus_compare(u,p,it:Dictionary,target_slot:String,r:Rect2)->void:
+ var snap=EquipmentCompare.snapshot(p,it,target_slot)
+ u.panel(r,u.PANEL,ItemDB.COLORS[int(it.rarity)])
+ var x=r.position.x+18;var y=r.position.y+26
+ u.text("交換後の変化 / "+ItemDB.slot_text(target_slot),Vector2(x,y),15,u.GOLD)
+ var keys=EquipmentCompare.key_stats(snap,6);var cell_w=(r.size.x-36)/3
+ for i in range(keys.size()):
+  var key=String(keys[i]);var col=i%3;var row=int(i/3);var px=x+col*cell_w;var py=y+38+row*48
+  var before=float(snap.before_stats.get(key,0));var after=float(snap.after_stats.get(key,0));var delta=float(snap.delta.get(key,0))
+  u.text(ItemDB.stat_name(key),Vector2(px,py),11,u.MUTED)
+  u.text(ItemDB.stat_value(key,before)+" → "+ItemDB.stat_value(key,after),Vector2(px,py+19),13,u.TEXT)
+  u.text(ItemDB.stat_delta(key,delta),Vector2(px+cell_w-52,py+19),12,delta_color(u,delta))
+ var chain_y=y+145
+ u.text("Chain: "+String(snap.before_order),Vector2(x,chain_y),11,u.MUTED)
+ u.text("交換後: "+String(snap.after_order),Vector2(x,chain_y+20),11,u.TEAL if snap.before_order!=snap.after_order else u.MUTED)
+ var gains=[];gains.append_array(snap.gained_abilities);gains.append_array(snap.gained_build)
+ var losses=[];losses.append_array(snap.lost_abilities);losses.append_array(snap.lost_build)
+ u.wrapped_text("得る: "+compact_tokens(gains,5,88),Vector2(x,chain_y+50),r.size.x-36,12,u.TEAL,18)
+ u.wrapped_text("失う: "+compact_tokens(losses,5,88),Vector2(x,chain_y+92),r.size.x-36,12,u.RED if not losses.is_empty() else u.MUTED,18)
 func draw(u)->void:
  if forge_screen.opened:forge_screen.draw(u);return
  if salvage_screen.opened:salvage_screen.draw(u);return
@@ -253,7 +278,7 @@ func draw_focus_detail(u)->void:
  detail(u,it,Rect2(60,95,610,650),"候補装備 / "+ItemDB.slot_text(String(it.slot)))
  if not target_slot.is_empty():
   detail(u,p.equipment[target_slot],Rect2(690,95,690,285),"現在装備 / "+ItemDB.slot_text(target_slot))
-  draw_compare_panel(u,p,it,target_slot,Rect2(690,395,690,350),"交換後の変化",false)
+  draw_focus_compare(u,p,it,target_slot,Rect2(690,395,690,350))
  u.button(Rect2(1160,108,195,42),"一覧へ戻る","detail_toggle")
  u.button(Rect2(920,770,210,48),"保管庫へ","vault_store")
  u.button(Rect2(1150,770,210,48),"ジャンク "+("ON" if it.get("junk",false) else "OFF"),"junk",it.get("junk",false))
