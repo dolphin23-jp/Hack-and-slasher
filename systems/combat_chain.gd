@@ -48,6 +48,7 @@ static func strike(p,linked:bool=false)->void:
  var arc=float(w.arc)*(1.25 if tier>=4 and kind=="sword" else 1.0)
  var strike_knock=w.knock*float(transition.knock)*(1.22 if tier>=4 and kind=="fist" else 1.0)
  if tier>=4 and kind=="mace":reach*=1.15
+ if int(it.rarity)==4 and kind=="mace":reach*=1.18
  if p.dash_attack_time>0 and p.upgrades.get("dash_hunter",0)>0:reach+=35
  var unique=String(it.get("unique",""))
  if unique=="shield_reach" and p.barrier>=5:p.barrier-=5;reach*=1.3
@@ -58,19 +59,23 @@ static func strike(p,linked:bool=false)->void:
   p.counter_time=0
  p.attack_cd=w.cooldown/(1+p.stats.haste);p.attack_time=.2
  var tier5_repeat=tier>=5 and p.combo==3 and kind in ["sword","scythe"]
- var rounds=1+(1 if int(it.rarity)==4 and p.combo==3 else 0)+(1 if tier5_repeat or (unique=="double_spin" and w.shape=="circle") else 0)
+ var mythic_repeat=int(it.rarity)==4 and p.combo==3 and kind in ["sword","scythe"]
+ var shield_double=p.has_unique("full_shield_double_magic") and "magic" in w.types and p.stats.shield_max>0 and p.barrier>=p.stats.shield_max-.01
+ var rounds=1+(1 if mythic_repeat else 0)+(1 if tier5_repeat or (unique=="double_spin" and w.shape=="circle") else 0)+(1 if shield_double else 0)
  var landed=0
  for repeat in range(rounds):
   if w.shape in ["bolt","wave"]:
    var angles=[0.0]
-   if int(it.rarity)==4:angles=[-.13,0.0,.13]
+   if int(it.rarity)==4 and kind=="staff":angles=[-.13,0.0,.13]
+   elif int(it.rarity)==4 and kind=="spellblade":angles=[-.17,.17]
    for a in angles:
     var pierce=4 if tier>=4 and kind in ["staff","spellblade"] else 2
     var bolt=g.fire(p.position+p.facing*20,p.facing.rotated(a)*780,amount/(1.7 if angles.size()>1 else 1),true,pierce,Color("bfabff"))
     bolt.tier_shield=tier>=3 and kind in ["staff","spellblade"];bolt.damage_types=w.types;bolt.life=reach/780;bolt.radius=22 if w.shape=="wave" else 9
     bolt.bounces=2 if unique=="ricochet" else (1 if tier>=4 and kind=="staff" else 0)
   else:
-   for hit in range(w.hits):
+   var hit_count=int(w.hits)+(1 if int(it.rarity)==4 and kind=="fist" else 0)
+   for hit in range(hit_count):
     for e in g.enemies.duplicate():
      if e.dead or e.state in ["spawn","transform"]:continue
      var delta=e.position-p.position
@@ -85,7 +90,9 @@ static func strike(p,linked:bool=false)->void:
      if not e.dead and p.has_effect("ash_edge"):e.ignite(p.stats.attack*(.45 if p.has_effect("flame_cap") else .35),4.2 if p.has_effect("burn_long") else 2.5)
      if crit and p.has_effect("burn_burst"):g.area_damage(e.position,72,p.stats.attack*.24,true)
      if tier>=4 and kind=="scythe" and not e.dead:e.velocity=-delta.normalized()*160
-     if crit:g.critical_effect(e.position)
+     if crit:
+      g.critical_effect(e.position)
+      if p.has_unique("crit_repeat") and not p.repeat_block:p.repeat_next=true
      landed+=1
    if unique=="split_lance" and w.shape=="line":
     for a in [-.18,.18]:
@@ -93,6 +100,13 @@ static func strike(p,linked:bool=false)->void:
  if tier>=3 and kind=="scythe" and landed>=3:
   g.area_damage(p.position,reach,amount*.45,true);g.fx.ring(p.position,reach*.75,Color("c8efe4"),.18)
  if tier>=3 and kind=="fist" and landed>=2:p.barrier=minf(p.barrier+4,maxf(12,p.stats.shield_max));p.barrier_time=4
+ if p.combo==3 and int(it.rarity)==4:
+  match kind:
+   "spear":
+    for a in [-.28,.28]:
+     var mythic_bolt=g.fire(p.position+p.facing*16,p.facing.rotated(a)*800,amount*.62,true,5,Color("eef4ff"));mythic_bolt.damage_types=w.types;mythic_bolt.secondary_effect=true;mythic_bolt.life=reach/800
+   "mace":
+    g.area_damage(p.position,215,amount*.72,true);g.fx.ring(p.position,215,Color("ffd89a"),.28)
  if p.combo==3 and tier>=5:
   match kind:
    "spear":
@@ -114,6 +128,10 @@ static func strike(p,linked:bool=false)->void:
   if p.has_effect("fortress_cap"):p.barrier=minf(p.barrier+6,maxf(20,p.stats.shield_max));p.barrier_time=5
   if p.has_effect("shield_burst") and p.barrier>=8:
    var spent=minf(p.barrier,12);p.barrier-=spent;g.area_damage(p.position,135,p.stats.attack*.35+spent*1.5,true);g.fx.ring(p.position,135,Color("c8e6ef"),.25)
+  if p.has_unique("barrier_burst_armor") and p.barrier>=6:
+   var gear_spent=minf(p.barrier,10);p.barrier-=gear_spent;g.area_damage(p.position,145,p.stats.attack*.30+gear_spent*1.8,true);g.fx.ring(p.position,145,Color("f0cfaa"),.25)
+  if p.has_unique("chain_cooldown"):
+   for i in range(3):p.cooldowns[i]=maxf(0,p.cooldowns[i]-1.2)
   for slot in ItemDB.SLOTS:
    if slot in Loadout.WEAPONS:continue
    var gear=p.equipment[slot]
