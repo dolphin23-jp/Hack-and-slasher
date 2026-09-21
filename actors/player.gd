@@ -23,6 +23,7 @@ var attack_time=0.0
 var combo=0
 var combo_expire=0.0
 var last_chain_weapon=""
+var chain_streak=0
 var swing_count=0
 var invulnerable=0.0
 var flash=0.0
@@ -160,6 +161,7 @@ func tick(dt:float)->void:
 func attack()->bool:
  if dead or attack_cd>0 or dash_time>0:return false
  var linked=combo_expire>0
+ chain_streak=mini(chain_streak+1,99) if linked else 1
  combo=combo%3+1;combo_expire=1.25;swing_count+=1
  CombatChain.strike(self,linked)
  var amount=stats.attack
