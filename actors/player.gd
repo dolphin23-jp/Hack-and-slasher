@@ -129,10 +129,12 @@ func has_effect(effect:String)->bool:
  for slot in ItemDB.SLOTS:
   if effect in ["echo","reaper","execution","judgement_echo","lance_fork","lance_return","echo_guard","dash_nova"] and equipment[slot].effect==effect:return true
  return false
-func has_unique(key:String)->bool:
+func unique_rarity(key:String)->int:
+ var best=-1
  for slot in ItemDB.SLOTS:
-  if String(equipment[slot].get("unique",""))==key:return true
- return false
+  if String(equipment[slot].get("unique",""))==key:best=maxi(best,int(equipment[slot].rarity))
+ return best
+func has_unique(key:String)->bool:return unique_rarity(key)>=0
 func set_count(family:String,loadout:Dictionary=equipment)->int:
  var count=0
  for slot in ItemDB.SLOTS:
@@ -211,7 +213,9 @@ func dash()->bool:
  dash_time=.19;invulnerable=maxf(invulnerable,.24);dash_cd=1.1*(1-clampf(stats.dodge_cdr,0,.6))*(1-stats.cdr*.55)*(.8 if upgrades.get("dash_hunter",0)>0 else 1.0)
  dash_evaded=false;dash_attack_time=.9;attack_time=0;attack_cd=minf(attack_cd,.12)
  dash_direction=last_move if velocity.length()>20 else facing;fire_tick=0
- if has_unique("dodge_skip"):skip_next_weapon=true
+ if has_unique("dodge_skip"):
+  skip_next_weapon=true
+  if unique_rarity("dodge_skip")==4:dash_cd=maxf(0,dash_cd-.12)
  game.fx.ring(position,45,Color("a4ebe0"),.3);game.sound.play("dash");return true
 func skill_duration(i:int)->float:return [5.0,10.0,6.0][i]*(1-stats.cdr)*(.75 if i==2 and upgrades.get("giant_mastery",0)>0 else 1.0)
 func cast(i:int)->bool:
