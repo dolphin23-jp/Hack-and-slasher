@@ -48,17 +48,17 @@ func run()->void:
  check("magic advantage",DamageModel.multiplier("cantor",["magic"],{})>1)
  p.dash_cd=0;check("dodge cancels any weapon",p.dash() and p.attack_time==0 and p.attack_cd<=.12)
  p.dash_time=0;p.attack_cd=0;check("attack resumes after dodge",p.attack())
- clear();var it=weapon("scythe");it.tier=3;p.rebuild_stats();var s1=foe(Vector2(70,0));var s2=foe(Vector2(-70,0));var s3=foe(Vector2(0,85));p.attack()
+ clear();var it=weapon("scythe");it.tier=3;p.rebuild_stats();p.stats.crit=0;var s1=foe(Vector2(70,0));var s2=foe(Vector2(-70,0));var s3=foe(Vector2(0,85));p.attack()
  var t3_scythe_damage=(10000-s1.hp)+(10000-s2.hp)+(10000-s3.hp)
- clear();it=weapon("scythe");it.tier=1;p.rebuild_stats();s1=foe(Vector2(70,0));s2=foe(Vector2(-70,0));s3=foe(Vector2(0,85));p.attack()
+ clear();it=weapon("scythe");it.tier=1;p.rebuild_stats();p.stats.crit=0;s1=foe(Vector2(70,0));s2=foe(Vector2(-70,0));s3=foe(Vector2(0,85));p.attack()
  var t1_scythe_damage=(10000-s1.hp)+(10000-s2.hp)+(10000-s3.hp)
  check("T3 scythe rewards crowd hits with bonus rotation",t3_scythe_damage>t1_scythe_damage*1.3)
  clear();it=weapon("scythe");it.tier=4;p.rebuild_stats();var e=foe(Vector2(90,0));p.attack()
  check("T4 scythe attracts",e.velocity.x<0)
  clear();it=weapon("staff");it.tier=4;p.rebuild_stats();p.attack()
  check("T4 staff gains a real wall bounce",not game.projectiles.is_empty() and game.projectiles[0].bounces==1)
- clear();it=weapon("scythe","weapon3");it.tier=5;p.rebuild_stats();p.combo=2;e=foe(Vector2(90,0));p.attack();var tier_damage=10000-e.hp
- clear();it.tier=1;p.combo=2;e=foe(Vector2(90,0));p.attack()
+ clear();it=weapon("scythe","weapon3");it.tier=5;p.rebuild_stats();p.stats.crit=0;p.combo=2;e=foe(Vector2(90,0));p.attack();var tier_damage=10000-e.hp
+ clear();it.tier=1;p.stats.crit=0;p.combo=2;e=foe(Vector2(90,0));p.attack()
  check("T5 third slot adds a strike",tier_damage>(10000-e.hp)*1.8)
  clear();it=weapon("fist","weapon3");it.tier=5;p.rebuild_stats();p.combo=2;var rear=foe(Vector2(-90,0));p.attack()
  check("T5 fist finisher hits around the player",rear.hp<10000)
@@ -93,8 +93,8 @@ func run()->void:
  check("lock protects salvage",p.inventory.size()==1 and p.materials==before)
  donor.locked=false;game.salvage(0)
  check("salvage grants materials",p.inventory.is_empty() and p.materials>before)
- clear();it=weapon("scythe");it.unique="double_spin";p.rebuild_stats();e=foe(Vector2(90,0));p.attack();var legendary_damage=10000-e.hp
- clear();it.unique="";e=foe(Vector2(90,0));p.attack()
+ clear();it=weapon("scythe");it.unique="double_spin";p.rebuild_stats();p.stats.crit=0;e=foe(Vector2(90,0));p.attack();var legendary_damage=10000-e.hp
+ clear();it.unique="";p.stats.crit=0;e=foe(Vector2(90,0));p.attack()
  check("legendary double spin changes damage",legendary_damage>(10000-e.hp)*1.8)
  clear();it=weapon("staff");it.rarity=4;p.rebuild_stats();p.attack()
  check("mythic three real projectiles",game.projectiles.size()==3)
