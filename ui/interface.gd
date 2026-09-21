@@ -451,8 +451,7 @@ func draw_upgrades()->void:
   var c=game.upgrade_choices[i];var r=Rect2(221+i*344,299,310,356);var focused=r.has_point(hover) or (pad_active and buttons.size()==pad_focus);panel(r,Color("19313a") if focused else PANEL,GOLD if focused else LINE)
   icon(c.icon,Rect2(r.get_center().x-49,r.position.y+31,98,98));text(c.name,Vector2(r.get_center().x,r.position.y+177),20,TEXT,true,true);wrapped_text(c.detail,r.position+Vector2(25,220),260,16,MUTED,25)
   text("[ %d ] この誓いを選ぶ"%(i+1),Vector2(r.get_center().x,r.end.y-25),13,GOLD,true);buttons.append({"rect":r,"action":"upgrade:"+str(i)})
- var branch=BuildDB.lance_key(game.player.upgrades)
- text("ランスの形を選択 / この探索中は変更できません" if branch.is_empty() and game.player.level==2 else "武器の順番・祝福・誓印を組み合わせよう。",Vector2(720,714),15,MUTED,true)
+ text("現在装備中の3武器・順番・属性構成を見て祝福候補が変化します。",Vector2(720,714),15,MUTED,true)
 func draw_pause()->void:
  dim();icon("crest",Rect2(680,147,80,80));text("束の間の静寂",Vector2(720,280),32,TEXT,true,true)
  button(Rect2(535,333,370,53),"大聖堂へ戻る","resume",true);button(Rect2(535,402,370,48),"設定","settings");button(Rect2(535,467,370,48),"遊び方","help");button(Rect2(535,532,370,48),"保存してタイトルへ","title")
