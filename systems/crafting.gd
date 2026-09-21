@@ -33,8 +33,18 @@ static func apply(p,it:Dictionary,action:String,inherit:String="")->String:
    for key in it.base:it.base[key]*=ratio
    for key in it.rolls:
     if it.base.has(key):it.rolls[key]=[it.rolls[key][0]*ratio,it.rolls[key][1]*ratio]
-   # Preserve all earned affixes; the selected one gains an explicit heirloom bonus.
-   if it.affixes.has(inherit):it.affixes[inherit]*=1.08;it.inherited=inherit
+   # Preserve roll quality across grades: map every affix to the same percentile in the next-grade range.
+   for key in it.affixes:
+    var old_limits:Array=it.rolls.get(key,ItemDB.affix_range(key,int(it.grade),int(it.rarity)))
+    var span=maxf(.000001,float(old_limits[1])-float(old_limits[0]))
+    var quality=clampf((float(it.affixes[key])-float(old_limits[0]))/span,0,1)
+    var next_limits:Array=ItemDB.affix_range(key,int(it.grade)+1,int(it.rarity))
+    it.affixes[key]=lerpf(float(next_limits[0]),float(next_limits[1]),quality)
+    it.rolls[key]=next_limits
+   if it.affixes.has(inherit):
+    it.affixes[inherit]*=1.08
+    it.rolls[inherit][1]*=1.08
+    it.inherited=inherit
    it.grade+=1;it.enhance=0
    if it.slot in Loadout.WEAPONS and int(it.rarity)<3:it.name=WeaponDB.NAMES[it.weapon_type][int(it.grade)-1]
   _:return "不明な操作"
