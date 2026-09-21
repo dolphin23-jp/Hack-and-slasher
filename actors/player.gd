@@ -119,8 +119,8 @@ func item_comparison_text(item:Dictionary)->String:
  if int(c.chain)>0:bits.append("連携+")
  elif int(c.chain)<0:bits.append("連携-")
  var durability=float(c.hp)*.02+float(c.armor)*.1
- if durability>1.0:bits.append("耐久+")
- elif durability< -1.0:bits.append("耐久-")
+ if durability>1.0:bits.append("防御+")
+ elif durability< -1.0:bits.append("防御-")
  if bits.is_empty():bits.append("横並び")
  return " / ".join(bits)+" → "+ItemDB.slot_text(String(c.target))
 func rebuild_stats()->void:stats=calculated();hp=minf(hp,stats.hp)
