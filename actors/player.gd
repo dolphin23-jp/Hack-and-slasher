@@ -22,6 +22,7 @@ var attack_cd=0.0
 var attack_time=0.0
 var combo=0
 var combo_expire=0.0
+var last_chain_weapon=""
 var swing_count=0
 var invulnerable=0.0
 var flash=0.0
@@ -78,14 +79,23 @@ func build_score(loadout:Dictionary=equipment)->float:
    "crit_blast":score+=dps*.16
    "chain":score+=dps*.12
  return score
+func item_upgrade_target(item:Dictionary)->String:
+ if not ItemDB.valid(item):return ""
+ var current:float=build_score(equipment)
+ if current<=0.001:return String(item.slot)
+ var best_target="";var best_ratio=-INF
+ for target in ItemDB.SLOTS:
+  if not Loadout.accepts(item,target):continue
+  var loadout:Dictionary=equipment.duplicate(true);loadout[target]=item
+  var ratio=build_score(loadout)/current-1.0
+  if ratio>best_ratio:best_ratio=ratio;best_target=target
+ return best_target
 func item_upgrade_ratio(item:Dictionary)->float:
- if not ItemDB.valid(item):return 0.0
- var slot:String=String(item.slot)
- if slot not in ItemDB.SLOTS:return 0.0
+ var target=item_upgrade_target(item)
+ if target.is_empty():return 0.0
  var current:float=build_score(equipment)
  if current<=0.001:return 0.0
- var loadout:Dictionary=equipment.duplicate(true)
- loadout[slot]=item
+ var loadout:Dictionary=equipment.duplicate(true);loadout[target]=item
  return build_score(loadout)/current-1.0
 func rebuild_stats()->void:stats=calculated();hp=minf(hp,stats.hp)
 func has_effect(effect:String)->bool:
@@ -149,8 +159,9 @@ func tick(dt:float)->void:
  anim+=dt*(9 if velocity.length()>20 else 2);z_index=clampi(int(position.y/10),-400,400)+500;queue_redraw()
 func attack()->bool:
  if dead or attack_cd>0 or dash_time>0:return false
+ var linked=combo_expire>0
  combo=combo%3+1;combo_expire=1.25;swing_count+=1
- CombatChain.strike(self)
+ CombatChain.strike(self,linked)
  var amount=stats.attack
  if combo==3:
   if has_effect("reaper"):game.area_damage(position,165,stats.attack*.75);game.fx.ring(position,165,Color("cbd4ff"),.4)
