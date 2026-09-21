@@ -15,8 +15,9 @@ static func item(value:Variant)->Variant:
   it.schema=4
   if not it.has("weapon_type") or not WeaponDB.TYPES.has(String(it.weapon_type)):it.weapon_type="sword"
   it.art_id=ItemDB.default_art_id(it);it.art_variant="default"
- elif String(it.get("art_id","")).is_empty():
-  it.art_id=ItemDB.default_art_id(it);it.art_variant=String(it.get("art_variant","default"))
+ else:
+  if String(it.get("art_id","")).is_empty():it.art_id=ItemDB.default_art_id(it)
+  if not it.has("art_variant") or not it.art_variant is String:it.art_variant="default"
  return it
 
 static func migrate(data:Dictionary)->Dictionary:
