@@ -269,7 +269,7 @@ func draw_title()->void:
  for i in range(32):draw_rect(Rect2(i*22,0,23,900),Color(.025,.044,.066,.9*(1-i/32.0)))
  icon("crest",Rect2(100,97,72,72));text("砕けた誓いの大聖堂",Vector2(105,217),14,GOLD)
  text("ASHEN",Vector2(97,306),79,TEXT,false,true);text("VOW",Vector2(98,390),92,TEXT,false,true);rule(105,425,377,GOLD)
- wrapped_text("古びた刃を手に入り、伝説を携えて帰れ。",Vector2(106,469),395,19,MUTED,28)
+ wrapped_text("古びた刃を手に、伝説を携えて帰れ。",Vector2(106,469),395,19,MUTED,28)
  var y=550
  if not game.profile.run.is_empty():
   var continue_label="勝利の記録へ戻る" if bool(game.profile.run.get("victory_ready",false)) else "誓いを続ける"
