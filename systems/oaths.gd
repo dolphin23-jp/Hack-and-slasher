@@ -214,6 +214,25 @@ static func preset_cost(value:Dictionary)->int:
  var total=0
  for id in value.get("nodes",[]):total+=node_cost(String(id))
  return total
+static func sanitize_node_ids(value:Variant)->Array:
+ if not value is Array:return []
+ var requested=[]
+ for id in value:
+  if id is String and not node_info(id).is_empty() and id not in requested:requested.append(id)
+ var out=[]
+ for path in TREES:
+  for node in TREES[path]:
+   if node.id not in requested:continue
+   var temp={"nodes":out}
+   if not _prerequisites_met(temp,node):continue
+   var group=String(node.get("group",""))
+   var conflict=false
+   if not group.is_empty():
+    for owned in out:
+     var other=node_info(String(owned))
+     if not other.is_empty() and String(other.get("group",""))==group:conflict=true
+   if not conflict:out.append(String(node.id))
+ return out
 static func sanitize_preset(value:Variant)->Dictionary:
  if not value is Dictionary:return {}
  var active=[]
@@ -221,10 +240,7 @@ static func sanitize_preset(value:Variant)->Dictionary:
   for key in value.active:
    if key is String and PATHS.has(key) and key not in active and active.size()<3:active.append(key)
  if active.is_empty():active=["dance"]
- var nodes=[]
- if value.get("nodes") is Array:
-  for id in value.nodes:
-   if id is String and not node_info(id).is_empty() and id not in nodes:nodes.append(id)
+ var nodes=sanitize_node_ids(value.get("nodes",[]))
  var weapons=[]
  if value.get("weapon_types") is Array:
   for kind in value.weapon_types:
