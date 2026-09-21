@@ -30,6 +30,14 @@ jobs:
           sudo apt-get update -o Acquire::Retries=3
           sudo apt-get install -y xvfb unzip libgl1 libx11-6 libxcursor1 libxinerama1 libxi6 libxrandr2 libudev1 libfontconfig1
 
+      - name: Generate supplemental Japanese glyph font
+        run: |
+          mkdir -p test-artifacts
+          python -m pip install --disable-pip-version-check fonttools
+          curl -L --fail --retry 3 -o /tmp/NotoSansJP.ttf             'https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/NotoSansJP%5Bwght%5D.ttf'
+          pyftsubset /tmp/NotoSansJP.ttf             --text-file=scripts/japanese_extra_chars.txt             --output-file=test-artifacts/NotoSansJP-Extra.ttf             --layout-features='*'             --name-IDs='*'             --name-legacy             --name-languages='*'
+          ls -lh test-artifacts/NotoSansJP-Extra.ttf
+
       - name: Install Godot 4.5.1
         run: |
           curl -L --fail --retry 3 -o /tmp/godot.zip \
