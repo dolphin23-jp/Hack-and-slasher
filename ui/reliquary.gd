@@ -1,6 +1,5 @@
 class_name ReliquaryUI
 extends RefCounted
-const UNIQUE_TEXT=WeaponDB.UNIQUE_TEXT
 var tab="equipment"
 var target="weapon"
 var forge_slot="weapon"
@@ -115,7 +114,7 @@ func detail(u,it:Dictionary,r:Rect2,label:String)->void:
  y+=ceilf(rows.size()/2.0)*22+8
  for i in range(int(it.tier)):
   u.text("T%d %s"%[i+1,WeaponDB.tier_text(it,i+1)],Vector2(x,y),12,u.TEAL);y+=17
- if int(it.rarity)>=3:u.wrapped_text("固有: "+UNIQUE_TEXT.get(it.get("unique",""),"継承された固有能力")+(" / 神話: 3番目に追撃・魔力弾3方向" if int(it.rarity)==4 else ""),Vector2(x,y+5),r.size.x-36,14,ItemDB.COLORS[int(it.rarity)])
+ if int(it.rarity)>=3:u.wrapped_text("固有: "+ItemDB.unique_text(it)+(" / 神話: 武器系統または固有能力のルールを追加変化" if int(it.rarity)==4 else ""),Vector2(x,y+5),r.size.x-36,14,ItemDB.COLORS[int(it.rarity)])
 func draw_forge(u)->void:
  var p=u.game.player;var it=p.equipment[forge_slot]
  detail(u,it,Rect2(40,290,780,535),"鍛冶対象 / "+ItemDB.slot_text(forge_slot))
