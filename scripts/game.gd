@@ -429,18 +429,17 @@ func salvage(i:int)->void:
  toast("分解素材を獲得し、少し生命を回復しました。");ui.selected=clampi(ui.selected,0,maxi(0,player.inventory.size()-1));save_run()
 func prepare_upgrade()->void:
  upgrade_choices.clear();var pool=UPGRADE_POOL.duplicate(true)
- # Legacy spear_count stays functional, but new characters choose an explicit path.
  pool=pool.filter(func(c):return c.key!="spear_count")
+ var chain_pool=BuildDB.chain_choices(player.equipment,player.upgrades)
+ if not chain_pool.is_empty():upgrade_choices.append(chain_pool.pop_at(rng.randi_range(0,chain_pool.size()-1)))
+ pool.append_array(chain_pool)
  var branches=BuildDB.available(player.upgrades,profile.chronicle.achievements)
- if player.level==2 and BuildDB.lance_key(player.upgrades).is_empty():
-  upgrade_choices=BuildDB.LANCE_PATHS.duplicate(true);mode="upgrade";ui.reset_touch();return
- if not branches.is_empty():
-  upgrade_choices.append(branches.pop_at(rng.randi_range(0,branches.size()-1)))
  pool.append_array(branches)
  for i in range(pool.size()-1,-1,-1):
   if pool[i].key=="spear_count" and player.upgrades.get("spear_count",0)>0:pool.remove_at(i)
   elif pool[i].key=="cdr" and player.stats.cdr>=.52:pool.remove_at(i)
- while upgrade_choices.size()<3:upgrade_choices.append(pool.pop_at(rng.randi_range(0,pool.size()-1)))
+  elif player.upgrades.get(pool[i].key,0)>=pool[i].get("max",99):pool.remove_at(i)
+ while upgrade_choices.size()<3 and not pool.is_empty():upgrade_choices.append(pool.pop_at(rng.randi_range(0,pool.size()-1)))
  mode="upgrade";ui.reset_touch()
 func choose_upgrade(i:int)->void:
  if mode!="upgrade" or i<0 or i>=upgrade_choices.size():return
