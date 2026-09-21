@@ -73,6 +73,11 @@ func _run() -> void:
 	await _frames(4)
 	await _shot("04_gameplay")
 
+	await _joy_axis(JOY_AXIS_LEFT_X, 0.8)
+	_expect("gamepad stick switches HUD prompt mode", game.ui.pad_active)
+	await _shot("04c_gamepad_hud")
+	await _joy_axis(JOY_AXIS_LEFT_X, 0.0)
+
 	var full_hp: float = game.player.hp
 	game.player.hp = game.player.stats.hp * 0.22
 	await _frames(3)
@@ -288,6 +293,15 @@ func _joy(button_index: int) -> void:
 	await _frames(2)
 
 
+func _joy_axis(axis: int, value: float) -> void:
+	var motion := InputEventJoypadMotion.new()
+	motion.device = 0
+	motion.axis = axis
+	motion.axis_value = value
+	Input.parse_input_event(motion)
+	await _frames(2)
+
+
 func _touch(base_position: Vector2) -> void:
 	var window_size := Vector2(root.size)
 	var scale := minf(window_size.x / BASE.x, window_size.y / BASE.y)
@@ -317,7 +331,7 @@ func _shot(label: String) -> void:
 	else:
 		shots += 1
 		print("SHOT ", label, " ", image.get_width(), "x", image.get_height())
-		if label in ["04_gameplay", "04a_critical_health", "09b_touch_gameplay", "10b_elite_affix", "11_boss_hud", "13c_ascension_vow", "14_ipad_4x3_touch"]:
+		if label in ["04_gameplay", "04a_critical_health", "04c_gamepad_hud", "09b_touch_gameplay", "10b_elite_affix", "11_boss_hud", "13c_ascension_vow", "14_ipad_4x3_touch"]:
 			_expect("world visible in " + label, _world_visible(image))
 
 func _world_visible(image: Image) -> bool:
