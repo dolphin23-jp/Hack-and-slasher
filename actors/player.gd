@@ -8,6 +8,7 @@ var dash_direction=Vector2.RIGHT
 var stats={}
 var materials=0
 var active_oaths=[]
+var oath_board={}
 var equipment=ItemDB.initial_items()
 var inventory=[]
 var upgrades={}
@@ -58,7 +59,7 @@ var weapon_art={}
 var sword=preload("res://assets/icons/sword.svg")
 func setup(g)->void:
  for kind in WeaponDB.TYPES:weapon_art[kind]=load("res://assets/icons/"+kind+".svg")
- game=g;active_oaths=game.profile.oaths.active.duplicate();rebuild_stats();hp=stats.hp
+ game=g;oath_board=OathBoard.sanitize(game.profile.oaths);active_oaths=oath_board.active.duplicate();rebuild_stats();hp=stats.hp
 func calculated(loadout:Dictionary=equipment)->Dictionary:
  var s={"attack":13.0+(level-1)*2.1,"hp":146.0+(level-1)*14,"armor":0.0,"haste":0.0,"crit":.06,"crit_damage":.55,"speed":0.0,"cdr":0.0,"skill":0.0}
  for key in ItemDB.AFFIXES:
@@ -69,7 +70,7 @@ func calculated(loadout:Dictionary=equipment)->Dictionary:
    if slot in Loadout.WEAPONS and k=="attack":continue
    s[k]=s.get(k,0)+float(table[k])
  s.attack+=average_weapon_power(loadout)
- var oath_stats=OathBoard.stats(game.profile.oaths,active_oaths) if game!=null else {}
+ var oath_stats=OathBoard.stats(oath_board,active_oaths) if game!=null else {}
  for k in oath_stats:s[k]=s.get(k,0)+oath_stats[k]
  for k in upgrades:
   if s.has(k):s[k]+=upgrades[k]
