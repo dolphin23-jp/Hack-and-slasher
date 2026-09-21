@@ -64,15 +64,17 @@ func _input(event:InputEvent)->void:
    if event.keycode==KEY_RIGHT:selected=mini(game.player.inventory.size()-1,selected+1)
    if event.keycode==KEY_LEFT:selected=maxi(0,selected-1)
   if game.mode=="title" and event.keycode==KEY_ENTER:game.start_run()
- if event is InputEventJoypadMotion and game.mode!="play":
-  if event.axis==JOY_AXIS_LEFT_X:
-   if absf(event.axis_value)<.35:pad_axis_x_latched=false
-   elif not pad_axis_x_latched:
-    pad_active=true;pad_axis_x_latched=true;pad_move(Vector2(signf(event.axis_value),0));get_viewport().set_input_as_handled()
-  if event.axis==JOY_AXIS_LEFT_Y:
-   if absf(event.axis_value)<.35:pad_axis_y_latched=false
-   elif not pad_axis_y_latched:
-    pad_active=true;pad_axis_y_latched=true;pad_move(Vector2(0,signf(event.axis_value)));get_viewport().set_input_as_handled()
+ if event is InputEventJoypadMotion:
+  if absf(event.axis_value)>.25:pad_active=true
+  if game.mode!="play":
+   if event.axis==JOY_AXIS_LEFT_X:
+    if absf(event.axis_value)<.35:pad_axis_x_latched=false
+    elif not pad_axis_x_latched:
+     pad_active=true;pad_axis_x_latched=true;pad_move(Vector2(signf(event.axis_value),0));get_viewport().set_input_as_handled()
+   if event.axis==JOY_AXIS_LEFT_Y:
+    if absf(event.axis_value)<.35:pad_axis_y_latched=false
+    elif not pad_axis_y_latched:
+     pad_active=true;pad_axis_y_latched=true;pad_move(Vector2(0,signf(event.axis_value)));get_viewport().set_input_as_handled()
  if event is InputEventJoypadButton and event.pressed:
   pad_active=true
   if event.is_action("inventory") and game.mode in ["play","inventory"]:
@@ -294,7 +296,8 @@ func draw_hud()->void:
  text("VITALITY",Vector2(44,793),11,GOLD);text("%d / %d"%[ceili(p.hp),roundi(p.stats.hp)],Vector2(190,793),13)
  bar(Rect2(44,805,286,17),p.hp/p.stats.hp,Color("91bda7") if p.hp/p.stats.hp>.3 else RED)
  text("XP",Vector2(44,848),11,MUTED);bar(Rect2(74,839,256,5),float(p.xp)/p.xp_required(),GOLD);text("%d / %d"%[p.xp,p.xp_required()],Vector2(185,865),11,MUTED,true)
- var names=["JUDGEMENT","SOUL NOVA","SPIRIT LANCE","DASH","MEND"];var keys=["Q / RMB","E","R","SPACE","F"];var pictures=["cleave","nova","bolt","dash","potion"];var touch_mode=game.profile.settings.touch
+ var names=["JUDGEMENT","SOUL NOVA","SPIRIT LANCE","DASH","MEND"];var pictures=["cleave","nova","bolt","dash","potion"];var touch_mode=game.profile.settings.touch;var controller_mode=pad_active and not touch_mode
+ var keys=["Y","LB","RB","A","B"] if controller_mode else ["Q / RMB","E","R","SPACE","F"]
  for i in range(5):
   var x=375+i*117;var r=Rect2(x,778,62,62);panel(r,Color("182d36"),Color("809184"));icon(pictures[i],r.grow(-6))
   var cd=p.cooldowns[i] if i<3 else (p.dash_cd if i==3 else 0.0)
@@ -304,9 +307,13 @@ func draw_hud()->void:
   buttons.append({"rect":r,"action":"skill:"+str(i) if i<3 else ("dash" if i==3 else "heal")})
  if touch_mode:
   text("TAP SKILLS BELOW",Vector2(1005,794),12,MUTED);text("MOVE / STRIKE / COLLECT",Vector2(1005,816),12,MUTED)
+ elif controller_mode:
+  text("X HOLD TO STRIKE",Vector2(1005,794),12,MUTED);text("LEFT STICK MOVE    D-PAD UP COLLECT",Vector2(1005,816),11,MUTED)
  else:
   text("LMB / J HOLD TO STRIKE",Vector2(1005,794),12,MUTED);text("WASD MOVE    C COLLECT",Vector2(1005,816),12,MUTED)
- button(Rect2(1003,831,183,32),"RELIQUARY" if touch_mode else "I RELIQUARY","inventory");button(Rect2(1200,831,188,32),"PAUSE" if touch_mode else "ESC PAUSE","pause")
+ var inventory_label="RELIQUARY" if touch_mode else ("BACK RELIQUARY" if controller_mode else "I RELIQUARY")
+ var pause_label="PAUSE" if touch_mode else ("START PAUSE" if controller_mode else "ESC PAUSE")
+ button(Rect2(1003,831,183,32),inventory_label,"inventory");button(Rect2(1200,831,188,32),pause_label,"pause")
  if game.profile.settings.touch and game.mode=="play":
   var o=touch_origin if touch_id>=0 else Vector2(133,645)
   draw_circle(o,70,Color(.2,.4,.44,.2));draw_arc(o,70,0,TAU,48,Color(.55,.8,.77,.6),2,true)
