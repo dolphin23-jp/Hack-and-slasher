@@ -33,9 +33,8 @@ static func transition_profile(previous_kind:String,current_kind:String,chain_ki
 static func strike(p,linked:bool=false)->void:
  var it=p.equipment[Loadout.WEAPONS[p.combo-1]]
  var w=WeaponDB.get_weapon(it);var g=p.game;var kind=String(it.get("weapon_type","sword"));var tier=int(it.tier)
- var chain_kinds=[]
- for slot in Loadout.WEAPONS:chain_kinds.append(String(p.equipment[slot].get("weapon_type","sword")))
- var transition=transition_profile(p.last_chain_weapon,kind,chain_kinds,p.chain_streak,linked)
+ var chain_sequence=p.chain_history.duplicate()
+ var transition=transition_profile(p.last_chain_weapon,kind,chain_sequence,p.chain_streak,linked)
  var amount=(p.stats.attack-p.average_weapon_power()+p.weapon_power(it))*w.damage*float(transition.damage)*(1+p.upgrades.get("master_"+kind,0))
  if linked:amount*=1+p.upgrades.get("transition_power",0)
  if String(transition.label).contains("三相"):amount*=1+p.upgrades.get("triune_mastery",0)
