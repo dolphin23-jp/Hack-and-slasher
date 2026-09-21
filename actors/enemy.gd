@@ -28,9 +28,9 @@ var spawn_fx=false
 var summon_timer=12.0
 var affix=""
 const ELITE_AFFIXES={
- "frenzied":{"name":"FRENZIED","hint":"FASTER MOVEMENT / SHORTER WINDUPS","color":Color("df756f")},
- "bulwark":{"name":"BULWARK","hint":"HEAVY ARMOR / RESISTS KNOCKBACK","color":Color("d3b06f")},
- "volatile":{"name":"VOLATILE","hint":"EXPLODES AFTER DEATH","color":Color("c98bd8")}}
+ "frenzied":{"name":"狂乱","hint":"移動高速化 / 予備動作短縮","color":Color("df756f")},
+ "bulwark":{"name":"城塞","hint":"重装甲 / ノックバック耐性","color":Color("d3b06f")},
+ "volatile":{"name":"爆裂","hint":"死亡後に爆発","color":Color("c98bd8")}}
 func setup(g,type:String,p:Vector2,tier:int,room:int,forced_affix:String="")->void:
  game=g;kind=type;position=p;room_id=room;spec=game.enemy_data[kind];radius=spec.radius
  max_hp=spec.hp*(1+maxi(0,tier-1)*.25+game.ascension*.45);hp=max_hp
@@ -65,7 +65,7 @@ func tick(dt:float)->void:
  var to=game.player.position-position;var distance=to.length();var dir=to.normalized()
  if not spawn_fx:spawn_fx=true;game.fx.ring(position,48,Color("b48d83"),.5)
  if kind=="boss" and hp<max_hp*.5 and phase==1:
-  phase=2;game.banner("THE LAST TOLL","The king's oath is broken.");game.sound.play("boss");game.fx.ring(position,300,Color("e5ad76"),1)
+  phase=2;game.banner("最後の鐘","王の誓いは砕けた。");game.sound.play("boss");game.fx.ring(position,300,Color("e5ad76"),1)
  if kind=="boss" and phase==2:
   summon_timer-=dt
   if summon_timer<=0:
@@ -156,7 +156,7 @@ func take_damage(amount:float,knock:Vector2,crit:bool=false,proc:bool=false)->vo
   if kind=="elite" and affix=="volatile":
    game.add_hazard(position,118,.12,damage*.9,false,.9)
    game.fx.ring(position,118,affix_color(),.9)
-   game.toast("VOLATILE OATH / CLEAR THE BLAST")
+   game.toast("爆裂の誓い / 爆発範囲から離れろ")
   game.enemy_died(self,proc);queue_free()
 func _draw()->void:
  var size=145 if kind=="boss" else (104 if kind in ["elite","warden"] else (77 if kind=="hound" else 79))

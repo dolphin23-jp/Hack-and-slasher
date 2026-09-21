@@ -8,15 +8,15 @@ const ProjectileScript=preload("res://actors/projectile.gd")
 const OverlayScript=preload("res://world/combat_overlay.gd")
 const UIScript=preload("res://ui/interface.gd")
 const UPGRADE_POOL=[
- {"name":"TEMPERED EDGE","detail":"+15% attack speed. Let the third strike fall sooner.","icon":"sword","key":"haste","value":.15},
- {"name":"HEARTWOOD","detail":"+42 maximum life. Recover 30% life now.","icon":"armor","key":"hp","value":42.0},
- {"name":"EXECUTIONER","detail":"+8% critical chance and +20% critical damage.","icon":"crit","key":"crit","value":.08},
- {"name":"QUICKENING","detail":"+9% cooldown reduction. Every skill returns sooner.","icon":"dash","key":"cdr","value":.09},
- {"name":"COLD SUN","detail":"Soul Nova grows 45 pixels wider. +20% skill damage.","icon":"nova","key":"nova_radius","value":45.0},
- {"name":"FORKED PROMISE","detail":"Spirit Lance releases two additional piercing spears.","icon":"bolt","key":"spear_count","value":1.0},
- {"name":"SOUL TAKER","detail":"Restore 2 life on every kill. Advance to recover.","icon":"potion","key":"leech","value":2.0},
- {"name":"OATH OF STEEL","detail":"+9 Attack. Strengthens the sword and all three skills.","icon":"cleave","key":"attack","value":9.0},
- {"name":"WAYFARER","detail":"+10% movement speed and +10 armor.","icon":"dash","key":"speed","value":.1}]
+ {"name":"鍛えた刃","detail":"+15% 攻撃速度。3段目まで素早くつなげる。","icon":"sword","key":"haste","value":.15},
+ {"name":"生命の木","detail":"+42 最大生命。即座に生命を30%回復。","icon":"armor","key":"hp","value":42.0},
+ {"name":"処刑人","detail":"+8% クリティカル率、+20% クリティカル威力。","icon":"crit","key":"crit","value":.08},
+ {"name":"加速","detail":"+9% クールダウン短縮。全スキルを早く再使用できる。","icon":"dash","key":"cdr","value":.09},
+ {"name":"冷たい太陽","detail":"ソウルノヴァの範囲 +45。スキル威力 +20%。","icon":"nova","key":"nova_radius","value":45.0},
+ {"name":"分かれた誓い","detail":"スピリットランスが追加で2本の貫通弾を放つ。","icon":"bolt","key":"spear_count","value":1.0},
+ {"name":"魂狩り","detail":"敵を倒すたび生命を2回復。","icon":"potion","key":"leech","value":2.0},
+ {"name":"鋼の誓い","detail":"+9 攻撃力。剣と3つの攻撃スキルを強化。","icon":"cleave","key":"attack","value":9.0},
+ {"name":"旅人","detail":"+10% 移動速度、+10 防御力。","icon":"dash","key":"speed","value":.1}]
 const ROOM_ENEMY_POOLS={
  1:["hollow","hollow","hollow","cantor"],
  2:["hollow","hollow","hound","hound","cantor"],
@@ -26,14 +26,14 @@ const ROOM_ENEMY_POOLS={
  6:["hound","hound","hound","hollow","warden"],
  8:["hollow","cantor","hound","warden","hollow"]}
 const ROOM_MODIFIER_TEXT={
- 4:"FORGE VENTS / EMBERS ERUPT BENEATH YOU",
- 5:"EMBER SCRIPT / SIGILS FORM IN LINES",
- 6:"CINDER TRAIL / KEEP MOVING",
- 8:"THORN PROCESSION / CROSS-SIGILS FOLLOW YOU"}
+ 4:"工房の噴出口 / 足元から炎が噴き出す",
+ 5:"炎の刻印 / 直線状に危険地帯が出現",
+ 6:"火の軌跡 / 立ち止まるな",
+ 8:"いばらの行進 / 十字の危険地帯が追ってくる"}
 const ASCENSION_VOWS=[
- {"id":"ember_tide","name":"EMBER TIDE","detail":"Sanctuary hazards return 22% faster."},
- {"id":"thickened_veil","name":"THICKENED VEIL","detail":"Oathless Knights gain 28% life and 8% damage."},
- {"id":"hollow_choir","name":"HOLLOW CHOIR","detail":"Each non-boss wave gains one additional foe."}]
+ {"id":"ember_tide","name":"炎の波","detail":"聖域のギミック発生間隔が22%短くなる。"},
+ {"id":"thickened_veil","name":"厚い帳","detail":"誓いなき騎士の生命 +28%、攻撃 +8%。"},
+ {"id":"hollow_choir","name":"虚ろな合唱","detail":"ボス以外の各ウェーブに敵が1体追加される。"}]
 var mode="title"
 var profile=ProfileStore.new()
 var sound:Soundscape
@@ -112,7 +112,7 @@ func clear_world()->void:
  metrics=ProfileStore.empty_run_metrics()
 func start_run(resume:bool=false,ascend:bool=false)->void:
  if ascend and is_instance_valid(player) and player.inventory.size()>40:
-  toast("Salvage to 40 items before descending again.");return
+  toast("所持品を40個以下に分解してから次へ進んでください。");return
  var carry={}
  if ascend and is_instance_valid(player):carry={"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"level":player.level,"upgrades":player.upgrades.duplicate(true),"ascension":ascension+1}
  clear_world();rng.randomize();run_seed=20260920 if OS.get_cmdline_user_args().has("--campaign") else rng.randi();rng.seed=run_seed
@@ -146,10 +146,10 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
   mode="victory";dungeon.active=-1;victory_pending=false;sound.set_music("menu");ui.selected=0;return
  mode="play";sound.set_music("dungeon")
  if ascension>0:
-  var vow=ascension_vow();banner("ASCENSION %02d / %s"%[ascension,vow.name],vow.detail)
- else:banner("ASHEN VOW","Descend into the cathedral. Leave with a different build.")
+  var vow=ascension_vow();banner("アセンション %02d / %s"%[ascension,vow.name],vow.detail)
+ else:banner("ASHEN VOW","大聖堂へ降り、毎回違うビルドを作り上げよう。")
  if not resume:
-  var gift=ItemDB.generate(rng,1,1);gift.slot="weapon";gift.name="Pilgrim's First Flame";gift.base={"attack":16.0}
+  var gift=ItemDB.generate(rng,1,1);gift.slot="weapon";gift.name="巡礼者の最初の火";gift.base={"attack":16.0}
   spawn_drop(Vector2(80,-25),gift);spawn_chest(Vector2(160,100),1,false)
  ui.selected=0;save_run()
 func _process(dt:float)->void:
@@ -186,7 +186,7 @@ func check_rooms(dt:float)->void:
   if id not in dungeon.cleared and dungeon.active<0:
    if room.waves==0:
     dungeon.cleared.append(id);player.heal(player.stats.hp);player.potions=3
-    spawn_chest(room.center+Vector2(0,125),room.tier,true);toast("Life and flasks restored.");save_run()
+    spawn_chest(room.center+Vector2(0,125),room.tier,true);toast("生命と回復薬を補充しました。");save_run()
    else:begin_encounter(id)
  if dungeon.active>=0:
   wave_delay-=dt
@@ -245,7 +245,7 @@ func spawn_wave()->void:
   var kind=pool[rng.randi_range(0,pool.size()-1)]
   if i==0 and wave==room.waves and room.id in [3,4,6,8]:kind="elite"
   spawn_enemy(kind,dungeon.spawn_point(room.id,i),room.tier,room.id)
- if wave>1:toast("%s  /  WAVE %d OF %d"%[room.encounter,wave,room.waves])
+ if wave>1:toast("%s  /  ウェーブ %d / %d"%[room.encounter,wave,room.waves])
 func spawn_enemy(kind:String,p:Vector2,tier:int,room:int,affix:String=""):
  var e=EnemyScript.new();add_child(e);e.setup(self,kind,p,tier,room,affix);enemies.append(e);return e
 func clear_encounter()->void:
@@ -254,7 +254,7 @@ func clear_encounter()->void:
  var room=dungeon.rooms[id];dungeon.cleared.append(id);dungeon.active=-1
  for p in projectiles.duplicate():p.remove()
  hazards.clear();player.heal(player.stats.hp*.22);player.potions=mini(3,player.potions+1)
- spawn_chest(room.center+Vector2(0,125),room.tier,id in [3,4,6,8]);banner("SANCTUARY RECLAIMED","+1 flask. A reliquary opens. Compare your spoils before moving on.");save_run()
+ spawn_chest(room.center+Vector2(0,125),room.tier,id in [3,4,6,8]);banner("聖域を解放","回復薬 +1。宝箱が開きました。次へ進む前に戦利品を確認できます。");save_run()
 func nearest_enemy(p:Vector2,reach:float=1000):
  var nearest=null;var best=reach*reach
  for e in enemies:
@@ -325,16 +325,16 @@ func spawn_drop(p:Vector2,item:Dictionary):
  var d=DropScript.new();add_child(d);d.setup(self,p,item);d.z_index=230;drops.append(d);metrics.drops+=1
  if item.rarity>=2:
   sound.play("legendary" if item.rarity==3 else "rare",.75);fx.ring(p,110 if item.rarity==3 else 60,ItemDB.COLORS[int(item.rarity)],1);fx.burst(p,ItemDB.COLORS[int(item.rarity)],38 if item.rarity==3 else 18,210)
-  if item.rarity==3:toast("LEGENDARY  /  "+item.name)
+  if item.rarity==3:toast("レジェンダリー  /  "+item.name)
  return d
 func spawn_chest(p:Vector2,tier:int,gilded:bool)->void:
  var d=DropScript.new();add_child(d);d.setup(self,p,{"tier":tier,"gilded":gilded},"chest");d.z_index=230;drops.append(d)
 func collect(d)->bool:
  if d.taken or d.kind!="item":return false
  if player.inventory.size()>=40:
-  if toast_time<.3:toast("Pack full. [I] Compare and salvage unwanted items.")
+  if toast_time<.3:toast("所持品が満杯です。[I] 不要な装備を比較・分解してください。")
   return false
- player.inventory.append(d.item.duplicate(true));metrics.pickups+=1;sound.play("loot",.65);toast("Recovered "+d.item.name+"  [I] compare");d.take();return true
+ player.inventory.append(d.item.duplicate(true));metrics.pickups+=1;sound.play("loot",.65);toast("回収: "+d.item.name+"  [I] 比較");d.take();return true
 func interact()->void:
  for d in drops.duplicate():
   if d.position.distance_to(player.position)>150 or d.taken:continue
@@ -356,7 +356,7 @@ func sort_inventory()->void:
 func salvage(i:int)->void:
  if i<0 or i>=player.inventory.size():return
  var rarity=int(player.inventory[i].rarity);player.inventory.remove_at(i);player.heal(player.stats.hp*(.025+rarity*.0125));sound.play("equip",.6)
- toast("Salvaged into embers. A little life returns.");ui.selected=clampi(ui.selected,0,maxi(0,player.inventory.size()-1));save_run()
+ toast("装備を分解し、少し生命を回復しました。");ui.selected=clampi(ui.selected,0,maxi(0,player.inventory.size()-1));save_run()
 func prepare_upgrade()->void:
  upgrade_choices.clear();var pool=UPGRADE_POOL.duplicate(true)
  for i in range(pool.size()-1,-1,-1):
@@ -369,7 +369,7 @@ func choose_upgrade(i:int)->void:
  var c=upgrade_choices[i];player.upgrades[c.key]=player.upgrades.get(c.key,0)+c.value
  for pair in [["crit","crit_damage",.2],["nova_radius","skill",.2],["speed","armor",10]]:
   if c.key==pair[0]:player.upgrades[pair[1]]=player.upgrades.get(pair[1],0)+pair[2]
- player.rebuild_stats();player.heal(player.stats.hp*.3);pending_upgrades=maxi(0,pending_upgrades-1);mode="play";sound.play("equip");toast("OATH TAKEN / "+c.name);save_run()
+ player.rebuild_stats();player.heal(player.stats.hp*.3);pending_upgrades=maxi(0,pending_upgrades-1);mode="play";sound.play("equip");toast("誓いを選択 / "+c.name);save_run()
 func toggle_inventory()->void:
  if mode=="play":mode="inventory";sound.play("ui")
  elif mode=="inventory":mode="play";save_run()
@@ -398,7 +398,7 @@ func _persist_run_checkpoint(victory_ready:bool)->bool:
  profile.records.best_ascension=maxi(profile.records.best_ascension,ascension)
  profile.run=run_snapshot(victory_ready)
  var ok=profile.write_save()
- if not ok:toast("Could not write save. Check user data folder permissions.")
+ if not ok:toast("セーブできませんでした。保存先の権限を確認してください。")
  return ok
 func save_run()->void:
  if not is_instance_valid(player) or player.dead or mode in ["title","dead"]:return
@@ -427,7 +427,7 @@ func next_passage(id:int)->Dictionary:
   var path=queue.pop_front();var at=path[-1]
   if at==target and path.size()>1:
    var next=dungeon.rooms[path[1]];var d=next.center-dungeon.rooms[id].center
-   return {"heading":("EAST" if d.x>0 else "WEST") if absf(d.x)>absf(d.y) else ("SOUTH" if d.y>0 else "NORTH"),"name":next.name}
+   return {"heading":("東" if d.x>0 else "西") if absf(d.x)>absf(d.y) else ("南" if d.y>0 else "北"),"name":next.name}
   for edge in dungeon.connections:
    var n=edge[1] if edge[0]==at else (edge[0] if edge[1]==at else -1)
    if n>=0 and n not in seen:seen.append(n);var route=path.duplicate();route.append(n);queue.append(route)

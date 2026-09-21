@@ -67,3 +67,16 @@ Do not rely on opening `index.html` directly with `file://`; the WASM/PCK bundle
 ## CI expectations
 
 A change is ready to merge only when the relevant Visual smoke and Web build workflows are green. The full campaign is intentionally a real simulation rather than a mocked boss kill, so changes to combat, navigation, loot, progression, or enemy behavior can surface as end-to-end failures.
+
+
+## Japanese UI font
+
+The game UI is Japanese-first. CI and Web builds fetch a pinned Noto Sans JP subset before Godot import so the Web export contains Japanese glyphs.
+
+For a local checkout, run:
+
+```bash
+bash scripts/fetch_japanese_font.sh
+```
+
+If the font has not been fetched, the project still boots and native platforms may use system fallback fonts, but Web exports must include the bundled Japanese font.

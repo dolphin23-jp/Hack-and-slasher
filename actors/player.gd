@@ -155,7 +155,7 @@ func take_damage(amount:float,knock:Vector2=Vector2.ZERO)->bool:
 func heal(amount:float)->void:hp=minf(stats.hp,hp+amount)
 func drink()->bool:
  if dead or potions<=0 or hp>=stats.hp:return false
- potions-=1;heal(stats.hp*.48);game.fx.ring(position,82,Color("a4d5a0"),.7);game.fx.number(position,"MENDED",Color("b5dfa9"));game.sound.play("heal");return true
+ potions-=1;heal(stats.hp*.48);game.fx.ring(position,82,Color("a4d5a0"),.7);game.fx.number(position,"回復",Color("b5dfa9"));game.sound.play("heal");return true
 func equip(index:int)->bool:
  if index<0 or index>=inventory.size():return false
  var item=inventory[index];var old=equipment[item.slot];equipment[item.slot]=item;inventory[index]=old

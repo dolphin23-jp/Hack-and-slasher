@@ -20,6 +20,9 @@ func _run() -> void:
 	game.profile.run = {}
 	_expect("game boots to title", game.mode == "title")
 	_expect("enemy database contains the boss", game.enemy_data.has("boss"))
+	_expect("Japanese rarity labels are active", ItemDB.RARITIES[3] == "レジェンダリー")
+	_expect("Japanese slot labels are active", ItemDB.slot_text("weapon") == "武器" and ItemDB.slot_text("armor") == "防具" and ItemDB.slot_text("accessory") == "装飾品")
+	_expect("Japanese fallback font is loaded", game.ui.body.fallbacks.size() > 0 and game.ui.heading.fallbacks.size() > 0)
 
 	game.start_run()
 	await get_tree().process_frame
@@ -249,8 +252,8 @@ func _run() -> void:
 	game.start_run(true)
 	_expect("continue restores the victory screen with rewards intact", game.mode == "victory" and game.player.inventory.size() == victory_pack_size and game.player.equipment.weapon.id == victory_weapon_id)
 
-	if checks != 64:
-		failures.append("expected 64 checks, executed %d" % checks)
+	if checks != 67:
+		failures.append("expected 67 checks, executed %d" % checks)
 		printerr("QA FAIL check count: ", checks)
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts"))

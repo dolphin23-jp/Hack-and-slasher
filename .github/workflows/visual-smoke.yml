@@ -19,6 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Fetch Japanese font
+        run: bash scripts/fetch_japanese_font.sh
+
       - name: Install runtime dependencies
         run: |
           # Hosted runners sometimes carry third-party APT feeds that can fail
@@ -42,7 +45,7 @@ jobs:
           set -o pipefail
           timeout 90s /tmp/godot/godot --headless --audio-driver Dummy --path . --editor --quit 2>&1 | tee test-artifacts/import.log
 
-      - name: Run 64-check gameplay regression
+      - name: Run 67-check gameplay regression
         run: |
           set -o pipefail
           timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --qa \
