@@ -29,6 +29,21 @@ var touch_id=-1
 var touch_origin=Vector2.ZERO
 var touch_point=Vector2.ZERO
 var attack_touch_id=-1
+var journal_tab="legends"
+var journal_page=0
+var input_mode="title"
+var menu_ready_at=0
+var pressed_actions={}
+func _process(_dt:float)->void:
+ if input_mode!=game.mode:
+  input_mode=game.mode;reset_touch();menu_ready_at=Time.get_ticks_msec()+180
+func reset_touch()->void:
+ touch_id=-1;attack_touch_id=-1;pressed_actions.clear()
+ if is_instance_valid(game.player):game.player.touch_move=Vector2.ZERO;game.player.touch_attack=false
+func touch_rect(r:Rect2)->Rect2:
+ var factor=.85+game.profile.settings.get("touch_size",.5)*.3
+ var inset=(game.profile.settings.get("touch_inset",.5)-.5)*120
+ return Rect2(r.get_center()-r.size*factor/2-Vector2(inset,0),r.size*factor)
 func _ready()->void:
  mouse_filter=Control.MOUSE_FILTER_IGNORE
  var jp_path="res://assets/fonts/NotoSansJP-Regular.subset.ttf"
@@ -60,7 +75,7 @@ func _input(event:InputEvent)->void:
    match game.mode:
     "play":game.mode="pause"
     "pause","inventory":game.mode="play";game.save_run()
-    "settings","help":game.mode=settings_return
+    "settings","help","journal":game.mode=settings_return
    return
   if event.is_action("map") and game.mode=="play":big_map=not big_map
   if game.mode=="upgrade" and event.keycode in [KEY_1,KEY_2,KEY_3]:game.choose_upgrade(event.keycode-KEY_1)
@@ -112,20 +127,28 @@ func _input(event:InputEvent)->void:
   var p=point(event.position)
   if event.pressed:
    game.profile.settings.touch=true
+   if game.mode!="play" and Time.get_ticks_msec()<menu_ready_at:return
    for b in buttons:
     if b.rect.has_point(p):
-     if b.action=="attack":attack_touch_id=event.index;game.player.touch_attack=true
+     pressed_actions[event.index]=b.action
+     if b.action=="attack" and game.mode=="play":attack_touch_id=event.index;game.player.touch_attack=true
      else:act(b.action)
      return
-   if game.mode=="play" and p.x<650 and p.y>400:touch_id=event.index;touch_origin=p;touch_point=p
+   if game.mode=="play" and p.x<600 and p.y>400 and p.y<755 and touch_id<0:touch_id=event.index;touch_origin=Vector2(clampf(p.x,85,480),clampf(p.y,490,685));touch_point=touch_origin
   else:
+   pressed_actions.erase(event.index)
    if event.index==touch_id:
     touch_id=-1
     if is_instance_valid(game.player):game.player.touch_move=Vector2.ZERO
    if event.index==attack_touch_id:
     attack_touch_id=-1
     if is_instance_valid(game.player):game.player.touch_attack=false
- if event is InputEventScreenDrag and event.index==touch_id and is_instance_valid(game.player):touch_point=point(event.position);game.player.touch_move=(touch_point-touch_origin).limit_length(68)/68
+ if event is InputEventScreenDrag and is_instance_valid(game.player):
+  if event.index==touch_id:
+   touch_point=point(event.position);var movement=(touch_point-touch_origin)/68
+   game.player.touch_move=Vector2.ZERO if movement.length()<.12 else movement.limit_length()
+  elif event.index==attack_touch_id:
+   if not touch_rect(Rect2(1223,597,140,65)).grow(55).has_point(point(event.position)):attack_touch_id=-1;game.player.touch_attack=false;pressed_actions.erase(event.index)
 
 func pad_move(direction:Vector2)->void:
  if buttons.is_empty():return
@@ -154,7 +177,7 @@ func pad_back()->bool:
   "pause":game.mode="play";game.save_run();return true
   "inventory":game.mode="play";game.save_run();salvage_confirm=-1;return true
   "victory_inventory":game.mode="victory";salvage_confirm=-1;return true
-  "settings","help":game.mode=settings_return;return true
+  "settings","help","journal":game.mode=settings_return;return true
  return false
 
 func pointer_blocked()->bool:
@@ -162,6 +185,15 @@ func pointer_blocked()->bool:
   if b.rect.has_point(hover):return true
  return false
 func act(action:String)->void:
+ if action in ["attack","dash","heal","interact"] and game.mode!="play":return
+ if action.begins_with("contract:"):game.choose_contract(action.split(":")[1]);return
+ if action.begins_with("journal:"):
+  journal_tab=action.split(":")[1];journal_page=0;return
+ if action.begins_with("start_oath:"):
+  var id=action.split(":")[1]
+  for entry in ChronicleDB.STARTS:
+   if entry.id==id and (entry.unlock.is_empty() or entry.unlock in game.profile.chronicle.achievements):game.profile.chronicle.start=id;game.profile.write_save()
+  return
  if action.begins_with("item:"):selected=int(action.split(":")[1]);salvage_confirm=-1;game.sound.play("ui");return
  if action.begins_with("upgrade:"):game.choose_upgrade(int(action.split(":")[1]));return
  if action.begins_with("skill:"):
@@ -169,6 +201,7 @@ func act(action:String)->void:
   return
  if action.begins_with("setting:"):
   var k=action.split(":")[1]
+  if not game.profile.settings.has(k):game.profile.settings[k]=true if k=="hitstop" else .5
   if game.profile.settings[k] is bool:game.profile.settings[k]=not game.profile.settings[k]
   else:
    var v=game.profile.settings[k]+.25;game.profile.settings[k]=0.0 if v>1.01 else minf(1,v)
@@ -183,6 +216,8 @@ func act(action:String)->void:
   "map":big_map=not big_map
   "settings":settings_return=game.mode;game.mode="settings"
   "help":settings_return=game.mode;game.mode="help"
+  "journal":settings_return=game.mode;game.mode="journal"
+  "journal_next":journal_page=1-journal_page
   "back":game.mode=settings_return
   "title":game.return_to_title()
   "equip":game.player.equip(selected);salvage_confirm=-1
@@ -222,6 +257,8 @@ func _draw()->void:
   "victory":draw_end(true)
   "settings":draw_settings()
   "help":draw_help()
+  "journal":draw_journal()
+  "event":draw_event()
   "play":
    if big_map:draw_map(Rect2(280,195,880,440),true)
  if game.toast_time>0:
@@ -258,7 +295,7 @@ func rule(x:float,y:float,w:float,c:Color=LINE)->void:draw_line(Vector2(x,y),Vec
 func icon(name:String,r:Rect2)->void:
  if icons.has(name):draw_texture_rect(icons[name],r,false)
 func button(r:Rect2,label:String,action:String,highlight:bool=false)->void:
- var over=r.has_point(hover) or (pad_active and buttons.size()==pad_focus)
+ var over=r.has_point(hover) or action in pressed_actions.values() or (pad_active and buttons.size()==pad_focus)
  panel(r,Color("29434b") if over else (Color("344443") if highlight else Color("142630")),GOLD if over or highlight else Color("4c6266"))
  text(label,Vector2(r.get_center().x,r.position.y+r.size.y/2+6),17,TEXT,true);buttons.append({"rect":r,"action":action})
 func dim()->void:draw_rect(Rect2(Vector2.ZERO,BASE),Color(.015,.028,.05,.95));buttons.clear()
@@ -281,6 +318,13 @@ func draw_title()->void:
   text("戦歴",Vector2(120,776),11,GOLD)
   text("踏破 %d  /  最高アセンション %02d"%[game.profile.records.wins,game.profile.records.best_ascension],Vector2(120,799),13,TEXT)
   text("最高LV %02d  /  討伐 %d"%[game.profile.records.best_level,game.profile.records.total_kills],Vector2(120,819),12,MUTED)
+ button(Rect2(520,753,285,53),"聖遺物・敵・実績の記録","journal")
+ text("出発の誓い",Vector2(535,560),16,GOLD)
+ for i in range(ChronicleDB.STARTS.size()):
+  var entry=ChronicleDB.STARTS[i];var unlocked=entry.unlock.is_empty() or entry.unlock in game.profile.chronicle.achievements
+  button(Rect2(520+i*285,583,270,48),entry.name if unlocked else entry.name+" / 未解放","start_oath:"+entry.id,game.profile.chronicle.start==entry.id)
+  wrapped_text(entry.text if unlocked else ("初踏破で解放" if entry.id=="lance" else "レジェンダリー6種で解放"),Vector2(530+i*285,660),248,14,MUTED,23)
+ text("灰冠の再誓 / 大型アップデート 0.2",Vector2(520,853),14,GOLD)
  text("オリジナルアクションRPG  /  プロトタイプ",Vector2(105,859),12,MUTED);text("GODOT 4.5.1",Vector2(1329,859),12,MUTED,true)
 func draw_hud()->void:
  var p=game.player
@@ -297,11 +341,13 @@ func draw_hud()->void:
  elif room!=null and id in game.dungeon.cleared:
   var next=game.next_passage(id);status=next.heading+" / "+next.name if not next.is_empty() else "大聖堂は静まり返っている"
   if id==1 and 3 not in game.dungeon.cleared:status+=" - 任意の秘宝: 北"
+  if id==2 and game.dungeon.layout_version>=2:status="東 / 工房・書庫の道  |  南 / 契約の近道"
+  if id in [10,11]:status="東 / 忘却の鍛冶場" if id==10 else "北 / 礼拝堂"
  text(status,Vector2(720,74),12,GOLD,true);draw_map(Rect2(1175,20,238,136),false);buttons.append({"rect":Rect2(1175,20,238,136),"action":"map"})
  var elite=null
  for e in game.enemies:
   if e.kind=="boss":
-   text("鐘なき王",Vector2(720,173),23,Color("efd5a5"),true,true);bar(Rect2(400,185,640,10),e.hp/e.max_hp,Color("be756b"));text("フェーズ "+("II" if e.phase==2 else "I"),Vector2(720,216),12,GOLD,true);elite=null;break
+   text("鐘なき王",Vector2(720,173),23,Color("efd5a5"),true,true);bar(Rect2(400,185,640,10),e.hp/e.max_hp,Color("be756b"));text(("II / 灰冠覚醒" if e.phase==2 else "I / 鐘なき王")+"  |  "+("反撃の好機 +35%" if e.state=="recover" else ("覚醒中" if e.state=="transform" else ["薙ぎ払い / 背後へ","落鐘 / 予告床から離れろ","鐘の波 / 青緑の隙間へ","突進 / 横へ回避"][e.pattern%4])),Vector2(720,216),13,TEAL if e.state=="recover" else GOLD,true);elite=null;break
   if e.kind=="elite" and elite==null:elite=e
  if elite!=null:
   var elite_color=elite.affix_color()
@@ -333,10 +379,15 @@ func draw_hud()->void:
  var pause_label="一時停止" if touch_mode else ("START 一時停止" if controller_mode else "ESC 一時停止")
  button(Rect2(1003,831,183,32),inventory_label,"inventory");button(Rect2(1200,831,188,32),pause_label,"pause")
  if game.profile.settings.touch and game.mode=="play":
-  var o=touch_origin if touch_id>=0 else Vector2(133,645)
+  var o=touch_origin if touch_id>=0 else Vector2(133+(game.profile.settings.get("touch_inset",.5)-.5)*100,645)
   draw_circle(o,70,Color(.2,.4,.44,.2));draw_arc(o,70,0,TAU,48,Color(.55,.8,.77,.6),2,true)
   draw_circle(o+(touch_point-touch_origin).limit_length(55) if touch_id>=0 else o,25,Color(.65,.88,.81,.45))
-  button(Rect2(1223,597,140,65),"攻撃","attack",true);button(Rect2(1060,671,136,55),"回避","dash");button(Rect2(1213,681,154,45),"回収","interact")
+  button(touch_rect(Rect2(1223,597,140,65)),"攻撃 / 長押し","attack",true)
+  button(touch_rect(Rect2(1060,671,136,55)),"回避" if p.dash_cd<=0 else "%.1f"%p.dash_cd,"dash",p.dash_cd<=0)
+  button(touch_rect(Rect2(1213,681,154,45)),"回収","interact")
+ if game.mode=="play":
+  text("剣 %s %s %s"%["●" if p.combo>=1 else "○","●" if p.combo>=2 else "○","◆" if p.combo>=3 else "◇"],Vector2(720,745),16,GOLD,true)
+  if p.counter_time>0:text("見切り / 次の剣を強化",Vector2(720,715),18,TEAL,true)
  if game.mode=="play":draw_critical_health(p)
 func draw_critical_health(p)->void:
  var ratio:float=clampf(float(p.hp)/maxf(1.0,float(p.stats.hp)),0.0,1.0)
@@ -358,18 +409,18 @@ func draw_critical_health(p)->void:
  text(warning,Vector2(720,743),12,label_color,true,true)
 func draw_map(r:Rect2,large:bool)->void:
  panel(r,Color(.04,.075,.11,.96),LINE)
- var world=Rect2(-560,-1670,9500,2590);var size=r.size-Vector2(28,42);var f=minf(size.x/world.size.x,size.y/world.size.y)
+ var world=Rect2(-560,-1670,9500,3300 if game.dungeon.layout_version>=2 else 2590);var size=r.size-Vector2(28,42);var f=minf(size.x/world.size.x,size.y/world.size.y)
  var origin=r.get_center()-world.size*f/2-world.position*f+Vector2(0,9)
  for link in game.dungeon.connections:draw_line(game.dungeon.rooms[link[0]].center*f+origin,game.dungeon.rooms[link[1]].center*f+origin,Color("61746f"),2 if large else 1)
  for room in game.dungeon.rooms:
   var rect=Rect2(room.rect.position*f+origin,room.rect.size*f);var c=Color("385f60") if room.id in game.dungeon.cleared else Color("263541")
   if room.id==game.dungeon.active:c=Color("92594f")
   draw_rect(rect,c);draw_rect(rect,GOLD if room.id==9 else Color("788c88"),false,1)
-  if large:text(str(room.id+1).pad_zeros(2),rect.get_center()+Vector2(0,5),14,TEXT,true)
+  if large:text(("契" if room.get("optional",false) else "")+str(room.id+1).pad_zeros(2),rect.get_center()+Vector2(0,5),14,TEXT,true)
  draw_circle(game.player.position*f+origin,5 if large else 3,Color("d0ffe9"));text("大聖堂" if large else "M / 大聖堂",r.position+Vector2(13,22),15 if large else 10,GOLD)
  if large:
   text("01 入口  02 大広間  03 納骨堂  04 宝物庫(任意)  05 工房",Vector2(r.get_center().x,r.end.y-47),13,MUTED,true)
-  text("06 書庫  07 回廊  08 礼拝堂  09 行進路  10 王座",Vector2(r.get_center().x,r.end.y-24),13,MUTED,true)
+  text("南の近道: 11 告解室 → 12 鍛冶場 → 08 礼拝堂 / 危険な契約と秘宝" if game.dungeon.layout_version>=2 else "06 書庫  07 回廊  08 礼拝堂  09 行進路  10 王座",Vector2(r.get_center().x,r.end.y-24),13,MUTED,true)
 func draw_inventory()->void:
  dim();text("聖遺物庫",Vector2(42,62),33,TEXT,false,true);text("戦利品を比べ、戦い方を組み替えよう。",Vector2(43,94),15,MUTED)
  button(Rect2(1215,40,180,43),"戻る","return_victory" if game.mode=="victory_inventory" else "inventory")
@@ -401,7 +452,11 @@ func draw_inventory()->void:
  for i in range(3):
   var x=762+i*209;var v=comparisons[i][1]*100;text(comparisons[i][0],Vector2(x,682),11,MUTED);text("%+.1f%%"%v,Vector2(x,714),26,TEAL if v>0 else (RED if v<0 else TEXT))
  button(Rect2(746,761,310,54),"この装備に変更","equip",true);button(Rect2(1074,761,310,54),"分解を確定" if salvage_confirm==selected else "分解して回復","salvage")
- text("比較値にはレジェンダリー効果を含みません。分解前に効果を確認してください。",Vector2(1065,850),12,MUTED,true)
+ var set_line=[]
+ for family in BuildDB.SET_NAMES:
+  var count=p.set_count(family)
+  if count>0:set_line.append("%s %d/2%s"%[BuildDB.SET_NAMES[family],count," 発動" if count>=2 else ""])
+ text(" / ".join(set_line) if not set_line.is_empty() else "同系統の聖遺物2部位で共鳴。数値比較は固有効果を含みません。",Vector2(1065,850),13,TEAL,true)
 func dps(s:Dictionary)->float:return s.attack*(1+s.haste)*(1+s.crit*s.crit_damage)
 func item_card(it:Dictionary,r:Rect2,tag:String)->void:
  var c=ItemDB.COLORS[int(it.rarity)];panel(r,Color("13252f"),Color(c,.7));draw_rect(Rect2(r.position,Vector2(r.size.x,3)),c)
@@ -412,17 +467,23 @@ func item_card(it:Dictionary,r:Rect2,tag:String)->void:
  if not it.affixes.is_empty():y+=9
  for key in it.affixes:text(ItemDB.stat_text(key,it.affixes[key]),Vector2(x,y),14,Color("9fc8cb"));y+=23
  if not it.effect.is_empty():
-  y+=9;rule(x,y,r.size.x-38,Color(c,.3));y+=24;text("レジェンダリー",Vector2(x,y),11,c);y+=25;wrapped_text(it.description,Vector2(x,y),r.size.x-38,13,c,20)
+  y+=5;rule(x,y,r.size.x-38,Color(c,.3));y+=19
+  var family=ItemDB.set_of(it)
+  text("レジェンダリー / "+BuildDB.SET_NAMES.get(family,""),Vector2(x,y),11,c);y+=22
+  y=wrapped_text(it.description,Vector2(x,y),r.size.x-38,12,c,18)
+  if not family.is_empty():wrapped_text(BuildDB.SET_TEXT[family],Vector2(x,y+5),r.size.x-38,11,TEAL,16)
 func draw_upgrades()->void:
  dim();text("誓いが強くなる",Vector2(720,207),37,TEXT,true,true);text("LV %d / 祝福を1つ選択"%game.player.level,Vector2(720,244),15,GOLD,true)
  for i in range(3):
   var c=game.upgrade_choices[i];var r=Rect2(221+i*344,299,310,356);var focused=r.has_point(hover) or (pad_active and buttons.size()==pad_focus);panel(r,Color("19313a") if focused else PANEL,GOLD if focused else LINE)
   icon(c.icon,Rect2(r.get_center().x-49,r.position.y+31,98,98));text(c.name,Vector2(r.get_center().x,r.position.y+177),20,TEXT,true,true);wrapped_text(c.detail,r.position+Vector2(25,220),260,16,MUTED,25)
   text("[ %d ] この誓いを選ぶ"%(i+1),Vector2(r.get_center().x,r.end.y-25),13,GOLD,true);buttons.append({"rect":r,"action":"upgrade:"+str(i)})
- text("装備は残る。誓いだけが変わる。",Vector2(720,714),15,MUTED,true)
+ var branch=BuildDB.lance_key(game.player.upgrades)
+ text("ランスの形を選択 / この探索中は変更できません" if branch.is_empty() and game.player.level==2 else "分岐した祝福・装備・2部位の共鳴を組み合わせよう。",Vector2(720,714),15,MUTED,true)
 func draw_pause()->void:
  dim();icon("crest",Rect2(680,147,80,80));text("束の間の静寂",Vector2(720,280),32,TEXT,true,true)
- button(Rect2(535,333,370,53),"戻る TO 大聖堂","resume",true);button(Rect2(535,402,370,48),"設定","settings");button(Rect2(535,467,370,48),"遊び方","help");button(Rect2(535,532,370,48),"保存してタイトルへ","title")
+ button(Rect2(535,333,370,53),"大聖堂へ戻る","resume",true);button(Rect2(535,402,370,48),"設定","settings");button(Rect2(535,467,370,48),"遊び方","help");button(Rect2(535,532,370,48),"保存してタイトルへ","title")
+ button(Rect2(535,595,370,40),"聖遺物・敵・実績の記録","journal")
  wrapped_text("装備と祝福は保存されます。戦闘中なら最後に解放した聖域から再開します。",Vector2(492,642),460,15,MUTED,25)
 func draw_run_summary()->void:
  var m=game.metrics
@@ -461,10 +522,62 @@ func draw_settings()->void:
  for k in labels:
   var v=game.profile.settings[k];var label=labels[k]+"  "+(("オン" if v else "オフ") if v is bool else "%d%%"%roundi(v*100))
   button(Rect2(470,227+i*78,500,50),label,"setting:"+k);i+=1
- text("クリックで切替。タッチ操作では照準補助も有効になります。",Vector2(720,655),14,MUTED,true);button(Rect2(566,711,308,52),"戻る","back",true)
+ for extra in [["touch_size","ボタンの大きさ"],["touch_inset","操作位置を内側へ"],["hitstop","ヒットストップ"]]:
+  var index=["touch_size","touch_inset","hitstop"].find(extra[0]);var v=game.profile.settings.get(extra[0],.5)
+  button(Rect2(1010,227+index*100,365,55),extra[1]+" "+(("オン" if v else "オフ") if v is bool else "%d%%"%roundi(v*100)),"setting:"+extra[0])
+ text("タッチ操作では照準補助も有効。右の設定で配置を調整できます。",Vector2(720,655),14,MUTED,true);button(Rect2(566,711,308,52),"戻る","back",true)
 func draw_help()->void:
  dim();text("操作方法",Vector2(720,145),36,TEXT,true,true)
  var rows=[["WASD / 矢印キー","8方向移動"],["マウス / 右スティック","攻撃方向とスピリットランスを照準"],["LMB / J 長押し","3連続の剣攻撃。3段目は高威力。"],["SPACE / SHIFT","短い無敵時間つきの回避。再使用まで1.1秒。"],["Q / RMB","断罪: 広範囲の強力な近接攻撃。CT 5秒。"],["E","ソウルノヴァ: 範囲攻撃＋鈍足。CT 10秒。"],["R","スピリットランス: 貫通する遠距離攻撃。CT 6秒。"],["F","治癒: 3本ある回復薬を1本使用"],["C","近くの宝箱を開く / 装備を回収"],["I / TAB","聖遺物庫で比較・装備・分解"],["M / ESC","マップ / 一時停止・設定"]]
  for i in range(rows.size()):text(rows[i][0],Vector2(299,221+i*39),14,GOLD);text(rows[i][1],Vector2(535,221+i*39),16)
  text("戦利品は触れると回収。聖遺物庫を開いている間は戦闘が止まります。",Vector2(720,687),14,MUTED,true);text("聖域を解放すると生命と回復薬を補充。宝物庫は任意です。",Vector2(720,715),14,MUTED,true)
  button(Rect2(566,763,308,50),"準備完了","back",true)
+
+func draw_event()->void:
+ dim();var id=game.event_room
+ text("血の告解" if id==10 else "忘却の鍛冶場",Vector2(720,182),38,TEXT,true,true)
+ text("短い道には、短くない代価がある。",Vector2(720,229),17,GOLD,true)
+ var choices=[
+  ["血を捧げる","最大生命の25%を今支払う。解放でレジェンダリー1個と追加経験値。","blood"],
+  ["危険の契約","この探索の敵の攻撃力 +20%。ドロップ率 +15ポイント、レア率上昇。解放で秘宝と追加経験値。","danger"],
+  ["契約せず進む","通常の敵と戦って南の近道を開く。契約報酬はなし。","leave"]] if id==10 else [
+  ["武器を賭ける","装備中の武器を失い、基礎攻撃70%の貸与剣へ。解放で伝説武器と追加経験値。敗北しても返却なし。","wager"],
+  ["契約せず進む","装備を保ち、通常の敵と戦う。解放すると礼拝堂へ進める。","leave"]]
+ for i in range(choices.size()):
+  var c=choices[i];var x=225+i*344 if choices.size()==3 else 380+i*350
+  panel(Rect2(x,292,310,325));text(c[0],Vector2(x+155,346),22,GOLD,true)
+  wrapped_text(c[1],Vector2(x+24,395),262,17,TEXT,29)
+  button(Rect2(x+20,550,270,45),"この道を選ぶ","contract:"+c[2])
+ text("契約は一度だけ。部屋を解放するまで報酬は得られません。",Vector2(720,685),16,MUTED,true)
+func draw_journal()->void:
+ dim();text("灰の記録",Vector2(70,79),36,TEXT,false,true)
+ button(Rect2(1090,38,260,50),"戻る","back")
+ button(Rect2(70,112,270,48),"聖遺物 %d / %d"%[game.profile.chronicle.legends.size(),ItemDB.LEGENDS.size()],"journal:legends",journal_tab=="legends")
+ button(Rect2(360,112,270,48),"敵の図鑑","journal:enemies",journal_tab=="enemies")
+ button(Rect2(650,112,270,48),"実績と解放","journal:achievements",journal_tab=="achievements")
+ var history=game.profile.chronicle
+ if journal_tab=="legends":
+  for i in range(8):
+   var idx=journal_page*8+i
+   if idx>=ItemDB.LEGENDS.size():break
+   var entry=ItemDB.LEGENDS[idx];var found=entry.effect in history.legends;var pos=Vector2(70+(i%2)*670,207+int(i/2)*143)
+   panel(Rect2(pos,Vector2(630,126)),PANEL,GOLD if found else LINE)
+   text(entry.name if found else "未発見 / "+ItemDB.slot_text(entry.slot),pos+Vector2(19,29),19,GOLD if found else MUTED)
+   text(BuildDB.SET_NAMES[entry.set],pos+Vector2(455,29),14,TEAL)
+   wrapped_text(entry.text if found else "宝箱、精鋭、危険な契約、王の戦利品から発見できる。",pos+Vector2(19,62),590,15,TEXT if found else MUTED,24)
+  button(Rect2(566,806,308,48),"次の頁" if journal_page==0 else "前の頁","journal_next")
+ elif journal_tab=="enemies":
+  var i=0
+  for kind in ChronicleDB.ENEMIES:
+   var known=history.enemies.has(kind);var entry=ChronicleDB.ENEMIES[kind];var pos=Vector2(70+(i%2)*670,207+int(i/2)*143)
+   panel(Rect2(pos,Vector2(630,126)));text(entry[0] if known else "未遭遇",pos+Vector2(19,29),20,GOLD)
+   wrapped_text(entry[1] if known else "撃破すると行動と対処の記録が残る。",pos+Vector2(19,61),590,16,MUTED,24)
+   if known:text("討伐 %d"%history.enemies[kind],pos+Vector2(495,30),13,TEAL)
+   i+=1
+ else:
+  var i=0
+  for id in ChronicleDB.ACHIEVEMENTS:
+   var entry=ChronicleDB.ACHIEVEMENTS[id];var done=id in history.achievements;var y=222+i*110
+   panel(Rect2(105,y-26,1230,96));text(("達成 / " if done else "未達成 / ")+entry[0],Vector2(125,y+2),21,TEAL if done else GOLD)
+   text(entry[1],Vector2(125,y+40),16,TEXT);i+=1
+  text("見切り %d / 5  ・  契約達成 %d  ・  発見 %d / 16"%[history.evades,history.contracts,history.legends.size()],Vector2(720,820),17,GOLD,true)

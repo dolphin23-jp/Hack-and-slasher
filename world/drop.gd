@@ -34,11 +34,16 @@ func _draw()->void:
   draw_line(Vector2.ZERO,Vector2(0,-102-rarity*17),Color(c,.3),2,true);draw_arc(Vector2.ZERO,22+sin(age*2)*2,0,TAU,40,Color(c,.55),2,true)
  var size=52 if kind=="chest" else (29 if kind=="health" else 36)
  draw_texture_rect(icon,Rect2(-size/2.0,-size+12+sin(age*3)*3,size,size),false)
- if kind=="item" and (rarity>=2 or game.player.position.distance_to(position)<210):
+ if kind=="item" and rarity==3:
+  var pulse=.65+.35*sin(age*3)
+  draw_line(Vector2(0,4),Vector2(0,-205),Color(c,.5+pulse*.3),4,true)
+  draw_arc(Vector2(0,-44),18+sin(age*2)*3,0,TAU,32,Color("fff0c1"),2,true)
+  for side in [-1,1]:draw_line(Vector2(side*10,-195),Vector2(0,-205),Color("ffe4a3"),2,true)
+ if kind=="item" and (game.player.position.distance_to(position)<170 or (rarity>=2 and game.enemies.is_empty())):
   var near:bool=game.player.position.distance_to(position)<210
   var detail:String="ティア %d / %s"%[int(item.tier),ItemDB.slot_text(String(item.slot))]
   var detail_color:=Color("9aabb0")
-  if near:
+  if near and rarity<3:
    var delta:float=game.player.item_upgrade_ratio(item)
    if delta>.035:
     detail+="  /  ▲ 強化 +%d%%"%maxi(1,roundi(delta*100.0));detail_color=Color("91d7b8")
@@ -46,6 +51,7 @@ func _draw()->void:
     detail+="  /  ▼ 弱体 %d%%"%roundi(delta*100.0);detail_color=Color("dc8f84")
    else:
     detail+="  /  ≈ 同等";detail_color=Color("c9c3a5")
+  if rarity==3:detail+=" / "+BuildDB.SET_NAMES.get(ItemDB.set_of(item),"固有効果")
   var name_w:float=font.get_string_size(item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,13).x
   var detail_w:float=font.get_string_size(detail,HORIZONTAL_ALIGNMENT_LEFT,-1,11).x
   var w:float=maxf(name_w,detail_w)

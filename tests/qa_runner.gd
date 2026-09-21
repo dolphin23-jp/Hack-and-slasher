@@ -27,8 +27,8 @@ func _run() -> void:
 	game.start_run()
 	await get_tree().process_frame
 	_expect("begin descent enters play mode", game.mode == "play")
-	_expect("dungeon contains ten rooms", game.dungeon.rooms.size() == 10)
-	_expect("dungeon graph contains nine passages", game.dungeon.connections.size() == 9)
+	_expect("dungeon contains ten original and two contract rooms", game.dungeon.rooms.size() == 12)
+	_expect("dungeon graph contains a southern alternate route", game.dungeon.connections.size() == 12)
 	_expect("threshold starts reclaimed", game.dungeon.cleared == [0])
 	_expect("player is instantiated", is_instance_valid(game.player))
 	_expect("starter gift and chest are present", game.drops.size() >= 2)

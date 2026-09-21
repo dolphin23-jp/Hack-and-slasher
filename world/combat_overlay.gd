@@ -4,16 +4,24 @@ var game
 func _draw()->void:
  if not is_instance_valid(game.player):return
  for e in game.enemies:
-  if e.dead or e.state!="windup":continue
+  if e.dead or e.state not in ["windup","chain_windup"]:continue
   var c=Color("f3c184") if e.kind=="boss" else (Color("c79de7") if e.kind=="cantor" else Color("e09082"))
   var t=clampf(1-e.timer/e.windup,0,1);var p=e.position
-  if e.kind=="hound" or (e.kind=="boss" and e.pattern%4==3):
+  if e.kind=="hound" or (e.kind=="boss" and (e.pattern%4==3 or e.state=="chain_windup")):
    var side=e.aim.orthogonal()*(e.radius+5);var end=p+e.aim*(480 if e.kind=="boss" else 300)
    draw_colored_polygon(PackedVector2Array([p-side,p+side,end+side,end-side]),Color(c,.12+t*.13))
    draw_line(p-side,end-side,c,2,true);draw_line(p+side,end+side,c,2,true);draw_line(p,end,Color(c,.5),3,true)
-  elif e.kind=="cantor":draw_line(p,p+e.aim*450,Color(c,.15+t*.35),2,true);draw_arc(p,30,0,TAU*t,32,c,3,true)
+  elif e.kind=="cantor":
+   for a in [-.21,0.0,.21]:draw_line(p,p+e.aim.rotated(a)*470,Color(c,.35+t*.45),2.5,true)
+   draw_arc(p,30,0,TAU*t,32,c,3,true)
+  elif e.kind=="summoner":
+   draw_arc(p,80,0,TAU*t,48,Color("e5b1ff"),4,true);draw_circle(p,80,Color(.7,.3,1,.12))
   elif e.kind=="warden" or (e.kind=="boss" and e.pattern%4==2):
    var r=115 if e.kind=="warden" else 210
+   if e.kind=="boss":
+    var safe=Vector2.from_angle(e.ring_gap)
+    draw_colored_polygon(PackedVector2Array([p,p+safe.rotated(-.5)*330,p+safe.rotated(.5)*330]),Color(.3,1,.77,.18))
+    draw_line(p+safe*80,p+safe*320,Color("8aefce"),4,true)
    draw_circle(p,r,Color(c,.055+t*.09));draw_arc(p,r,0,TAU,64,c,2,true);draw_arc(p,r*t,0,TAU,64,Color(c,.45),3,true)
   elif e.kind=="boss" and e.pattern%4==1:draw_arc(p,62,0,TAU*t,40,c,4,true)
   else:
@@ -23,10 +31,10 @@ func _draw()->void:
    draw_colored_polygon(points,Color(c,.075+t*.17));draw_arc(p,r,e.aim.angle()-half,e.aim.angle()+half,32,c,2.5,true)
    draw_line(p,points[1],Color(c,.75),1.5,true);draw_line(p,points[-1],Color(c,.75),1.5,true)
  for h in game.hazards:
-  var c=Color("efa65c") if h.friendly else Color("f5a58a")
+  var c=Color("6df0c2") if h.friendly else Color("ff846b")
   draw_circle(h.p,h.radius,Color(c,.075))
   if h.delay>0:
-   draw_arc(h.p,h.radius,0,TAU,64,c,2.5,true);draw_arc(h.p,h.radius*(1-h.delay/h.max_delay),0,TAU,48,Color(c,.55),2,true)
+   draw_arc(h.p,h.radius+3,0,TAU,64,Color("151321"),5,true);draw_arc(h.p,h.radius,0,TAU,64,c,3.5,true);draw_arc(h.p,h.radius*(1-h.delay/h.max_delay),0,TAU,48,Color(c,.55),2,true)
    draw_line(h.p-Vector2(12,0),h.p+Vector2(12,0),c,2);draw_line(h.p-Vector2(0,12),h.p+Vector2(0,12),c,2)
   else:
    for j in range(6):

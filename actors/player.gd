@@ -25,6 +25,17 @@ var invulnerable=0.0
 var flash=0.0
 var crit_blast_cd=0.0
 var fire_tick=0.0
+var counter_time=0.0
+var dash_evaded=false
+var dash_attack_time=0.0
+var dash_nova_cd=0.0
+var echo_ready=false
+var barrier=0.0
+var barrier_time=0.0
+const COMBO=[
+ {"reach":122.0,"arc":.85,"damage":1.0,"knock":175.0,"cooldown":.29},
+ {"reach":137.0,"arc":1.55,"damage":1.05,"knock":220.0,"cooldown":.34},
+ {"reach":151.0,"arc":1.18,"damage":1.8,"knock":370.0,"cooldown":.52}]
 var anim=0.0
 var dead=false
 var touch_move=Vector2.ZERO
@@ -68,8 +79,23 @@ func has_effect(effect:String)->bool:
  for slot in ItemDB.SLOTS:
   if equipment[slot].effect==effect:return true
  return false
+func set_count(family:String,loadout:Dictionary=equipment)->int:
+ var count=0
+ for slot in ItemDB.SLOTS:
+  if ItemDB.set_of(loadout[slot])==family:count+=1
+ return count
+func synergy(family:String)->bool:return set_count(family)>=2
+func perfect_evade()->void:
+ if dash_evaded:return
+ dash_evaded=true;counter_time=2.0;dash_cd=maxf(0,dash_cd-(.35 if upgrades.get("riposte",0)>0 else .2))
+ game.metrics.perfect_evades+=1;game.profile.chronicle.evades+=1;game.check_achievements()
+ game.fx.number(position,"見切り / 反撃",Color("b0fff0"),true);game.fx.ring(position,100,Color("b0fff0"),.4);game.sound.play("crit",.7)
+ if has_effect("storm_guard"):game.chain_lightning(position,stats.attack*1.4,null)
 func tick(dt:float)->void:
  if dead:return
+ counter_time=maxf(0,counter_time-dt);dash_attack_time=maxf(0,dash_attack_time-dt);dash_nova_cd=maxf(0,dash_nova_cd-dt)
+ barrier_time=maxf(0,barrier_time-dt)
+ if barrier_time<=0:barrier=0
  for i in range(3):cooldowns[i]=maxf(0,cooldowns[i]-dt)
  dash_cd=maxf(0,dash_cd-dt);attack_cd=maxf(0,attack_cd-dt);invulnerable=maxf(0,invulnerable-dt);flash=maxf(0,flash-dt)
  crit_blast_cd=maxf(0,crit_blast_cd-dt);attack_time=maxf(0,attack_time-dt);combo_expire=maxf(0,combo_expire-dt)
@@ -93,8 +119,10 @@ func tick(dt:float)->void:
   dash_time-=dt;velocity=dash_direction*850;fire_tick-=dt
   if fire_tick<=0:
    game.fx.burst(position,Color("85e3d4"),4,32)
-   if has_effect("fire_dash"):game.add_hazard(position,47,3.0,stats.attack*1.1,true,0)
-   fire_tick=.045
+   if has_effect("fire_dash") or upgrades.get("ember_start",0)>0:game.add_hazard(position,47,3.0,stats.attack*(1.1 if has_effect("fire_dash") else .35),true,0)
+   fire_tick=.075
+  if dash_time<=0 and has_effect("dash_nova") and dash_nova_cd<=0:
+   dash_nova_cd=1.2;game.area_damage(position,125,stats.attack*.7);game.fx.ring(position,125,Color("8cdff6"),.35)
  else:
   velocity=velocity.move_toward(move*235*(1+stats.speed),dt*(1600 if move.length()>.05 else 1900))
   if not controlled_by_test:
@@ -108,44 +136,83 @@ func tick(dt:float)->void:
 func attack()->bool:
  if dead or attack_cd>0 or dash_time>0:return false
  combo=combo%3+1;combo_expire=1.25;swing_count+=1
- attack_cd=(.41 if combo<3 else .54)/(1+stats.haste);attack_time=.22
- game.melee(position,facing,117 if combo<3 else 137,1.16,stats.attack*(1 if combo<3 else 1.55),180 if combo<3 else 300)
- game.fx.slash(position,facing,101 if combo<3 else 121,Color("b4ecdf") if combo<3 else Color("eed6a7"),combo==3)
- game.sound.play("slash" if combo<3 else "heavy",.8)
+ var strike=COMBO[combo-1]
+ attack_cd=strike.cooldown/(1+stats.haste);attack_time=.22 if combo<3 else .3
+ var amount=stats.attack*strike.damage
+ if counter_time>0:
+  amount*=1.75 if upgrades.get("riposte",0)>0 else 1.35
+  if upgrades.get("storm_counter",0)>0:game.chain_lightning(position,stats.attack*.8,null,2)
+  counter_time=0
+ var reach=strike.reach+(35 if dash_attack_time>0 and upgrades.get("dash_hunter",0)>0 else 0)
+ game.melee(position,facing,reach,strike.arc,amount,strike.knock)
+ game.fx.slash(position,facing,reach-12,Color("b4ecdf") if combo<3 else Color("ffdb9c"),combo==3,combo==2)
+ game.sound.play("slash" if combo<3 else "heavy",.8,[1.18,.87,.8][combo-1])
+ if combo==3:
+  if has_effect("reaper"):game.area_damage(position,165,stats.attack*.75);game.fx.ring(position,165,Color("cbd4ff"),.4)
+  if upgrades.get("finisher_wave",0)>0:
+   var bolt=game.fire(position+facing*25,facing*510,stats.attack*.8,true,6,Color("ffe2b5"));bolt.radius=22;bolt.secondary_effect=true
+  if echo_ready:
+   echo_ready=false;game.queue_blast(position+facing*65,110,amount*.65,.25,Color("cbd4ff"))
  if has_effect("echo") and swing_count%2==0:
   for a in [-.12,.12]:
    var echo=game.fire(position+facing*26,facing.rotated(a)*610,stats.attack*.55,true,2,Color("b7dffb"));echo.secondary_effect=true
  return true
 func dash()->bool:
- if dead or dash_cd>0:return false
- dash_time=.19;invulnerable=maxf(invulnerable,.29);dash_cd=1.1*(1-stats.cdr*.55)
+ if dead or dash_cd>0 or dash_time>0:return false
+ dash_time=.19;invulnerable=maxf(invulnerable,.24);dash_cd=1.1*(1-stats.cdr*.55)*(.8 if upgrades.get("dash_hunter",0)>0 else 1.0)
+ dash_evaded=false;dash_attack_time=.9;attack_time=0;attack_cd=minf(attack_cd,.12)
  dash_direction=last_move if velocity.length()>20 else facing;fire_tick=0
  game.fx.ring(position,45,Color("a4ebe0"),.3);game.sound.play("dash");return true
-func skill_duration(i:int)->float:return [5.0,10.0,6.0][i]*(1-stats.cdr)
+func skill_duration(i:int)->float:return [5.0,10.0,6.0][i]*(1-stats.cdr)*(.75 if i==2 and upgrades.get("giant_mastery",0)>0 else 1.0)
 func cast(i:int)->bool:
  if dead or cooldowns[i]>0 or dash_time>0:return false
  cooldowns[i]=skill_duration(i)
+ if synergy("echo"):echo_ready=true
  var dmg=stats.attack*(1+stats.skill)
  match i:
   0:
-   attack_time=.3;game.melee(position,facing,200,1.28,dmg*3.5,480)
+   attack_time=.3;game.melee(position,facing,200,1.28,dmg*3.5*(1.2 if upgrades.get("finisher_wave",0)>0 else 1.0),480)
+   if has_effect("judgement_echo"):game.queue_blast(position+facing*110,145,dmg*2.45,.35,Color("dfd6ff"))
    game.fx.slash(position,facing,190,Color("ffdaa0"),true);game.fx.ring(position+facing*100,95,Color("cda373"));game.sound.play("heavy");game.shake(6)
   1:
    var radius=225+upgrades.get("nova_radius",0)
    game.area_damage(position,radius,dmg*2.7,false,true)
    for e in game.enemies:
-    if e.position.distance_to(position)<radius:e.slow_time=3
+    if e.position.distance_to(position)<radius:
+     e.slow_time=3
+     if upgrades.get("nova_pull",0)>0:e.velocity=(position-e.position).normalized()*650
+   if upgrades.get("nova_echo",0)>0:game.queue_blast(position,radius,dmg*1.35,.6,Color("92e8d5"))
+   if has_effect("echo_guard"):barrier=stats.hp*.12;barrier_time=5
+   if has_effect("ember_nova"):game.add_hazard(position,150,3,dmg*.9,true,0)
+   if has_effect("conductor"):game.chain_lightning(position,dmg*.9,null)
    game.fx.ring(position,radius,Color("85edda"),.65);game.fx.ring(position,radius*.8,Color("d4fff0"),.45)
    game.fx.burst(position,Color("85dace"),45,370);game.sound.play("nova");game.shake(7)
   2:
-   game.fire(position+facing*25,facing*730,dmg*2.8,true,9,Color("9ce7ff"))
-   if upgrades.get("spear_count",0)>0:
-    for a in [-.15,.15]:game.fire(position+facing*25,facing.rotated(a)*680,dmg*1.25,true,5,Color("9ce7ff"))
+   cast_lance(dmg)
    game.sound.play("bolt")
  return true
+func cast_lance(dmg:float)->void:
+ var path=BuildDB.lance_key(upgrades)
+ var angles=[0.0]
+ if path=="lance_fan":angles=[-.24,0.0,.24] if upgrades.get("fan_mastery",0)<=0 else [-.40,-.20,0.0,.20,.40]
+ elif upgrades.get("spear_count",0)>0:angles=[-.15,0.0,.15]
+ for a in angles:
+  var mult=.65 if path=="lance_fan" else (1.8+upgrades.get("giant_mastery",0)*.3 if path=="lance_giant" else 1.0)
+  var bolt=game.fire(position+facing*25,facing.rotated(a)*(610 if path=="lance_giant" else 730),dmg*2.8*mult,true,0 if path=="lance_blast" else 9,Color("ffb26e") if path=="lance_blast" else Color("9ce7ff"))
+  bolt.radius=24 if path=="lance_giant" else 8;bolt.slow_on_hit=2 if path=="lance_giant" else 0
+  bolt.explosion_radius=140+upgrades.get("blast_mastery",0)*65 if path=="lance_blast" else 0
+  bolt.explosion_damage=dmg*2.8*(.9+upgrades.get("blast_mastery",0)*.4)
+  bolt.can_return=has_effect("lance_return");bolt.chain_on_hit=synergy("storm") and a==0.0
+ if has_effect("lance_fork"):
+  for a in [-.35,.35]:
+   var bolt=game.fire(position+facing*25,facing.rotated(a)*680,dmg*1.26,true,5,Color("c7b8ff"));bolt.secondary_effect=true
 func take_damage(amount:float,knock:Vector2=Vector2.ZERO)->bool:
- if dead or invulnerable>0:return false
+ if dead:return false
+ if invulnerable>0:
+  if dash_time>0:perfect_evade()
+  return false
  var damage=amount*100/(100+stats.armor)
+ var absorbed=minf(barrier,damage);barrier-=absorbed;damage-=absorbed
  hp=maxf(0,hp-damage);invulnerable=.52;flash=.16;velocity+=knock
  position=game.dungeon.move_body(position,knock*.06,18)
  game.fx.number(position,str(ceili(damage)),Color("ef8d84"),true);game.fx.burst(position,Color("d4716f"),10,120)
@@ -155,7 +222,12 @@ func take_damage(amount:float,knock:Vector2=Vector2.ZERO)->bool:
 func heal(amount:float)->void:hp=minf(stats.hp,hp+amount)
 func drink()->bool:
  if dead or potions<=0 or hp>=stats.hp:return false
- potions-=1;heal(stats.hp*.48);game.fx.ring(position,82,Color("a4d5a0"),.7);game.fx.number(position,"回復",Color("b5dfa9"));game.sound.play("heal");return true
+ potions-=1;heal(stats.hp*.48);game.fx.ring(position,82,Color("a4d5a0"),.7);game.fx.number(position,"回復",Color("b5dfa9"));game.sound.play("heal")
+ if has_effect("phoenix"):
+  game.area_damage(position,220,stats.attack*2);game.fx.ring(position,220,Color("ffb76f"),.55)
+  for e in game.enemies:
+   if e.position.distance_to(position)<220:e.ignite(stats.attack*.35,3)
+ return true
 func equip(index:int)->bool:
  if index<0 or index>=inventory.size():return false
  var item=inventory[index];var old=equipment[item.slot];equipment[item.slot]=item;inventory[index]=old
@@ -182,4 +254,6 @@ func _draw()->void:
  if attack_time>0:a+=lerpf(1.2,-1.1,attack_time/.3)
  draw_set_transform(Vector2.from_angle(a)*29+Vector2(0,-24),a+PI*.25,Vector2(.67,.67))
  draw_texture_rect(sword,Rect2(-26,-78,64,64),false,tint);draw_set_transform(Vector2.ZERO)
+ if barrier>0:draw_arc(Vector2.ZERO,40,0,TAU,48,Color("c9b5ff"),3,true)
+ if counter_time>0:draw_arc(Vector2.ZERO,30,0,TAU,48,Color("eeecad"),2,true)
  if dash_time>0:draw_arc(Vector2.ZERO,35,0,TAU,40,Color("94e8db"),2,true)

@@ -8,10 +8,14 @@ var connections=[[0,1],[1,2],[1,3],[2,4],[4,5],[5,6],[6,7],[7,8],[8,9]]
 var cleared=[0]
 var visited=[0]
 var active=-1
-var encounter_labels=["聖域","集会","骨の狩り","秘宝の試練","鉄の誓い","詠唱者の合唱","火の狩り","聖域","最後の行進","最後の鐘"]
+var layout_version=2
+var encounter_labels=["聖域","集会","骨の狩り","秘宝の試練","鉄の誓い","詠唱者の合唱","火の狩り","聖域","最後の行進","最後の鐘","血の供物","失われた武具"]
 var crest=preload("res://assets/icons/crest.svg")
 func setup(g)->void:
  game=g
+ rooms.clear();corridors.clear();obstacles.clear()
+ if layout_version>=2:connections.append_array([[2,10],[10,11],[11,7]])
+ var layout_rng=RandomNumberGenerator.new();layout_rng.seed=game.run_seed ^ 0x6a1f
  var specs=[
  [Vector2(0,0),Vector2(940,660),"入口",0,0,0,"誓いは主が消えても残る。"],
  [Vector2(1240,0),Vector2(1050,760),"灰の大広間",1,3,8,"虚ろな群れを沈黙させろ。"],
@@ -23,8 +27,14 @@ func setup(g)->void:
  [Vector2(5140,0),Vector2(1030,780),"静かな礼拝堂",5,0,0,"十分に備えろ。この先に王がいる。"],
  [Vector2(6470,0),Vector2(1160,860),"いばらの行進",6,4,12,"誓いに縛られた最後の者を倒せ。"],
  [Vector2(7990,0),Vector2(1460,1090),"鐘なき王座",7,1,1,"彼のために鳴る鐘はない。"]]
+ if layout_version>=2:
+  specs.append_array([
+   [Vector2(2510,1090),Vector2(1060,780),"血の告解室",3,2,7,"生命か危険を差し出すか。南の道は任意の近道。"],
+   [Vector2(5140,1090),Vector2(1100,800),"忘却の鍛冶場",5,2,9,"武器を賭け、灰から新しい誓いを鍛えよ。"]])
  for i in range(specs.size()):
-  var s=specs[i];rooms.append({"id":i,"center":s[0],"rect":Rect2(s[0]-s[1]/2,s[1]),"name":s[2],"tier":s[3],"waves":s[4],"count":s[5],"lore":s[6],"encounter":encounter_labels[i]})
+  var s=specs[i];rooms.append({"id":i,"center":s[0],"rect":Rect2(s[0]-s[1]/2,s[1]),"name":s[2],"tier":s[3],"waves":s[4],"count":s[5],"lore":s[6],"encounter":encounter_labels[i],"optional":i in [10,11],"variant":layout_rng.randi_range(0,2) if layout_version>=2 else 0})
+  if layout_version>=2 and i not in [0,7,9]:
+   rooms[i].count=maxi(4,rooms[i].count+layout_rng.randi_range(-2,1))
  for link in connections:
   var a=rooms[link[0]].center;var b=rooms[link[1]].center
   if absf(a.x-b.x)>10:corridors.append(Rect2(Vector2(minf(a.x,b.x),a.y-96),Vector2(absf(a.x-b.x),192)))
@@ -32,7 +42,12 @@ func setup(g)->void:
  for room in rooms:
   if room.id==0:continue
   for x in [room.rect.position.x+150,room.rect.end.x-150]:
-   for y in [room.rect.position.y+155,room.rect.end.y-155]:obstacles.append(Rect2(x-28,y-28,56,56))
+   for y in [room.rect.position.y+155,room.rect.end.y-155]:
+    var offset=Vector2.ZERO
+    if layout_version>=2 and room.id not in [7,9]:offset=Vector2(layout_rng.randf_range(-40,40),layout_rng.randf_range(-32,32))
+    obstacles.append(Rect2(Vector2(x-28,y-28)+offset,Vector2(56,56)))
+  if layout_version>=2 and room.variant==2 and room.id not in [0,7,9]:
+   for side in [-1,1]:obstacles.append(Rect2(room.center+Vector2(-36,side*200-22),Vector2(72,44)))
  queue_redraw()
 func floor_at(p:Vector2)->bool:
  for room in rooms:

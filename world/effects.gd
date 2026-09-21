@@ -14,8 +14,8 @@ func ring(p:Vector2,r:float,c:Color,duration:float=.45)->void:rings.append({"p":
 func number(p:Vector2,t:String,c:Color,big:bool=false)->void:
  if numbers.size()>65:numbers.pop_front()
  numbers.append({"p":p+Vector2(randf_range(-20,20),-48),"text":t,"c":c,"life":.85,"big":big})
-func slash(p:Vector2,dir:Vector2,r:float,c:Color,heavy:bool=false)->void:
- slashes.append({"p":p,"angle":dir.angle(),"r":r,"c":c,"life":.22 if heavy else .16,"max":.22 if heavy else .16})
+func slash(p:Vector2,dir:Vector2,r:float,c:Color,heavy:bool=false,reverse:bool=false)->void:
+ slashes.append({"p":p,"angle":dir.angle(),"reverse":reverse,"r":r,"c":c,"life":.22 if heavy else .16,"max":.22 if heavy else .16})
 func lightning(a:Vector2,b:Vector2)->void:
  var points=PackedVector2Array([a])
  for i in range(1,6):points.append(a.lerp(b,i/6.0)+Vector2(randf_range(-14,14),randf_range(-14,14)))
@@ -36,8 +36,9 @@ func _draw()->void:
   var t=1-r.life/r.max;draw_arc(r.p,r.r*(.3+.7*t),0,TAU,70,Color(r.c,(1-t)*.9),3*(1-t)+1,true)
  for s in slashes:
   var t=1-s.life/s.max
-  draw_arc(s.p,s.r*(.72+t*.28),s.angle-1.2+t*.6,s.angle+.8+t*.6,28,Color(s.c,1-t),13*(1-t)+1,true)
-  draw_arc(s.p,s.r*.88,s.angle-1.05+t*.6,s.angle+.7+t*.6,24,Color(1,1,.92,(1-t)*.9),2,true)
+  var sweep=1-t if s.get("reverse",false) else t
+  draw_arc(s.p,s.r*(.72+t*.28),s.angle-1.2+sweep*.6,s.angle+.8+sweep*.6,28,Color(s.c,1-t),13*(1-t)+1,true)
+  draw_arc(s.p,s.r*.88,s.angle-1.05+sweep*.6,s.angle+.7+sweep*.6,24,Color(1,1,.92,(1-t)*.9),2,true)
  for a in arcs:
   draw_polyline(a.points,Color(.3,.75,1,a.life*2.7),9,true);draw_polyline(a.points,Color(.8,1,1,a.life*4),2,true)
  for n in numbers:

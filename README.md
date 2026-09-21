@@ -1,20 +1,30 @@
-# ASHEN VOW
+# ASHEN VOW — 灰冠の再誓 (0.2)
 
 A playable top-down action RPG / hack-and-slasher vertical slice built in Godot 4.5.1.
 
-The current slice contains a ten-room cathedral run, optional treasury, room-specific encounter identities and telegraphed hazards, affixed elite enemies, rotating post-victory Ascension Vows, a persistent title-screen Chronicle, end-of-run performance summaries, randomized loot, equipment comparison and salvage, level-up blessings, save/resume including restart-safe post-victory checkpoints, touch controls, gamepad menu navigation, a two-phase boss, victory rewards, and an installable Web/PWA export.
+Japanese-first, playable cathedral action RPG. **Cathedral Reborn** expands the existing slice across combat, builds, exploration, and iPad controls.
+
+- Three distinct sword strikes (fast opener, wide sweep, guard-breaking finisher), stagger, weighted hit-stop, and dodge-cancel. Evading an incoming hit grants one counterattack; screen shake and hit-stop are configurable.
+- Seven enemy types: swarm melee, spread shooters, charging hounds, directional shields, interruptible summoners, affixed elites, and the Bellless King.
+- Boss awakening at half health with an altered silhouette and music, telegraphed chained charges, a visible safe sector in the projectile ring, and vulnerable recovery windows.
+- **16 legendary items**, three two-piece synergies (storm / cinder / echo), and three mutually exclusive Spirit Lance paths with follow-up evolutions. Nova, finishers and dodge also receive behavioral blessings.
+- Original ten-room route plus **two optional contract rooms** forming a southern shortcut. Seeded obstacle layouts and encounter variants; blood, danger and equipment-wager decisions have explicit costs and rewards.
+- Persistent legendary discovery, enemy bestiary, five achievements and unlockable starting oaths / blessings. Starting oaths have tradeoffs instead of accumulating permanent stat bonuses.
+- Touch hold-to-attack, simultaneous stick + attack, button feedback, adjustable control size/inset, and touch cancellation on modal changes or focus loss.
+- Original generated elite / awakened-boss / victory music, with crossfades. Japanese font bundled for offline imports and Web builds.
+
+**既存セーブはそのまま続行できます。旧セーブのマップは10部屋のまま保持されます。南の契約ルートと新しい地形を遊ぶ場合は「探索を始める」または次のアセンションを選んでください。**
+
+See [the update and design notes](docs/CATHEDRAL_REBORN.md) for rules, controls and validation.
 
 ## Current regression gates
 
-The repository keeps the vertical slice reproducible in GitHub Actions.
-
-- 64 gameplay/save checks: combat, elite affixes, Ascension Vows, Chronicle records, persisted run-summary metrics, loot, equip/salvage, growth, save/resume, restart-safe victory checkpoints, boss rewards.
-- Deterministic full-run campaign: visits all 10 rooms including the optional treasury and defeats the boss using movement + normal attacks for combat while using collected gear and level growth.
-- Rendered UI smoke: title, settings, help, gameplay, map, inventory comparison/equip, pause, upgrades, boss HUD, victory, touch HUD, and 4:3 coverage.
-- Shutdown leak gate: Godot resource/object leak warnings fail CI.
-- Web export gate: produces HTML/WASM/PCK and verifies the bundle over HTTP.
-- Chromium runtime gate: boots the exported game, starts a run, sends movement input, and captures screenshots.
-- PWA/touch gate: verifies manifest + active service worker and exercises the game in a 1024×768 touch-enabled browser, including touch start and DASH.
+- 67 existing gameplay/save checks, updated for the twelve-room world.
+- 51 expansion behavior checks covering real combat, skill/equipment interactions, contracts, legacy saves, disk restart and discovery.
+- Original ten-room campaign, including treasury and boss, using movement and normal attacks for combat.
+- Southern-route campaign using normal attacks, skills, dodge and healing; both paid contracts must complete before the boss.
+- 33 rendered UI captures with click/gamepad/touch checks, including journal, contracts, awakened boss, equipment synergy and simultaneous stick/attack at iPad-class aspect ratio.
+- Script errors and resource leaks fail CI. Web export and Chromium / touch / PWA runtime gates remain required before merging.
 
 ## Play locally
 
@@ -79,4 +89,4 @@ For a local checkout, run:
 bash scripts/fetch_japanese_font.sh
 ```
 
-If the font has not been fetched, the project still boots and native platforms may use system fallback fonts, but Web exports must include the bundled Japanese font.
+The pinned font is now bundled. If it is removed, the project still boots and native platforms may use system fallback fonts, but Web exports must include the bundled Japanese font.
