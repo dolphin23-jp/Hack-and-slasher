@@ -42,6 +42,7 @@ func visible_oath_board(g)->Dictionary:
  if not oath_editable() and is_instance_valid(g.player) and not g.player.oath_board.is_empty():return g.player.oath_board
  return g.profile.oaths
 func current_weapon_types(g)->Array:
+ if oath_editable():return departure_weapon_types(g)
  var out=[]
  if is_instance_valid(g.player):
   for slot in Loadout.WEAPONS:out.append(String(g.player.equipment[slot].get("weapon_type","sword")))
@@ -483,9 +484,10 @@ func draw_build_manager(u)->void:
   preset_selected=clampi(preset_selected,0,g.profile.build_presets.size()-1)
   for i in range(g.profile.build_presets.size()):
    var preset=g.profile.build_presets[i];var y=188+i*82
-   u.button(Rect2(735,y,625,68),String(preset.name),"preset_select:"+str(i),preset_selected==i)
-   u.text(active_oath_line({"active":preset.active}),Vector2(755,y+44),11,u.MUTED)
-   u.text(weapon_line(preset.weapon_types),Vector2(1080,y+44),11,u.MUTED,true)
+   u.button(Rect2(735,y,625,68),"","preset_select:"+str(i),preset_selected==i)
+   u.text(String(preset.name),Vector2(755,y+25),15,u.TEXT)
+   u.text(active_oath_line({"active":preset.active}),Vector2(755,y+50),11,u.MUTED)
+   u.text(weapon_line(preset.weapon_types),Vector2(1335,y+50),11,u.MUTED,true)
  u.button(Rect2(60,465,290,46),"現在構成を追加保存","preset_new",editable and g.profile.build_presets.size()<5)
  u.button(Rect2(365,465,310,46),"誓印 TREEへ","oath_section:tree")
  if not g.profile.build_presets.is_empty():
