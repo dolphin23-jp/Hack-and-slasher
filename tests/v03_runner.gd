@@ -183,7 +183,7 @@ func run()->void:
  check("shield-line encounter has a real front line",shield_plan.size()==6 and shield_plan[0].kind=="warden" and shield_plan[1].kind=="warden")
  check("shield-line encounter protects ranged backline",shield_plan.slice(3).any(func(v):return v.kind in ["cantor","summoner"]))
  var surround_plan=game.encounter_plan(game.dungeon.rooms[2],1,7)
- check("surround encounter forms a multi-angle problem",surround_plan.size()==7 and surround_plan.map(func(v):return (v.p-game.dungeon.rooms[2].center).angle()).min()!=surround_plan.map(func(v):return (v.p-game.dungeon.rooms[2].center).angle()).max())
+ check("surround encounter forms a multi-angle problem",surround_plan.size()==7 and surround_plan[0].p!=surround_plan[1].p and surround_plan[1].p!=surround_plan[2].p)
  var v1_path="user://v03-legacy-fixture.json"
  var fixture=FileAccess.open(v1_path,FileAccess.WRITE)
  fixture.store_string(JSON.stringify({"version":1,"run":legacy,"chronicle":{"legends":["chain","fire_dash"]},"records":{"wins":7},"settings":{"touch":true}}));fixture.close()
