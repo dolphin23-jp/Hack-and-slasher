@@ -362,6 +362,10 @@ func tick_hazards(dt:float)->void:
      if e.position.distance_to(h.p)<h.radius:e.ignite(h.damage*.2,.6)
    elif h.p.distance_to(player.position)<h.radius:player.take_damage(h.damage)
   if h.life<=0:hazards.remove_at(i)
+func roll_material_yield(find_bonus:float)->int:
+ var bonus=clampf(find_bonus,0,2)
+ var whole=floori(bonus);var fraction=bonus-whole
+ return 1+whole+(1 if fraction>0 and rng.randf()<fraction else 0)
 func enemy_died(e,proc:bool=false)->void:
  enemies.erase(e);kills+=1;metrics.kills+=1
  profile.chronicle.enemies[e.kind]=int(profile.chronicle.enemies.get(e.kind,0))+1
@@ -371,7 +375,7 @@ func enemy_died(e,proc:bool=false)->void:
  fx.burst(e.position,Color("caad86"),85 if e.kind=="boss" else 15,200);sound.play("enemy_death",.55);player.gain_xp(e.xp if not e.spawned_minion else 0);player.heal(player.upgrades.get("leech",0))
  if player.has_effect("chain") and not proc:chain_lightning(e.position,player.stats.attack*.9,e)
  if e.spawned_minion:return
- player.materials+=maxi(1,roundi(1+clampf(player.stats.material_find,0,2)))
+ player.materials+=roll_material_yield(player.stats.material_find)
  if e.kind in ["elite","boss"]:profile.oaths.points+=3 if e.kind=="boss" else 1
  var tier=maxi(1,dungeon.rooms[e.room_id].tier+ascension*2)
  if e.kind=="boss":
