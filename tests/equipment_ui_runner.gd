@@ -63,6 +63,9 @@ func run()->void:
  check("equipped armor contribution is independently inspectable",contribution.has("armor") or contribution.has("hp"))
  var initial=p.equipment.weapon.duplicate(true)
  check("starter art id follows current weapon family",String(initial.art_id).contains(String(initial.weapon_type)))
+ var evolving=ItemDB.initial_items().weapon.duplicate(true);evolving.enhance=10;p.equipment.weapon=evolving;p.materials=9999;p.rebuild_stats()
+ var art_before=String(evolving.art_id);Forge.apply(p,evolving,"evolve")
+ check("grade evolution refreshes normal item art identity",String(evolving.art_id)!=art_before and String(evolving.art_id).ends_with("_g2"))
 
  DirAccess.make_dir_recursive_absolute("res://test-artifacts")
  var summary="EQUIPMENT_UI checks=%d failures=%d\n"%[checks,failures.size()]
