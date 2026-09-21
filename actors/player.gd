@@ -83,6 +83,47 @@ func build_score(loadout:Dictionary=equipment)->float:
    "crit_blast":score+=dps*.16
    "chain":score+=dps*.12
  return score
+func chain_affinity(loadout:Dictionary)->float:
+ var kinds=[];var attrs=[];var score=0.0
+ for slot in Loadout.WEAPONS:
+  var kind=String(loadout[slot].get("weapon_type","sword"));kinds.append(kind)
+  var attr=String(WeaponDB.get_weapon(loadout[slot]).types[0])
+  if attr not in attrs:attrs.append(attr)
+ for i in range(3):
+  var previous=String(kinds[i]);var current=String(kinds[(i+1)%3])
+  var profile=CombatChain.transition_profile(previous,current,kinds,2,true)
+  if float(profile.damage)>1.001 or float(profile.reach)>1.001 or float(profile.knock)>1.001:score+=1
+ if attrs.size()==3:score+=1.5
+ if kinds[0]==kinds[1] and kinds[1]==kinds[2]:score+=1.25
+ return score
+func item_comparison(item:Dictionary,target:String="")->Array:
+ if not ItemDB.valid(item):return []
+ if target.is_empty():target=item_upgrade_target(item)
+ if target.is_empty() or not Loadout.accepts(item,target):return []
+ var before=stats;var loadout=equipment.duplicate(true);loadout[target]=item;var after=calculated(loadout)
+ var tags=[]
+ var attack_delta=float(after.attack)-float(before.attack)
+ if attack_delta>1.0:tags.append("攻撃↑")
+ elif attack_delta<-1.0:tags.append("攻撃↓")
+ var hp_delta=float(after.hp)-float(before.hp)
+ if hp_delta>8:tags.append("生命↑")
+ elif hp_delta<-8:tags.append("生命↓")
+ var armor_delta=float(after.armor)-float(before.armor)
+ if armor_delta>3:tags.append("防御↑")
+ elif armor_delta<-3:tags.append("防御↓")
+ if target in Loadout.WEAPONS:
+  var old_weapon=WeaponDB.get_weapon(equipment[target]);var new_weapon=WeaponDB.get_weapon(item)
+  if float(new_weapon.reach)>float(old_weapon.reach)*1.08:tags.append("範囲↑")
+  elif float(new_weapon.reach)<float(old_weapon.reach)*.92:tags.append("範囲↓")
+  if float(new_weapon.cooldown)<float(old_weapon.cooldown)*.92:tags.append("手数↑")
+  var before_chain=chain_affinity(equipment);var after_chain=chain_affinity(loadout)
+  if after_chain>before_chain+.2:tags.append("連携相性↑")
+  elif after_chain<before_chain-.2:tags.append("連携相性↓")
+  var attrs=WeaponDB.attributes(item)
+  if WeaponDB.attributes(equipment[target])!=attrs:tags.append(attrs)
+ if int(item.rarity)>=3:tags.append("固有能力")
+ if tags.is_empty():tags.append("数値は近似")
+ return tags
 func item_upgrade_target(item:Dictionary)->String:
  if not ItemDB.valid(item):return ""
  var current:float=build_score(equipment)
