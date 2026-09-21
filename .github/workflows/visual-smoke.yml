@@ -89,6 +89,11 @@ jobs:
           set -o pipefail
           timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/equipment_ui_runner.gd -- --test 2>&1 | tee test-artifacts/equipment-ui.log
 
+      - name: Run Oath / Build Management 2.0 regression
+        run: |
+          set -o pipefail
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/build_manager_runner.gd -- --test 2>&1 | tee test-artifacts/build-manager.log
+
       - name: Play four weapon chains through the cathedral
         run: |
           set -o pipefail
