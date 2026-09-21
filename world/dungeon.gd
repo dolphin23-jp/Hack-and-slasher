@@ -8,21 +8,21 @@ var connections=[[0,1],[1,2],[1,3],[2,4],[4,5],[5,6],[6,7],[7,8],[8,9]]
 var cleared=[0]
 var visited=[0]
 var active=-1
-var encounter_labels=["SANCTUARY","CONGREGATION","BONE HUNT","RELIC TRIAL","IRON OATH","CANTOR CHOIR","CINDER HUNT","SANCTUARY","LAST PROCESSION","THE LAST TOLL"]
+var encounter_labels=["聖域","集会","骨の狩り","秘宝の試練","鉄の誓い","詠唱者の合唱","火の狩り","聖域","最後の行進","最後の鐘"]
 var crest=preload("res://assets/icons/crest.svg")
 func setup(g)->void:
  game=g
  var specs=[
- [Vector2(0,0),Vector2(940,660),"THE THRESHOLD",0,0,0,"A vow outlives its maker."],
- [Vector2(1240,0),Vector2(1050,760),"THE ASHEN NAVE",1,3,8,"Silence the hollow congregation."],
- [Vector2(2510,0),Vector2(1070,780),"OSSUARY OF NAMES",2,3,10,"The dead remember their weapons."],
- [Vector2(1240,-1040),Vector2(1040,730),"THE HIDDEN TREASURY",2,2,10,"An optional trial. A relic waits."],
- [Vector2(3810,0),Vector2(1120,820),"THE OATHLESS FORGE",3,3,10,"A fallen knight guards the first seal."],
- [Vector2(3810,-1090),Vector2(1120,790),"ARCHIVE OF EMBERS",4,3,12,"Do not stand where the cantors sing."],
- [Vector2(5140,-1090),Vector2(1100,800),"THE BROKEN CLOISTER",5,4,11,"The hunt ends only in fire."],
- [Vector2(5140,0),Vector2(1030,780),"THE STILL CHAPEL",5,0,0,"Drink deep. Beyond lies the king."],
- [Vector2(6470,0),Vector2(1160,860),"PROCESSION OF THORNS",6,4,12,"Break the last of the oathbound."],
- [Vector2(7990,0),Vector2(1460,1090),"THRONE OF THE BELLLESS",7,1,1,"No bell will toll for him."]]
+ [Vector2(0,0),Vector2(940,660),"入口",0,0,0,"誓いは主が消えても残る。"],
+ [Vector2(1240,0),Vector2(1050,760),"灰の大広間",1,3,8,"虚ろな群れを沈黙させろ。"],
+ [Vector2(2510,0),Vector2(1070,780),"名を刻む納骨堂",2,3,10,"死者は武器を忘れない。"],
+ [Vector2(1240,-1040),Vector2(1040,730),"隠された宝物庫",2,2,10,"任意の試練。その先に秘宝が待つ。"],
+ [Vector2(3810,0),Vector2(1120,820),"誓いなき工房",3,3,10,"堕ちた騎士が最初の封印を守る。"],
+ [Vector2(3810,-1090),Vector2(1120,790),"残り火の書庫",4,3,12,"詠唱者の歌う場所に立つな。"],
+ [Vector2(5140,-1090),Vector2(1100,800),"壊れた回廊",5,4,11,"狩りは炎の中でしか終わらない。"],
+ [Vector2(5140,0),Vector2(1030,780),"静かな礼拝堂",5,0,0,"十分に備えろ。この先に王がいる。"],
+ [Vector2(6470,0),Vector2(1160,860),"いばらの行進",6,4,12,"誓いに縛られた最後の者を倒せ。"],
+ [Vector2(7990,0),Vector2(1460,1090),"鐘なき王座",7,1,1,"彼のために鳴る鐘はない。"]]
  for i in range(specs.size()):
   var s=specs[i];rooms.append({"id":i,"center":s[0],"rect":Rect2(s[0]-s[1]/2,s[1]),"name":s[2],"tier":s[3],"waves":s[4],"count":s[5],"lore":s[6],"encounter":encounter_labels[i]})
  for link in connections:
