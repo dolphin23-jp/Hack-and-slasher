@@ -24,6 +24,7 @@ var combo=0
 var combo_expire=0.0
 var last_chain_weapon=""
 var chain_streak=0
+var chain_history=[]
 var repeat_next=false
 var repeat_block=false
 var skip_next=false
@@ -241,6 +242,11 @@ func attack()->bool:
  elif skip_next:
   skip_next=false;combo=(combo+1)%3+1
  else:combo=combo%3+1
+ var current_kind=String(equipment[Loadout.WEAPONS[combo-1]].get("weapon_type","sword"))
+ if linked:
+  chain_history.append(current_kind)
+  if chain_history.size()>3:chain_history.pop_front()
+ else:chain_history=[current_kind]
  combo_expire=1.25;swing_count+=1
  CombatChain.strike(self,linked)
  repeat_block=false
