@@ -44,7 +44,7 @@ const LEGENDS=[
  {"name":"城塞を拓く槌","slot":"weapon","effect":"weapon_mace","set":"","weapon_type":"mace","text":"障壁消費で範囲拡大"},
  {"name":"巡る守護の魔刃","slot":"weapon","effect":"weapon_spellblade","set":"","weapon_type":"spellblade","text":"チェイン完了で障壁"},
  {"name":"満ちる星冠","slot":"head","effect":"threefold_crown","set":"","text":"障壁最大時、魔撃武器が二重化する。"},
- {"name":"不落の城壁","slot":"armor","effect":"threefold_armor","set":"","text":"3番目の攻撃で障壁を消費して威力へ変換する。"},
+ {"name":"不落の城壁","slot":"armor","effect":"threefold_armor","set":"","text":"3番目の攻撃で障壁を消費して威力へ変える。"},
  {"name":"反撃の籠手","slot":"hands","effect":"threefold_hands","set":"","text":"武器連携中のクリティカル率を高める。"},
  {"name":"回避の足甲","slot":"feet","effect":"threefold_feet","set":"","text":"回避後、次の武器を1つ先へ進めて順番を変える。"},
  {"name":"連環の環","slot":"accessory","effect":"threefold_ring","set":"","text":"武器連携攻撃の威力を増幅する。"}]
