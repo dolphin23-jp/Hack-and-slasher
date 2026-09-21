@@ -45,7 +45,7 @@ jobs:
           set -o pipefail
           timeout 90s /tmp/godot/godot --headless --audio-driver Dummy --path . --editor --quit 2>&1 | tee test-artifacts/import.log
 
-      - name: Run 64-check gameplay regression
+      - name: Run 66-check gameplay regression
         run: |
           set -o pipefail
           timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --qa \
