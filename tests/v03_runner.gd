@@ -84,8 +84,24 @@ func run()->void:
  check("legendary double spin changes damage",legendary_damage>(10000-e.hp)*1.8)
  clear();it=weapon("staff");it.rarity=4;p.rebuild_stats();p.attack()
  check("mythic three real projectiles",game.projectiles.size()==3)
+ var stale=CombatChain.transition_profile("sword","mace",["sword","mace","spear"],1,false)
+ check("expired chain has no transition bonus",is_equal_approx(stale.damage,1.0) and is_equal_approx(stale.knock,1.0))
+ var sunder=CombatChain.transition_profile("sword","mace",["sword","mace","spear"],2,true)
+ check("slash to blunt creates armor-breaking transition",sunder.damage>1.0 and sunder.knock>1.0 and String(sunder.label).contains("断甲"))
+ var breach=CombatChain.transition_profile("mace","spear",["sword","mace","spear"],2,true)
+ check("blunt to pierce creates breach transition",breach.damage>1.1 and String(breach.label).contains("破砕"))
+ var spell_edge=CombatChain.transition_profile("staff","sword",["staff","sword","mace"],2,true)
+ check("magic to slash empowers reach and damage",spell_edge.damage>1.1 and spell_edge.reach>1.0)
+ var harvest_cast=CombatChain.transition_profile("scythe","staff",["scythe","staff","mace"],2,true)
+ check("scythe to staff creates focused cast",harvest_cast.damage>1.1 and harvest_cast.reach>1.1)
+ var triune=CombatChain.transition_profile("mace","spear",["sword","mace","spear"],3,true)
+ check("three distinct attributes earn triune finisher",triune.damage>1.3 and String(triune.label).contains("三相"))
+ var same_finish=CombatChain.transition_profile("sword","sword",["sword","sword","sword"],3,true)
+ check("three identical weapons earn family finisher",same_finish.damage>1.2 and String(same_finish.label).contains("同型"))
  var board=OathBoard.sanitize({"active":["dance","dance","storm","flame","seek"],"ranks":{},"points":4})
  check("main plus two unique secondary limit",board.active==["dance","storm","flame"])
+ var fallback_board=OathBoard.sanitize({"active":[],"ranks":{},"points":0})
+ check("oath board always keeps a primary oath",fallback_board.active==["dance"])
  p.active_oaths=["flame"];check("flame independent of equipment",p.has_effect("ash_edge") and p.has_effect("fire_dash"))
  p.active_oaths=["storm"];check("storm independent of equipment",p.has_effect("chain"))
  p.active_oaths=[];check("inactive elemental gear gives no elemental proc",not p.has_effect("chain"))
@@ -94,6 +110,9 @@ func run()->void:
   if ItemDB.roll_rarity(r0,0)>=3:rare0+=1
   if ItemDB.roll_rarity(r1,1)>=3:rare1+=1
  check("rarity find improves rarity independently",rare1>rare0*1.25)
+ game.rng.seed=9137;var material_total=0
+ for i in range(10000):material_total+=game.roll_material_yield(.3)
+ check("fractional material find becomes probabilistic yield",material_total>12700 and material_total<13300)
  var legacy=game.run_snapshot();legacy.equipment={"weapon":legacy.equipment.weapon,"armor":legacy.equipment.armor,"accessory":legacy.equipment.accessory}
  for slot in legacy.equipment:
   for key in ["schema","weapon_type","grade","enhance","fusion","unique","rolls","locked","favorite"]:legacy.equipment[slot].erase(key)
@@ -118,6 +137,10 @@ func run()->void:
  for slot in Loadout.WEAPONS:ids.append(game.player.equipment[slot].id)
  Loadout.swap(game.player,0,1)
  check("touch reorder exchanges actual weapons",game.player.equipment.weapon.id==ids[1] and game.player.equipment.weapon2.id==ids[0])
+ p=game.player
+ p.equipment.weapon.base={"attack":30.0};p.equipment.weapon2.base={"attack":5.0};p.equipment.weapon3.base={"attack":8.0};p.rebuild_stats()
+ var comparison=ItemDB.generate(game.rng,1,0);comparison.slot="weapon";comparison.weapon_type="sword";comparison.base={"attack":12.0};comparison.affixes={}
+ check("weapon drop compares against best replacement slot",p.item_upgrade_target(comparison)=="weapon2")
  var v1_path="user://v03-legacy-fixture.json"
  var fixture=FileAccess.open(v1_path,FileAccess.WRITE)
  fixture.store_string(JSON.stringify({"version":1,"run":legacy,"chronicle":{"legends":["chain","fire_dash"]},"records":{"wins":7},"settings":{"touch":true}}));fixture.close()
