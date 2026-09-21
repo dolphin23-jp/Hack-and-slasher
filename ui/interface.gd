@@ -325,8 +325,12 @@ func draw_critical_health(p)->void:
  draw_rect(Rect2(0,BASE.y-edge,BASE.x,edge),danger)
  draw_rect(Rect2(0,0,edge,BASE.y),danger)
  draw_rect(Rect2(BASE.x-edge,0,edge,BASE.y),danger)
- var label_color:=Color(RED.r,RED.g,RED.b,.72+pulse*.22)
- text("VITALITY CRITICAL",Vector2(720,749),12,label_color,true,true)
+ var label_color:=Color(RED.r,RED.g,RED.b,.78+pulse*.18)
+ var warning:String="VITALITY CRITICAL"
+ var warning_w:float=body.get_string_size(warning,HORIZONTAL_ALIGNMENT_LEFT,-1,12).x
+ draw_rect(Rect2(720-warning_w/2-12,724,warning_w+24,28),Color(.035,.02,.025,.76))
+ draw_rect(Rect2(720-warning_w/2-12,724,warning_w+24,28),Color(RED.r,RED.g,RED.b,.32),false,1)
+ text(warning,Vector2(720,743),12,label_color,true,true)
 func draw_map(r:Rect2,large:bool)->void:
  panel(r,Color(.04,.075,.11,.96),LINE)
  var world=Rect2(-560,-1670,9500,2590);var size=r.size-Vector2(28,42);var f=minf(size.x/world.size.x,size.y/world.size.y)
