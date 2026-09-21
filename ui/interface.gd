@@ -312,6 +312,25 @@ func draw_hud()->void:
   draw_circle(o,70,Color(.2,.4,.44,.2));draw_arc(o,70,0,TAU,48,Color(.55,.8,.77,.6),2,true)
   draw_circle(o+(touch_point-touch_origin).limit_length(55) if touch_id>=0 else o,25,Color(.65,.88,.81,.45))
   button(Rect2(1223,597,140,65),"STRIKE","attack",true);button(Rect2(1060,671,136,55),"DASH","dash");button(Rect2(1213,681,154,45),"COLLECT","interact")
+ if game.mode=="play":draw_critical_health(p)
+func draw_critical_health(p)->void:
+ var ratio:float=clampf(float(p.hp)/maxf(1.0,float(p.stats.hp)),0.0,1.0)
+ if ratio>=.30:return
+ var severity:float=1.0-ratio/.30
+ var pulse:float=.5+.5*sin(game.elapsed*5.2)
+ var alpha:float=.07+severity*.12+pulse*.035
+ var danger:=Color(RED.r,RED.g,RED.b,alpha)
+ var edge:float=18.0
+ draw_rect(Rect2(0,0,BASE.x,edge),danger)
+ draw_rect(Rect2(0,BASE.y-edge,BASE.x,edge),danger)
+ draw_rect(Rect2(0,0,edge,BASE.y),danger)
+ draw_rect(Rect2(BASE.x-edge,0,edge,BASE.y),danger)
+ var label_color:=Color(RED.r,RED.g,RED.b,.78+pulse*.18)
+ var warning:String="VITALITY CRITICAL"
+ var warning_w:float=body.get_string_size(warning,HORIZONTAL_ALIGNMENT_LEFT,-1,12).x
+ draw_rect(Rect2(720-warning_w/2-12,724,warning_w+24,28),Color(.035,.02,.025,.76))
+ draw_rect(Rect2(720-warning_w/2-12,724,warning_w+24,28),Color(RED.r,RED.g,RED.b,.32),false,1)
+ text(warning,Vector2(720,743),12,label_color,true,true)
 func draw_map(r:Rect2,large:bool)->void:
  panel(r,Color(.04,.075,.11,.96),LINE)
  var world=Rect2(-560,-1670,9500,2590);var size=r.size-Vector2(28,42);var f=minf(size.x/world.size.x,size.y/world.size.y)
