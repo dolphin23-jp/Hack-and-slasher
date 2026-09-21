@@ -158,6 +158,9 @@ func run()->void:
  game.profile.oaths=board;p.active_oaths=board.active.duplicate();p.materials=765;p.combo=2;game.save_run()
  var disk=ProfileStore.new();disk.path=game.profile.path;disk.read_save()
  check("disk save restores board",disk.oaths==board)
+ var vault_item=ItemDB.generate(game.rng,3,2);game.profile.vault=[vault_item];game.profile.write_save()
+ var vault_disk=ProfileStore.new();vault_disk.path=game.profile.path;vault_disk.read_save()
+ check("persistent vault survives disk reload",vault_disk.vault.size()==1 and vault_disk.vault[0].id==vault_item.id)
  check("disk save restores material and chain",disk.run.get("materials")==765 and disk.run.get("combo")==2)
  game.profile.run=disk.run;game.start_run(true)
  check("restart restores full equipment",game.player.equipment==disk.run.equipment)
@@ -176,6 +179,11 @@ func run()->void:
  check("weapon drop compares against best replacement slot",p.item_upgrade_target(comparison)=="weapon2")
  var compare_tags=p.item_comparison(comparison,"weapon2")
  check("item comparison exposes multidimensional signals",compare_tags.size()>0 and not compare_tags.any(func(v):return String(v).contains("%強い")))
+ var shield_plan=game.encounter_plan(game.dungeon.rooms[4],2,6)
+ check("shield-line encounter has a real front line",shield_plan.size()==6 and shield_plan[0].kind=="warden" and shield_plan[1].kind=="warden")
+ check("shield-line encounter protects ranged backline",shield_plan.slice(3).any(func(v):return v.kind in ["cantor","summoner"]))
+ var surround_plan=game.encounter_plan(game.dungeon.rooms[2],1,7)
+ check("surround encounter forms a multi-angle problem",surround_plan.size()==7 and surround_plan.map(func(v):return (v.p-game.dungeon.rooms[2].center).angle()).min()!=surround_plan.map(func(v):return (v.p-game.dungeon.rooms[2].center).angle()).max())
  var v1_path="user://v03-legacy-fixture.json"
  var fixture=FileAccess.open(v1_path,FileAccess.WRITE)
  fixture.store_string(JSON.stringify({"version":1,"run":legacy,"chronicle":{"legends":["chain","fire_dash"]},"records":{"wins":7},"settings":{"touch":true}}));fixture.close()
@@ -212,6 +220,10 @@ func run()->void:
   drop_counts.append(game.drops.filter(func(d):return d.kind=="item").size())
  check("Drop Rate increases actual dropped item count",drop_counts[1]>drop_counts[0]*1.5)
  check("Drop Rate has a finite chance cap",drop_counts[1]<100)
+ clear();p=game.player;game.profile.settings.auto_salvage_rare=true;p.materials=0
+ var auto_item=ItemDB.generate(game.rng,1,1);var auto_drop=game.spawn_drop(p.position+Vector2(10,0),auto_item);var auto_before=p.inventory.size();game.collect(auto_drop)
+ check("auto salvage consumes Rare-or-lower drops without filling inventory",p.inventory.size()==auto_before and p.materials>0 and auto_drop.taken)
+ game.profile.settings.auto_salvage_rare=false
  var jp=load("res://assets/fonts/NotoSansJP-Regular.subset.ttf")
  var missing_glyphs=[]
  for folder in ["actors","data","scripts","systems","ui","world"]:
