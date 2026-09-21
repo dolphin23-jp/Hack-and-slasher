@@ -14,7 +14,7 @@ func clear()->void:
   for node in list.duplicate():node.queue_free()
   list.clear()
  game.hazards.clear();game.delayed_blasts.clear();game.pending_upgrades=0
- game.player.position=Vector2.ZERO;game.player.facing=Vector2.RIGHT;game.player.attack_cd=0;game.player.dash_time=0;game.player.combo=0;game.player.active_oaths=[];game.player.stats.crit=0
+ game.player.position=Vector2.ZERO;game.player.facing=Vector2.RIGHT;game.player.attack_cd=0;game.player.dash_time=0;game.player.combo=0;game.player.combo_expire=0;game.player.last_chain_weapon="";game.player.chain_streak=0;game.player.active_oaths=[];game.player.stats.crit=0
 func weapon(kind:String,slot:String="weapon")->Dictionary:
  var it=ItemDB.generate(game.rng,1,0);it.slot="weapon";it.weapon_type=kind;it.base={"attack":9.0};it.affixes={};game.player.equipment[slot]=it;return it
 func run()->void:
@@ -48,13 +48,20 @@ func run()->void:
  check("magic advantage",DamageModel.multiplier("cantor",["magic"],{})>1)
  p.dash_cd=0;check("dodge cancels any weapon",p.dash() and p.attack_time==0 and p.attack_cd<=.12)
  p.dash_time=0;p.attack_cd=0;check("attack resumes after dodge",p.attack())
- clear();var it=weapon("scythe");it.tier=3;p.rebuild_stats();foe(Vector2(70,0));foe(Vector2(-70,0));p.attack()
- check("T3 multi hit grants shield",p.barrier>0)
+ clear();var it=weapon("scythe");it.tier=3;p.rebuild_stats();var s1=foe(Vector2(70,0));var s2=foe(Vector2(-70,0));var s3=foe(Vector2(0,85));p.attack()
+ var t3_scythe_damage=(10000-s1.hp)+(10000-s2.hp)+(10000-s3.hp)
+ clear();it=weapon("scythe");it.tier=1;p.rebuild_stats();s1=foe(Vector2(70,0));s2=foe(Vector2(-70,0));s3=foe(Vector2(0,85));p.attack()
+ var t1_scythe_damage=(10000-s1.hp)+(10000-s2.hp)+(10000-s3.hp)
+ check("T3 scythe rewards crowd hits with bonus rotation",t3_scythe_damage>t1_scythe_damage*1.3)
  clear();it=weapon("scythe");it.tier=4;p.rebuild_stats();var e=foe(Vector2(90,0));p.attack()
  check("T4 scythe attracts",e.velocity.x<0)
+ clear();it=weapon("staff");it.tier=4;p.rebuild_stats();p.attack()
+ check("T4 staff gains a real wall bounce",not game.projectiles.is_empty() and game.projectiles[0].bounces==1)
  clear();it=weapon("scythe","weapon3");it.tier=5;p.rebuild_stats();p.combo=2;e=foe(Vector2(90,0));p.attack();var tier_damage=10000-e.hp
  clear();it.tier=1;p.combo=2;e=foe(Vector2(90,0));p.attack()
  check("T5 third slot adds a strike",tier_damage>(10000-e.hp)*1.8)
+ clear();it=weapon("fist","weapon3");it.tier=5;p.rebuild_stats();p.combo=2;var rear=foe(Vector2(-90,0));p.attack()
+ check("T5 fist finisher hits around the player",rear.hp<10000)
  var values=[]
  for r in range(5):
   var low=INF;var high=0.0
@@ -65,6 +72,12 @@ func run()->void:
    values.append(item.base)
   check("rarity roll bounds "+str(r),low>0 and high>low)
  check("random roll diversity",values[0]!=values[1])
+ var weighted_rng=RandomNumberGenerator.new();weighted_rng.seed=771;var spear_pierce=0;var spear_blunt=0;var head_crit=0;var head_material=0;var affix_keys=ItemDB.AFFIXES.keys()
+ for i in range(2000):
+  var wk=ItemDB.pick_affix(weighted_rng,affix_keys,"weapon","spear");spear_pierce+=1 if wk=="pierce" else 0;spear_blunt+=1 if wk=="blunt" else 0
+  var hk=ItemDB.pick_affix(weighted_rng,affix_keys,"head","sword");head_crit+=1 if hk=="crit" else 0;head_material+=1 if hk=="material_find" else 0
+ check("spear affixes strongly favor pierce over off-type blunt",spear_pierce>spear_blunt*8)
+ check("head affixes favor combat identity over material find",head_crit>head_material*4)
  clear();it=weapon("sword");p.materials=100000;p.inventory=[]
  for i in range(10):Forge.apply(p,it,"enhance")
  check("enhance reaches +10",it.enhance==10)
@@ -72,9 +85,10 @@ func run()->void:
  var donor=it.duplicate(true);donor.id="donor";donor.enhance=0;p.inventory.append(donor)
  Forge.apply(p,it,"fuse");check("fusion consumes compatible donor",p.inventory.is_empty() and it.fusion>0)
  Forge.apply(p,it,"tier");check("tier unlock consumes progress",it.tier==2 and it.fusion==0)
- it.affixes={"crit":.1};Forge.apply(p,it,"evolve","crit")
+ it.affixes={"crit":.1,"hp":15.0};it.rolls.crit=[.08,.12];it.rolls.hp=[10.0,20.0];var grade_ratio=ItemDB.GRADES[1]/ItemDB.GRADES[0];Forge.apply(p,it,"evolve","crit")
  check("grade evolution resets enhancement",it.grade==2 and it.enhance==0)
- check("chosen affix inherited",is_equal_approx(it.affixes.crit,.108) and it.inherited=="crit")
+ check("chosen affix inherited after grade remap",is_equal_approx(it.affixes.crit,.1*grade_ratio*1.08) and it.inherited=="crit")
+ check("unchosen affix keeps roll percentile",is_equal_approx(it.affixes.hp,15.0*grade_ratio) and is_equal_approx(it.rolls.hp[0],10.0*grade_ratio) and is_equal_approx(it.rolls.hp[1],20.0*grade_ratio))
  var before=p.materials;donor.locked=true;p.inventory=[donor];game.salvage(0)
  check("lock protects salvage",p.inventory.size()==1 and p.materials==before)
  donor.locked=false;game.salvage(0)
@@ -165,6 +179,10 @@ func run()->void:
  check("legacy current Run keeps elemental build",old_build.run.active_oaths[0]=="flame")
  var stat_item=ItemDB.initial_items().armor;stat_item.tier=4
  check("armor T4 grants functional fatal resistance",Loadout.equipped_stats(stat_item).get("fatal_resist",0)>0)
+ var head_item=ItemDB.initial_items().head;head_item.tier=4;var head_stats=Loadout.equipped_stats(head_item)
+ check("head tiers follow offensive utility path",head_stats.get("crit",0)>0 and head_stats.get("cdr",0)>0 and head_stats.get("fatal_resist",0)==0)
+ var feet_item=ItemDB.initial_items().feet;feet_item.tier=4;var feet_stats=Loadout.equipped_stats(feet_item)
+ check("feet tiers follow mobility path",feet_stats.get("speed",0)>0 and feet_stats.get("dodge_cdr",0)>0 and feet_stats.get("dodge_distance",0)>0)
  var drop_counts=[]
  for bonus in [0.0,2.0]:
   clear();p=game.player;p.stats.drop_rate=bonus;p.stats.material_find=0;p.level=99;p.xp=0;game.rng.seed=4401
