@@ -119,6 +119,12 @@ func _run() -> void:
 	await _click(Vector2(280, 294))
 	_expect("Sort Pack puts legendary before rare and common", int(game.player.inventory[0].rarity) == 3 and int(game.player.inventory[1].rarity) == 2 and int(game.player.inventory[2].rarity) == 0)
 	await _shot("06b_inventory_sorted")
+	await _click(Vector2(375, 294))
+	_expect("inventory filter cycles by click", game.ui.reliquary.filter_mode == 1)
+	await _click(Vector2(530, 294))
+	_expect("auto salvage condition cycles by click", float(game.profile.settings.get("auto_salvage", 0)) > .2)
+	game.ui.reliquary.filter_mode = 0
+	await _shot("06c_inventory_management")
 	await _click(Vector2(71, 356))
 	_expect("inventory item click selects first item", game.ui.selected == 0)
 	var slot: String = game.player.inventory[0].slot
@@ -129,6 +135,17 @@ func _run() -> void:
 	var pad_equipped_id: String = game.player.equipment[slot].id
 	await _joy(JOY_BUTTON_X)
 	_expect("gamepad X equips selected inventory item directly", game.player.equipment[slot].id != pad_equipped_id)
+	var vault_before := game.profile.vault.size()
+	await _click(Vector2(1290, 770))
+	_expect("selected relic stores in persistent vault by click", game.profile.vault.size() == vault_before + 1)
+	await _click(Vector2(855, 48))
+	_expect("vault tab opens by click", game.ui.reliquary.tab == "storage")
+	await _shot("07b_vault")
+	await _click(Vector2(71, 356))
+	await _click(Vector2(900, 772))
+	_expect("vault relic restores to carried inventory", game.profile.vault.size() == vault_before)
+	await _click(Vector2(1010, 48))
+	_expect("equipment tab returns from vault", game.ui.reliquary.tab == "equipment")
 	await _click(Vector2(1305, 61))
 	_expect("inventory return click", game.mode == "play")
 
