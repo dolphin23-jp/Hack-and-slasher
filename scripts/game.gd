@@ -127,7 +127,7 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
  if ascend and is_instance_valid(player) and player.inventory.size()>80:
   toast("所持品を80個以下に整理してから次へ進んでください。");return
  var carry={}
- if ascend and is_instance_valid(player):carry={"materials":player.materials,"active_oaths":player.active_oaths.duplicate(),"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"level":player.level,"upgrades":player.upgrades.duplicate(true),"ascension":ascension+1}
+ if ascend and is_instance_valid(player):carry={"materials":player.materials,"active_oaths":player.active_oaths.duplicate(),"oath_board":player.oath_board.duplicate(true),"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"level":player.level,"upgrades":player.upgrades.duplicate(true),"ascension":ascension+1}
  clear_world();rng.randomize();run_seed=20260920 if OS.get_cmdline_user_args().has("--campaign") else rng.randi();rng.seed=run_seed
  elapsed=0;kills=0;ascension=0
  if resume and profile.valid_run(profile.run):run_seed=int(profile.run.seed)
@@ -138,7 +138,7 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
  player=PlayerScript.new();add_child(player);player.setup(self);player.position=Vector2(-240,0)
  camera=Camera2D.new();camera.position=player.position;add_child(camera);camera.make_current()
  if resume and profile.valid_run(profile.run):
-  var s=profile.run;player.materials=int(s.get("materials",0));player.active_oaths=OathBoard.sanitize({"active":s.get("active_oaths",profile.oaths.active)}).active;player.combo=clampi(int(s.get("combo",0)),0,3);player.equipment=s.equipment.duplicate(true);player.inventory=s.inventory.duplicate(true)
+  var s=profile.run;player.materials=int(s.get("materials",0));player.oath_board=OathBoard.sanitize(s.get("oath_board",profile.oaths));player.active_oaths=OathBoard.sanitize({"active":s.get("active_oaths",player.oath_board.active)}).active;player.combo=clampi(int(s.get("combo",0)),0,3);player.equipment=s.equipment.duplicate(true);player.inventory=s.inventory.duplicate(true)
   player.level=int(s.level);player.xp=int(s.xp);player.upgrades=WeaponActionResolver.migrate_upgrades(s.upgrades);player.finisher_charge=int(s.get("finisher_charge",0));player.cooldowns=s.get("skill_cooldowns",[0.0,0.0,0.0]).duplicate();player.potions=int(s.potions)
   player.rebuild_stats();player.hp=clampf(s.hp,1,player.stats.hp)
   dungeon.cleared=s.cleared.duplicate();dungeon.visited=s.get("visited",dungeon.cleared).duplicate()
@@ -154,7 +154,7 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
   for record in s.get("drops",[]):
    var d=DropScript.new();add_child(d);d.setup(self,Vector2(record.position[0],record.position[1]),record.item.duplicate(true),record.kind);d.age=1;d.z_index=1400;drops.append(d)
  elif not carry.is_empty():
-  player.materials=carry.materials;player.active_oaths=carry.active_oaths;player.equipment=carry.equipment;player.inventory=carry.inventory;player.level=carry.level;player.upgrades=carry.upgrades;ascension=carry.ascension;player.rebuild_stats();player.hp=player.stats.hp
+  player.materials=carry.materials;player.oath_board=carry.oath_board.duplicate(true);player.active_oaths=carry.active_oaths;player.equipment=carry.equipment;player.inventory=carry.inventory;player.level=carry.level;player.upgrades=carry.upgrades;ascension=carry.ascension;player.rebuild_stats();player.hp=player.stats.hp
  else:
   profile.records.runs+=1
   match profile.chronicle.start:
@@ -529,7 +529,7 @@ func run_snapshot(victory_ready:bool=false)->Dictionary:
  if not victory_ready:
   for d in drops:
    if not d.taken and d.kind!="health":saved_drops.append({"kind":d.kind,"item":d.item.duplicate(true),"position":[d.position.x,d.position.y]})
- return {"finisher_charge":player.finisher_charge,"skill_cooldowns":player.cooldowns.duplicate(),"materials":player.materials,"active_oaths":player.active_oaths.duplicate(),"combo":player.combo,"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades,"victory_ready":victory_ready,"metrics":metrics.duplicate(true),"world_version":dungeon.layout_version,"event_choices":event_choices.duplicate(true),"loot_favor":loot_favor}
+ return {"finisher_charge":player.finisher_charge,"skill_cooldowns":player.cooldowns.duplicate(),"materials":player.materials,"active_oaths":player.active_oaths.duplicate(),"oath_board":player.oath_board.duplicate(true),"combo":player.combo,"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades,"victory_ready":victory_ready,"metrics":metrics.duplicate(true),"world_version":dungeon.layout_version,"event_choices":event_choices.duplicate(true),"loot_favor":loot_favor}
 func finish_run()->void:
  victory_pending=false;mode="victory"
  if 9 not in dungeon.cleared:dungeon.cleared.append(9)
