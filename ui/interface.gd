@@ -48,10 +48,13 @@ func touch_rect(r:Rect2)->Rect2:
 func _ready()->void:
  mouse_filter=Control.MOUSE_FILTER_IGNORE
  var jp_path="res://assets/fonts/NotoSansJP-Regular.subset.ttf"
+ var extra_path="res://assets/fonts/NotoSansJP-Extra.ttf"
  if ResourceLoader.exists(jp_path):
   japanese_font=load(jp_path)
-  body.fallbacks=[japanese_font]
-  heading.fallbacks=[japanese_font]
+  var fallbacks=[japanese_font]
+  if ResourceLoader.exists(extra_path):fallbacks.append(load(extra_path))
+  body.fallbacks=fallbacks
+  heading.fallbacks=fallbacks
  for name in ["sword","armor","accessory","cleave","nova","bolt","dash","potion","crest","chest","flame","chain","crit"]:icons[name]=load("res://assets/icons/"+name+".svg")
 func layout_scale()->float:
  var size=get_viewport_rect().size
