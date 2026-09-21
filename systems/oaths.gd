@@ -260,4 +260,4 @@ static func apply_preset(board:Dictionary,preset:Dictionary)->String:
  var total=total_points(board);var needed=preset_cost(clean)
  if needed>total:return "誓片が不足しています / 必要 %d / 保有 %d"%[needed,total]
  board.active=clean.active.duplicate();board.nodes=clean.nodes.duplicate();board.points=total-needed
- return "Preset読込 / "+String(clean.name)
+ return "Preset LOAD / "+String(clean.name)
