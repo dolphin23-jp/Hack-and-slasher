@@ -11,22 +11,22 @@ const TYPES={
  "spellblade":{"name":"魔刃","shape":"wave","types":["slash","magic"],"reach":380.0,"arc":1.1,"damage":1.3,"knock":190.0,"cooldown":.25,"hits":1}}
 const NAMES={"sword":["ボロの剣","青銅の剣","鉄の剣","鋼の剣","ミスリルの剣","星銀の剣"],"scythe":["欠けた鎌","墓守の鎌","黒鉄の鎌","月弧の鎌","霊樹の大鎌","星を刈る鎌"],"spear":["折れた槍","狩人の槍","鉄翼の槍","城塞の槍","白金の槍","天穿つ槍"],"staff":["枯枝の杖","巡礼の杖","水晶の杖","賢者の杖","月樹の杖","星詠みの杖"],"fist":["古い籠手","革巻の拳","鉄拳","鋼拳","聖銀の拳","流星の拳"],"mace":["朽ちた棍","青銅の棍","鉄のメイス","破城の槌","聖堂の槌","星砕き"],"spellblade":["鈍い魔刃","刻印の魔刃","霊鉄の魔刃","月影の魔刃","虚空の魔刃","黎明の魔刃"]}
 const ATTRIBUTES={"slash":"斬撃","blunt":"打撃","pierce":"貫撃","magic":"魔撃"}
-const TIERS=["基礎性能","攻撃範囲 +15% / 防具は障壁回復","武器固有の中核能力 / 防具は回復強化","武器固有の制圧能力 / 防具は致命撃耐性","武器固有フィニッシュ / 防具はチェイン障壁"]
+const TIERS=["基礎性能","攻撃範囲 +15% / 防具は障壁回復","武器固有の中心能力 / 防具は回復強化","武器固有の攻撃能力 / 防具は致命撃耐性","武器固有の3段目 / 防具はチェイン障壁"]
 const ARMOR_TIER_TEXT={
- "head":["基礎性能","クリティカル率","スキル威力","クールダウン短縮","魔撃フィニッシュ支援"],
+ "head":["基礎性能","クリティカル率","スキル威力","クールダウン短縮","魔撃3段目支援"],
  "armor":["基礎性能","障壁回復","最大生命","致命撃耐性","3連携で障壁獲得"],
  "hands":["基礎性能","攻撃速度","クリティカル率","怯ませ性能","3連携で衝撃波"],
  "feet":["基礎性能","移動速度","回避短縮","押出耐性","3連携で回避再使用短縮"],
- "accessory":["基礎性能","スキル威力","クールダウン短縮","クリティカル威力","遷移攻撃を増幅"],
+ "accessory":["基礎性能","スキル威力","クールダウン短縮","クリティカル威力","連携攻撃を増幅"],
  "accessory2":["基礎性能","回復補正","希少品発見","素材発見","3連携で小回復"]}
 const TIER_TEXT_BY_WEAPON={
- "sword":["基礎性能","間合い +15%","複数命中で障壁","強ノックバックで前線維持","3番目に追い斬り"],
- "scythe":["基礎性能","回転半径 +15%","3体以上を巻き込むと追い薙ぎ","命中敵を中心へ引き寄せ","3番目に追加回転"],
- "spear":["基礎性能","刺突距離 +15%","2体目以降への威力 +20%","直線制圧と強ノックバック","3番目に側方貫通波"],
+ "sword":["基礎性能","間合い +15%","複数命中で障壁","強ノックバックで前線を守る","3番目に追い斬り"],
+ "scythe":["基礎性能","回転半径 +15%","3体以上で追い薙ぎ","命中敵を中心へ引き寄せ","3番目に追加回転"],
+ "spear":["基礎性能","貫撃距離 +15%","2体目以降への威力 +20%","直線攻撃と強ノックバック","3番目に側方貫通波"],
  "staff":["基礎性能","射程 +15%","魔力弾が壁で1回反射","貫通数増加","3番目に三方向魔撃"],
- "fist":["基礎性能","踏み込み間合い +15%","連打命中で障壁","怯ませ性能を強化","3番目に周囲打撃"],
- "mace":["基礎性能","打撃範囲 +15%","複数命中で強障壁","盾持ちを強く崩す","3番目に震撃波"],
- "spellblade":["基礎性能","魔刃射程 +15%","貫通命中で障壁","貫通数増加","3番目に遅延魔爆"]}
+ "fist":["基礎性能","前進間合い +15%","連打命中で障壁","怯ませ性能を強化","3番目に周囲打撃"],
+ "mace":["基礎性能","打撃範囲 +15%","複数命中で強障壁","盾持ちを強く崩す","3番目に衝撃波"],
+ "spellblade":["基礎性能","魔刃射程 +15%","貫通命中で障壁","貫通数増加","3番目に後追い魔爆"]}
 static func get_weapon(item:Dictionary)->Dictionary:return TYPES.get(item.get("weapon_type","sword"),TYPES.sword)
 static func type_name(item:Dictionary)->String:return get_weapon(item).name
 static func attributes(item:Dictionary)->String:
@@ -41,7 +41,7 @@ static func transition(from_item:Dictionary,to_item:Dictionary)->Dictionary:
  var a=primary_type(from_item);var b=primary_type(to_item)
  if a=="slash" and b=="blunt":return {"id":"sunder","name":"断甲","damage":1.08,"guard":1.28,"knock":1.18}
  if a=="blunt" and b=="pierce":return {"id":"breach","name":"砕穿","damage":1.20,"guard":1.12,"knock":1.0}
- if a=="magic" and b=="slash":return {"id":"spell_edge","name":"魔纏斬","damage":1.16,"guard":1.0,"knock":1.0}
+ if a=="magic" and b=="slash":return {"id":"spell_edge","name":"魔刃斬","damage":1.16,"guard":1.0,"knock":1.0}
  if from_item.get("weapon_type","")== "scythe" and to_item.get("weapon_type","")=="staff":return {"id":"reap_cast","name":"収束魔撃","damage":1.12,"guard":1.0,"knock":1.0}
  return {"id":"","name":"","damage":1.0,"guard":1.0,"knock":1.0}
 static func same_family_chain(equipment:Dictionary)->bool:
