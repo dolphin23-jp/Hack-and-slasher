@@ -12,8 +12,7 @@ const UPGRADE_POOL=[
  {"name":"生命の木","detail":"+42 最大生命。即座に生命を30%回復。","icon":"armor","key":"hp","value":42.0},
  {"name":"処刑人","detail":"+8% クリティカル率、+20% クリティカル威力。","icon":"crit","key":"crit","value":.08},
  {"name":"加速","detail":"+9% クールダウン短縮。全スキルを早く再使用できる。","icon":"dash","key":"cdr","value":.09},
- {"name":"冷たい太陽","detail":"ソウルノヴァの範囲 +45。スキル威力 +20%。","icon":"nova","key":"nova_radius","value":45.0},
- {"name":"分かれた誓い","detail":"スピリットランスが追加で2本の貫通弾を放つ。","icon":"bolt","key":"spear_count","value":1.0},
+ {"name":"冷たい太陽","detail":"連携技・奥義の鎌とメイスの範囲 +45。スキル威力 +20%。","icon":"nova","key":"chain_radius","value":45.0,"max":90.0},
  {"name":"魂狩り","detail":"敵を倒すたび生命を2回復。","icon":"potion","key":"leech","value":2.0},
  {"name":"鋼の誓い","detail":"+9 攻撃力。剣と3つの攻撃スキルを強化。","icon":"cleave","key":"attack","value":9.0},
  {"name":"旅人","detail":"+10% 移動速度、+10 防御力。","icon":"dash","key":"speed","value":.1}]
@@ -140,7 +139,7 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
  camera=Camera2D.new();camera.position=player.position;add_child(camera);camera.make_current()
  if resume and profile.valid_run(profile.run):
   var s=profile.run;player.materials=int(s.get("materials",0));player.active_oaths=OathBoard.sanitize({"active":s.get("active_oaths",profile.oaths.active)}).active;player.combo=clampi(int(s.get("combo",0)),0,3);player.equipment=s.equipment.duplicate(true);player.inventory=s.inventory.duplicate(true)
-  player.level=int(s.level);player.xp=int(s.xp);player.upgrades=s.upgrades.duplicate(true);player.potions=int(s.potions)
+  player.level=int(s.level);player.xp=int(s.xp);player.upgrades=WeaponActionResolver.migrate_upgrades(s.upgrades);player.finisher_charge=int(s.get("finisher_charge",0));player.cooldowns=s.get("skill_cooldowns",[0.0,0.0,0.0]).duplicate();player.potions=int(s.potions)
   player.rebuild_stats();player.hp=clampf(s.hp,1,player.stats.hp)
   dungeon.cleared=s.cleared.duplicate();dungeon.visited=s.get("visited",dungeon.cleared).duplicate()
   run_seed=int(s.seed);rng.seed=run_seed;ascension=int(s.ascension);kills=int(s.kills);elapsed=float(s.elapsed)
@@ -160,7 +159,7 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
   profile.records.runs+=1
   match profile.chronicle.start:
    "lance":
-    if "first_clear" in profile.chronicle.achievements:player.upgrades.lance_fan=1;player.upgrades.haste=-.1
+    if "first_clear" in profile.chronicle.achievements:player.equipment.weapon.weapon_type="spear";player.upgrades.art_power=.18;player.upgrades.haste=-.1
    "ember":
     if "collector" in profile.chronicle.achievements:player.upgrades.ember_start=1;player.upgrades.hp=-15
   player.rebuild_stats();player.hp=player.stats.hp
@@ -465,7 +464,7 @@ func spawn_chest(p:Vector2,tier:int,gilded:bool)->void:
  var d=DropScript.new();add_child(d);d.setup(self,p,{"tier":tier,"gilded":gilded},"chest");d.z_index=1400;drops.append(d)
 func collect(d)->bool:
  if d.taken or d.kind!="item":return false
- if profile.settings.get("auto_salvage_rare",false) and int(d.item.rarity)<=1:
+ if profile.settings.get("auto_salvage_rare",false) and SalvagePolicy.matches(d.item,profile.settings.get("salvage_rules",{})):
   player.materials+=Forge.yield_for(d.item,player.stats);metrics.pickups+=1;sound.play("equip",.45);toast("自動分解: "+d.item.name);d.take();save_run();return true
  if player.inventory.size()>=80:
   if toast_time<.3:toast("所持品が満杯です。[I] フィルタ・保管庫・分解で整理してください。")
@@ -497,24 +496,21 @@ func salvage(i:int)->void:
  toast("分解素材を獲得し、少し生命を回復しました。");ui.selected=clampi(ui.selected,0,maxi(0,player.inventory.size()-1));save_run()
 func prepare_upgrade()->void:
  upgrade_choices.clear();var pool=UPGRADE_POOL.duplicate(true)
- pool=pool.filter(func(c):return c.key!="spear_count")
  var chain_pool=BuildDB.chain_choices(player.equipment,player.upgrades)
  if not chain_pool.is_empty():upgrade_choices.append(chain_pool.pop_at(rng.randi_range(0,chain_pool.size()-1)))
  pool.append_array(chain_pool)
  var branches=BuildDB.available(player.upgrades,profile.chronicle.achievements)
  pool.append_array(branches)
  for i in range(pool.size()-1,-1,-1):
-  if pool[i].key=="spear_count" and player.upgrades.get("spear_count",0)>0:pool.remove_at(i)
-  elif pool[i].key=="cdr" and player.stats.cdr>=.52:pool.remove_at(i)
+  if pool[i].key=="cdr" and player.stats.cdr>=.52:pool.remove_at(i)
   elif player.upgrades.get(pool[i].key,0)>=pool[i].get("max",99):pool.remove_at(i)
  while upgrade_choices.size()<3 and not pool.is_empty():upgrade_choices.append(pool.pop_at(rng.randi_range(0,pool.size()-1)))
  mode="upgrade";ui.reset_touch()
 func choose_upgrade(i:int)->void:
  if mode!="upgrade" or i<0 or i>=upgrade_choices.size():return
  var c=upgrade_choices[i]
- if c.get("family","")=="lance" and not BuildDB.lance_key(player.upgrades).is_empty():return
  player.upgrades[c.key]=player.upgrades.get(c.key,0)+c.value
- for pair in [["crit","crit_damage",.2],["nova_radius","skill",.2],["speed","armor",10]]:
+ for pair in [["crit","crit_damage",.2],["chain_radius","skill",.2],["speed","armor",10]]:
   if c.key==pair[0]:player.upgrades[pair[1]]=player.upgrades.get(pair[1],0)+pair[2]
  player.rebuild_stats();player.heal(player.stats.hp*.3);pending_upgrades=maxi(0,pending_upgrades-1);mode="play";sound.play("equip");toast("誓いを選択 / "+c.name);save_run()
 func toggle_inventory()->void:
@@ -533,7 +529,7 @@ func run_snapshot(victory_ready:bool=false)->Dictionary:
  if not victory_ready:
   for d in drops:
    if not d.taken and d.kind!="health":saved_drops.append({"kind":d.kind,"item":d.item.duplicate(true),"position":[d.position.x,d.position.y]})
- return {"materials":player.materials,"active_oaths":player.active_oaths.duplicate(),"combo":player.combo,"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades,"victory_ready":victory_ready,"metrics":metrics.duplicate(true),"world_version":dungeon.layout_version,"event_choices":event_choices.duplicate(true),"loot_favor":loot_favor}
+ return {"finisher_charge":player.finisher_charge,"skill_cooldowns":player.cooldowns.duplicate(),"materials":player.materials,"active_oaths":player.active_oaths.duplicate(),"combo":player.combo,"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades,"victory_ready":victory_ready,"metrics":metrics.duplicate(true),"world_version":dungeon.layout_version,"event_choices":event_choices.duplicate(true),"loot_favor":loot_favor}
 func finish_run()->void:
  victory_pending=false;mode="victory"
  if 9 not in dungeon.cleared:dungeon.cleared.append(9)

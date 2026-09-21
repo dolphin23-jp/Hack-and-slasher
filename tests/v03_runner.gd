@@ -83,7 +83,7 @@ func run()->void:
  check("enhance reaches +10",it.enhance==10)
  for grade in range(5):check("old max slightly exceeds next base "+str(grade),ItemDB.GRADES[grade]*1.3>ItemDB.GRADES[grade+1] and ItemDB.GRADES[grade]*1.3<ItemDB.GRADES[grade+1]*1.06)
  var donor=it.duplicate(true);donor.id="donor";donor.enhance=0;p.inventory.append(donor)
- Forge.apply(p,it,"fuse");check("fusion consumes compatible donor",p.inventory.is_empty() and it.fusion>0)
+ Forge.apply(p,it,"fuse","",p.inventory[0].duplicate(true));check("fusion consumes compatible donor",p.inventory.is_empty() and it.fusion>0)
  Forge.apply(p,it,"tier");check("tier unlock consumes progress",it.tier==2 and it.fusion==0)
  it.affixes={"crit":.1,"hp":15.0};it.rolls.crit=[.08,.12];it.rolls.hp=[10.0,20.0];var grade_ratio=ItemDB.GRADES[1]/ItemDB.GRADES[0];Forge.apply(p,it,"evolve","crit")
  check("grade evolution resets enhancement",it.grade==2 and it.enhance==0)
@@ -222,7 +222,7 @@ func run()->void:
   drop_counts.append(game.drops.filter(func(d):return d.kind=="item").size())
  check("Drop Rate increases actual dropped item count",drop_counts[1]>drop_counts[0]*1.5)
  check("Drop Rate has a finite chance cap",drop_counts[1]<100)
- clear();p=game.player;game.profile.settings.auto_salvage_rare=true;p.materials=0
+ clear();p=game.player;game.profile.settings.auto_salvage_rare=true;game.profile.settings.salvage_rules={"quality":1.01,"tier":5,"grade":6};p.materials=0
  var auto_item=ItemDB.generate(game.rng,1,1);var auto_drop=game.spawn_drop(p.position+Vector2(10,0),auto_item);var auto_before=p.inventory.size();game.collect(auto_drop)
  check("auto salvage consumes Rare-or-lower drops without filling inventory",p.inventory.size()==auto_before and p.materials>0 and auto_drop.taken)
  game.profile.settings.auto_salvage_rare=false

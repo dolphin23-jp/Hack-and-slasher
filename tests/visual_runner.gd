@@ -356,6 +356,65 @@ func _run() -> void:
 	_expect("vault tab opens after storing an item",game.ui.reliquary.tab=="vault")
 	await _shot("34_vault_ipad")
 
+	# Skill 2.0 controls on the same iPad touch layout used above.
+	game.mode = "play"
+	game.set_physics_process(false)
+	game.player.skill_actions.clear()
+	game.player.cooldowns = [0.0, 0.0, 0.0]
+	game.player.finisher_charge = WeaponActionResolver.FINISHER_COST
+	game.player.dash_time = 0
+	game.player.dead = false
+	for j in range(3):game.player.equipment[Loadout.WEAPONS[j]].weapon_type = ["scythe", "staff", "spear"][j]
+	game.player.combo = 1
+	await _shot("35_skill_ready_ipad")
+	await _click(Vector2(523, 809))
+	_expect("E button starts loadout chain", game.player.cooldowns[1]>0 and game.player.skill_actions.size()==2)
+	WeaponActionResolver.tick(game.player, .4)
+	await _shot("36_chain_cast_ipad")
+	await _click(Vector2(640, 809))
+	_expect("R button consumes ready finisher", game.player.finisher_charge==0 and game.player.cooldowns[2]>0)
+	await _shot("37_finisher_ipad")
+	game.mode = "inventory"
+	game.ui.reliquary.tab = "equipment"
+	game.ui.reliquary.focus_detail = false
+	await _shot("38_skill_recipes_ipad")
+
+	# Explicit fusion donor review and rule editor on iPad-sized controls.
+	var donor = game.player.equipment.weapon.duplicate(true)
+	donor.id = "visual-fusion-donor"
+	donor.locked = false
+	donor.favorite = false
+	var valuable = donor.duplicate(true)
+	valuable.id = "visual-keep-donor"
+	valuable.name = "保持する装備"
+	game.player.inventory = [donor, valuable]
+	game.ui.reliquary.forge_slot = "weapon"
+	var fusion_before = game.player.equipment.weapon.fusion
+	await _click(Vector2(1180, 48))
+	await _click(Vector2(1100, 442))
+	_expect("fusion opens donor selector without consuming", game.ui.reliquary.forge_screen.opened and game.player.inventory.size()==2)
+	await _shot("39_fusion_candidates_ipad")
+	await _click(Vector2(330, 188))
+	await _click(Vector2(1050, 780))
+	_expect("fusion preview preserves inventory", not game.ui.reliquary.forge_screen.pending.is_empty() and game.player.inventory.size()==2)
+	await _shot("40_fusion_confirm_ipad")
+	await _click(Vector2(930, 815))
+	_expect("fusion consumes only reviewed donor", game.player.inventory.size()==1 and game.player.inventory[0].id==valuable.id and game.player.equipment.weapon.fusion>fusion_before)
+	await _click(Vector2(1020, 48))
+	await _click(Vector2(140, 678))
+	_expect("auto salvage opens rule editor", game.ui.reliquary.salvage_screen.opened)
+	await _shot("41_salvage_rules_ipad")
+	var enabled_before = game.profile.settings.get("auto_salvage_rare", false)
+	await _click(Vector2(340, 195))
+	_expect("rule editor toggle changes enabled state", game.profile.settings.auto_salvage_rare!=enabled_before)
+	await _click(Vector2(1260, 55))
+	game.player.inventory[0].junk = true
+	await _click(Vector2(485, 295))
+	_expect("bulk junk opens confirmation without consuming", game.ui.reliquary.salvage_screen.bulk and game.player.inventory.size()==1)
+	await _shot("42_junk_confirm_ipad")
+	await _click(Vector2(1000, 810))
+	_expect("bulk confirm removes reviewed junk", game.player.inventory.is_empty())
+
 	var summary := "VISUAL_SMOKE shots=%d failures=%d\n" % [shots, failures.size()]
 	for failure in failures:
 		summary += "FAIL: " + failure + "\n"

@@ -2,7 +2,7 @@ class_name OathBoard
 extends RefCounted
 const PATHS={
  "dance":{"name":"戦舞","stats":{"haste":.12,"crit":.04,"stagger":.2},"effects":["echo","reaper"],"text":"連撃と霊刃。主誓印で3段目に追撃。"},
- "arcane":{"name":"秘術","stats":{"magic":.2,"skill":.18,"cdr":.06},"effects":["lance_fork","lance_return"],"text":"貫通魔撃。主誓印でランスが帰還。"},
+ "arcane":{"name":"秘術","stats":{"magic":.2,"skill":.18,"cdr":.06},"effects":["lance_fork","lance_return"],"text":"貫通魔撃。主誓印で槍・杖の武技弾が帰還。"},
  "fortress":{"name":"城塞","stats":{"hp":35,"armor":12,"shield_max":25,"shield_regen":3,"fatal_resist":.2},"effects":["echo_guard","dash_nova"],"text":"障壁と致命撃耐性。主誓印で回避衝撃。"},
  "flame":{"name":"紅蓮","stats":{"skill":.1,"healing":.1},"effects":["ash_edge","fire_dash","crit_blast","phoenix","ember_nova"],"text":"通常攻撃で炎上。主誓印で炎の回避・爆発。"},
  "storm":{"name":"雷霆","stats":{"haste":.08,"pierce":.12},"effects":["chain","storm_guard","conductor"],"text":"撃破で連鎖雷。主誓印で見切り雷撃。"},

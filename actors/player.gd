@@ -16,6 +16,13 @@ var xp=0
 var hp=150.0
 var potions=3
 var cooldowns=[0.0,0.0,0.0]
+var finisher_charge=0
+var skill_actions=[]
+var normal_serial=0
+var normal_group=0
+var normal_groups={}
+var last_mace_impact=Vector2.ZERO
+var last_mace_time=-10.0
 var dash_cd=0.0
 var dash_time=0.0
 var attack_cd=0.0
@@ -110,16 +117,14 @@ func build_score(loadout:Dictionary=equipment)->float:
     if has_magic:score+=dps*.12
  return score
 func chain_affinity(loadout:Dictionary)->float:
- var kinds=[];var attrs=[];var score=0.0
+ var kinds=[];var score=0.0
  for slot in Loadout.WEAPONS:
   var kind=String(loadout[slot].get("weapon_type","sword"));kinds.append(kind)
-  var attr=String(WeaponDB.get_weapon(loadout[slot]).types[0])
-  if attr not in attrs:attrs.append(attr)
  for i in range(3):
   var previous=String(kinds[i]);var current=String(kinds[(i+1)%3])
   var profile=CombatChain.transition_profile(previous,current,kinds,2,true)
-  if float(profile.damage)>1.001 or float(profile.reach)>1.001 or float(profile.knock)>1.001:score+=1
- if attrs.size()==3:score+=1.5
+  if not profile.recipes.is_empty():score+=1
+ if ChainResolver.triune(kinds):score+=1.5
  if kinds[0]==kinds[1] and kinds[1]==kinds[2]:score+=1.25
  return score
 func item_comparison(item:Dictionary,target:String="")->Array:
@@ -196,6 +201,7 @@ func tick(dt:float)->void:
  barrier_time=maxf(0,barrier_time-dt)
  if barrier_time<=0:barrier=minf(barrier,stats.shield_max)
  barrier=minf(maxf(barrier,0)+stats.shield_regen*dt,maxf(barrier,stats.shield_max))
+ WeaponActionResolver.tick(self,dt)
  for i in range(3):cooldowns[i]=maxf(0,cooldowns[i]-dt)
  dash_cd=maxf(0,dash_cd-dt);attack_cd=maxf(0,attack_cd-dt);invulnerable=maxf(0,invulnerable-dt);flash=maxf(0,flash-dt)
  crit_blast_cd=maxf(0,crit_blast_cd-dt);attack_time=maxf(0,attack_time-dt);combo_expire=maxf(0,combo_expire-dt)
@@ -235,7 +241,7 @@ func tick(dt:float)->void:
 func attack()->bool:
  if dead or attack_cd>0 or dash_time>0:return false
  var linked=combo_expire>0
- chain_streak=mini(chain_streak+1,99) if linked else 1
+ chain_streak=chain_streak+1 if linked else 1
  repeat_block=false
  if repeat_next and combo>0:
   repeat_next=false;repeat_block=true
@@ -248,6 +254,7 @@ func attack()->bool:
   if chain_history.size()>3:chain_history.pop_front()
  else:chain_history=[current_kind]
  combo_expire=1.25;swing_count+=1
+ WeaponActionResolver.begin_strike(self,linked)
  CombatChain.strike(self,linked)
  repeat_block=false
  var amount=stats.attack
@@ -268,49 +275,8 @@ func dash()->bool:
  dash_direction=last_move if velocity.length()>20 else facing;fire_tick=0
  if has_unique("dodge_skip"):skip_next=true
  game.fx.ring(position,45,Color("a4ebe0"),.3);game.sound.play("dash");return true
-func skill_duration(i:int)->float:return [5.0,10.0,6.0][i]*(1-stats.cdr)*(.75 if i==2 and upgrades.get("giant_mastery",0)>0 else 1.0)
-func cast(i:int)->bool:
- if dead or cooldowns[i]>0 or dash_time>0:return false
- cooldowns[i]=skill_duration(i)
- if synergy("echo"):echo_ready=true
- var dmg=stats.attack*(1+stats.skill)
- match i:
-  0:
-   attack_time=.3;game.melee(position,facing,200,1.28,dmg*3.5*(1.2 if upgrades.get("finisher_wave",0)>0 else 1.0),480)
-   if has_effect("judgement_echo"):game.queue_blast(position+facing*110,145,dmg*2.45,.35,Color("dfd6ff"))
-   game.fx.slash(position,facing,190,Color("ffdaa0"),true);game.fx.ring(position+facing*100,95,Color("cda373"));game.sound.play("heavy");game.shake(6)
-  1:
-   var radius=225+upgrades.get("nova_radius",0)
-   game.area_damage(position,radius,dmg*2.7,false,true)
-   for e in game.enemies:
-    if e.position.distance_to(position)<radius:
-     e.slow_time=3
-     if upgrades.get("nova_pull",0)>0:e.velocity=(position-e.position).normalized()*650
-   if upgrades.get("nova_echo",0)>0:game.queue_blast(position,radius,dmg*1.35,.6,Color("92e8d5"))
-   if has_effect("echo_guard"):barrier=stats.hp*.12;barrier_time=5
-   if has_effect("ember_nova"):game.add_hazard(position,150,3,dmg*.9,true,0)
-   if has_effect("conductor"):game.chain_lightning(position,dmg*.9,null)
-   game.fx.ring(position,radius,Color("85edda"),.65);game.fx.ring(position,radius*.8,Color("d4fff0"),.45)
-   game.fx.burst(position,Color("85dace"),45,370);game.sound.play("nova");game.shake(7)
-  2:
-   cast_lance(dmg)
-   game.sound.play("bolt")
- return true
-func cast_lance(dmg:float)->void:
- var path=BuildDB.lance_key(upgrades)
- var angles=[0.0]
- if path=="lance_fan":angles=[-.24,0.0,.24] if upgrades.get("fan_mastery",0)<=0 else [-.40,-.20,0.0,.20,.40]
- elif upgrades.get("spear_count",0)>0:angles=[-.15,0.0,.15]
- for a in angles:
-  var mult=.65 if path=="lance_fan" else (1.8+upgrades.get("giant_mastery",0)*.3 if path=="lance_giant" else 1.0)
-  var bolt=game.fire(position+facing*25,facing.rotated(a)*(610 if path=="lance_giant" else 730),dmg*2.8*mult,true,0 if path=="lance_blast" else 9,Color("ffb26e") if path=="lance_blast" else Color("9ce7ff"))
-  bolt.radius=24 if path=="lance_giant" else 8;bolt.slow_on_hit=2 if path=="lance_giant" else 0
-  bolt.explosion_radius=140+upgrades.get("blast_mastery",0)*65 if path=="lance_blast" else 0
-  bolt.explosion_damage=dmg*2.8*(.9+upgrades.get("blast_mastery",0)*.4)
-  bolt.can_return=has_effect("lance_return");bolt.chain_on_hit=synergy("storm") and a==0.0
- if has_effect("lance_fork"):
-  for a in [-.35,.35]:
-   var bolt=game.fire(position+facing*25,facing.rotated(a)*680,dmg*1.26,true,5,Color("c7b8ff"));bolt.secondary_effect=true
+func skill_duration(i:int)->float:return WeaponActionResolver.duration(self,i)
+func cast(i:int)->bool:return WeaponActionResolver.cast(self,i)
 func take_damage(amount:float,knock:Vector2=Vector2.ZERO,fatal:bool=false)->bool:
  if dead:return false
  if invulnerable>0:
@@ -340,7 +306,10 @@ func equip(index:int,target:String="")->bool:
  var slot=target if not target.is_empty() else String(item.slot)
  if not Loadout.accepts(item,slot):return false
  var old=equipment[slot];equipment[slot]=item;inventory[index]=old
+ reset_chain()
  rebuild_stats();game.sound.play("equip");game.metrics.equips+=1;game.save_run();return true
+func reset_chain()->void:
+ combo_expire=0;chain_streak=0;chain_history.clear();normal_groups.clear();last_chain_weapon="";last_mace_time=-10.0
 func xp_required()->int:return 60+(level-1)*45+int(pow(level-1,1.65)*16)
 func gain_xp(amount:int)->void:
  xp+=amount

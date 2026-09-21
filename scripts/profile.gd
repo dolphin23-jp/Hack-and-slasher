@@ -8,7 +8,7 @@ static func empty_run_metrics()->Dictionary:
  return out
 var recovery_notice=""
 var path="user://ashen_vow_v1.json"
-var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false,"touch_size":.5,"touch_inset":.5,"hitstop":true,"auto_salvage_rare":false}
+var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false,"touch_size":.5,"touch_inset":.5,"hitstop":true,"auto_salvage_rare":false,"salvage_rules":SalvagePolicy.defaults()}
 var records={"runs":0,"wins":0,"best_level":1,"best_ascension":0,"total_kills":0}
 var run={}
 var oaths=OathBoard.empty()
@@ -30,6 +30,7 @@ func read_save()->void:
    if not incoming.has(k):continue
    if settings[k] is bool and incoming[k] is bool:settings[k]=incoming[k]
    elif not settings[k] is bool and (incoming[k] is float or incoming[k] is int):settings[k]=clampf(incoming[k],0,1)
+ settings.salvage_rules=SalvagePolicy.sanitize(incoming.get("salvage_rules",{}) if incoming is Dictionary else {})
  var rec=data.get("records",{})
  if rec is Dictionary:
   for k in records:
@@ -78,6 +79,13 @@ func valid_run(v:Variant)->bool:
   if v.has(key):
    if not (v[key] is int or v[key] is float) or not is_finite(float(v[key])) or v[key]<0 or v[key]>10000000:return false
  if v.has("combo") and v.combo>3:return false
+ if v.has("finisher_charge"):
+  var charge=v.finisher_charge
+  if not (charge is int or charge is float) or not is_finite(float(charge)) or charge!=int(charge) or charge<0 or charge>WeaponActionResolver.FINISHER_COST:return false
+ if v.has("skill_cooldowns"):
+  if not v.skill_cooldowns is Array or v.skill_cooldowns.size()!=3:return false
+  for cd in v.skill_cooldowns:
+   if not (cd is int or cd is float) or not is_finite(float(cd)) or cd<0 or cd>60:return false
  if v.has("active_oaths"):
   if not v.active_oaths is Array or v.active_oaths.size()>3:return false
   var seen=[]

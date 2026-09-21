@@ -14,7 +14,15 @@ static func remap_roll(value:float,limits:Array,ratio:float)->Dictionary:
  var quality=.5 if high<=low else clampf((value-low)/(high-low),0,1)
  var next_limits=[low*ratio,high*ratio]
  return {"value":lerpf(next_limits[0],next_limits[1],quality),"limits":next_limits}
-static func apply(p,it:Dictionary,action:String,inherit:String="")->String:
+static func fusion_preview(p,slot:String,donor:Dictionary)->Dictionary:
+ if not p.equipment.has(slot) or donor not in p.inventory or not compatible(p.equipment[slot],donor):return {}
+ return {"slot":slot,"target":p.equipment[slot].duplicate(true),"donor":donor.duplicate(true),"gain":1+int(donor.rarity)}
+static func confirm_fusion(p,preview:Dictionary)->String:
+ if preview.is_empty() or not p.equipment.has(preview.get("slot","")):return "合成対象を選び直してください"
+ var it=p.equipment[preview.slot]
+ if it!=preview.get("target",{}):return "対象が変更されました。合成を確認し直してください"
+ return apply(p,it,"fuse","",preview.get("donor",{}))
+static func apply(p,it:Dictionary,action:String,inherit:String="",selected_donor:Dictionary={})->String:
  var price=cost(it,action,p.active_oaths)
  if p.materials<price:return "素材が足りません / 必要 %d"%price
  match action:
@@ -22,10 +30,13 @@ static func apply(p,it:Dictionary,action:String,inherit:String="")->String:
    if int(it.enhance)>=10:return "最大強化です"
    it.enhance+=1
   "fuse":
+   if selected_donor.is_empty():return "消費する素材を選び、内容を確認してください"
    var donor=-1
    for i in range(p.inventory.size()):
-    if compatible(it,p.inventory[i]) and (donor<0 or int(p.inventory[i].rarity)<int(p.inventory[donor].rarity)):donor=i
-   if donor<0:return "同系統・同階級の未保護素材が必要です"
+    if p.inventory[i].get("id")==selected_donor.get("id"):
+     if donor>=0 or p.inventory[i]!=selected_donor:return "素材が変更されました。選び直してください"
+     donor=i
+   if donor<0 or not compatible(it,p.inventory[donor]):return "素材が移動・保護されました。選び直してください"
    it.fusion+=1+int(p.inventory[donor].rarity);p.inventory.remove_at(donor)
   "tier":
    if int(it.tier)>=5:return "最大Tierです"
