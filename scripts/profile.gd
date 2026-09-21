@@ -109,7 +109,9 @@ func valid_run(v:Variant)->bool:
   for id in v.oath_board.get("nodes",[]):
    if not id is String or OathBoard.node_info(id).is_empty() or id in requested:return false
    requested.append(id)
-  if clean_nodes!=requested:return false
+  if clean_nodes.size()!=requested.size():return false
+  for id in requested:
+   if id not in clean_nodes:return false
  if not v.equipment is Dictionary or not v.inventory is Array or v.inventory.size()>84 or not v.upgrades is Dictionary:return false
  for slot in ItemDB.SLOTS:
   if not ItemDB.valid(v.equipment.get(slot)):return false
