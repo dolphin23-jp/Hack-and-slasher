@@ -25,6 +25,12 @@ const ROOM_ENEMY_POOLS={
  5:["cantor","cantor","hollow","warden"],
  6:["hound","hound","hound","hollow","warden"],
  8:["hollow","cantor","hound","warden","hollow"]}
+const ENCOUNTER_CORES={
+ 2:["hound","hound","cantor"],
+ 4:["warden","warden","summoner"],
+ 5:["cantor","cantor","summoner"],
+ 6:["hound","hound","hound","warden"],
+ 8:["warden","summoner","cantor","hound"]}
 const ROOM_MODIFIER_TEXT={
  4:"工房の噴出口 / 足元から炎が噴き出す",
  5:"炎の刻印 / 直線状に危険地帯が出現",
@@ -270,8 +276,9 @@ func spawn_wave()->void:
  if room.id==9:spawn_enemy("boss",room.center+Vector2(200,0),7,9);return
  var pool=encounter_pool(room.id,wave)
  var enemy_total=room.count+wave*2+ascension_wave_bonus()
+ var core:Array=ENCOUNTER_CORES.get(room.id,[])
  for i in range(enemy_total):
-  var kind=pool[rng.randi_range(0,pool.size()-1)]
+  var kind=String(core[i]) if i<core.size() else pool[rng.randi_range(0,pool.size()-1)]
   if i==1 and room.tier>=3:kind="warden"
   if i==2 and room.tier>=3:kind="summoner" if wave%2==0 else "cantor"
   if i==0 and wave==room.waves and room.id in [3,4,6,8]:kind="elite"
@@ -426,8 +433,24 @@ func salvage(i:int)->void:
  player.materials+=Forge.yield_for(player.inventory[i],player.stats)
  var rarity=int(player.inventory[i].rarity);player.inventory.remove_at(i);player.heal(player.stats.hp*(.025+rarity*.0125));sound.play("equip",.6)
  toast("分解素材を獲得し、少し生命を回復しました。");ui.selected=clampi(ui.selected,0,maxi(0,player.inventory.size()-1));save_run()
+func weapon_native_upgrades()->Array:
+ var out=[
+  {"name":"第二連環","detail":"第2武器の攻撃範囲 +20%。中継武器を制圧向けにする。","icon":"sword","key":"slot2_range","value":.20},
+  {"name":"終端の誓い","detail":"第3武器の威力 +18%。チェインの締めを強化する。","icon":"cleave","key":"slot3_power","value":.18}]
+ if WeaponDB.chain_synergy_score(player.equipment)>0:
+  out.append({"name":"連携の律","detail":"武器間遷移が発動する攻撃の威力 +12%。","icon":"bolt","key":"transition_power","value":.12})
+ if WeaponDB.same_family_chain(player.equipment):
+  out.append({"name":"一門皆伝","detail":"同武器3連のフィニッシュ威力 +24%。","icon":"sword","key":"family_finisher","value":.24})
+ if WeaponDB.distinct_primary_chain(player.equipment):
+  out.append({"name":"三相循環","detail":"3属性すべて異なるチェインの第3武器威力 +24%。","icon":"nova","key":"triad_finisher","value":.24})
+ for i in range(3):
+  var a=player.equipment[Loadout.WEAPONS[i]];var b=player.equipment[Loadout.WEAPONS[(i+1)%3]]
+  if WeaponDB.transition(a,b).id=="reap_cast":
+   out.append({"name":"刈り集めた星","detail":"鎌→杖の収束魔撃の威力 +25%。","icon":"bolt","key":"reap_cast_power","value":.25});break
+ return out
 func prepare_upgrade()->void:
  upgrade_choices.clear();var pool=UPGRADE_POOL.duplicate(true)
+ pool.append_array(weapon_native_upgrades())
  # Legacy spear_count stays functional, but new characters choose an explicit path.
  pool=pool.filter(func(c):return c.key!="spear_count")
  var branches=BuildDB.available(player.upgrades,profile.chronicle.achievements)
