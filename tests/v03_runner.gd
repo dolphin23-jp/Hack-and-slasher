@@ -14,7 +14,7 @@ func clear()->void:
   for node in list.duplicate():node.queue_free()
   list.clear()
  game.hazards.clear();game.delayed_blasts.clear();game.pending_upgrades=0
- game.player.position=Vector2.ZERO;game.player.facing=Vector2.RIGHT;game.player.attack_cd=0;game.player.dash_time=0;game.player.combo=0;game.player.combo_expire=0;game.player.last_chain_weapon="";game.player.chain_streak=0;game.player.active_oaths=[];game.player.stats.crit=0
+ game.player.position=Vector2.ZERO;game.player.facing=Vector2.RIGHT;game.player.attack_cd=0;game.player.dash_time=0;game.player.combo=0;game.player.combo_expire=0;game.player.last_chain_weapon="";game.player.chain_streak=0;game.player.chain_history=[];game.player.active_oaths=[];game.player.stats.crit=0
 func weapon(kind:String,slot:String="weapon")->Dictionary:
  var it=ItemDB.generate(game.rng,1,0);it.slot="weapon";it.weapon_type=kind;it.base={"attack":9.0};it.affixes={};game.player.equipment[slot]=it;return it
 func run()->void:
@@ -102,6 +102,8 @@ func run()->void:
  check("legendary gloves schedule one same-weapon repeat",p.repeat_next)
  p.attack_cd=0;var repeated_slot=p.combo;p.attack()
  check("repeat consumes without advancing the chain",p.combo==repeated_slot and not p.repeat_next)
+ var interrupted_triune=CombatChain.transition_profile("sword","mace",["sword","sword","mace"],3,true)
+ check("same-weapon repeat cannot fake a three-attribute finisher",not String(interrupted_triune.label).contains("三相"))
  clear();var skip_boots=ItemDB.generate(game.rng,1,3,25);p.equipment.feet=skip_boots;p.rebuild_stats();p.combo=0;p.dash_cd=0;p.dash()
  p.dash_time=0;p.attack_cd=0;p.attack()
  check("legendary boots skip one weapon after dodge",p.combo==2)
