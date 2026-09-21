@@ -48,6 +48,7 @@ func read_save()->void:
   for key in ["evades","contracts"]:
    if history.get(key) is int or history.get(key) is float:chronicle[key]=clampi(int(history[key]),0,100000000)
   if history.get("start","") in ["blade","lance","ember"]:chronicle.start=history.start
+ vault=[]
  var saved_vault=data.get("vault",[])
  if saved_vault is Array:
   for item in saved_vault:
