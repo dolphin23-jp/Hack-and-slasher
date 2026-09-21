@@ -10,6 +10,7 @@ var oath_view="dance"
 var filter_mode="all"
 var inventory_page=0
 var vault_selected=0
+var vault_page=0
 var focus_detail=false
 func act(u,action:String)->bool:
  var g=u.game;var p=g.player
@@ -45,9 +46,13 @@ func act(u,action:String)->bool:
  if action.begins_with("tab:"):
   tab=action.get_slice(":",1);focus_detail=false;return true
  if action=="filter":
-  var modes=["all","weapon","armor","legendary","junk"];filter_mode=modes[(modes.find(filter_mode)+1)%modes.size()];inventory_page=0;return true
+  var modes=["all","weapon","armor","legendary","junk"];filter_mode=modes[(modes.find(filter_mode)+1)%modes.size()];inventory_page=0
+  var visible=filtered_inventory(p);u.selected=int(visible[0]) if not visible.is_empty() else -1
+  return true
  if action.begins_with("page:"):
   inventory_page=maxi(0,inventory_page+int(action.get_slice(":",1)));return true
+ if action.begins_with("vault_page:"):
+  vault_page=maxi(0,vault_page+int(action.get_slice(":",1)));return true
  if action=="detail_toggle":focus_detail=not focus_detail;return true
  if action=="junk":
   if u.selected>=0 and u.selected<p.inventory.size():
@@ -162,16 +167,21 @@ func draw_focus_detail(u)->void:
  u.button(Rect2(930,770,210,48),"保管庫へ","vault_store")
  u.button(Rect2(1160,770,210,48),"ジャンク "+("ON" if it.get("junk",false) else "OFF"),"junk",it.get("junk",false))
 func draw_vault(u)->void:
- var g=u.game;var list=g.profile.vault
+ var g=u.game;var list=g.profile.vault;var per_page=48
+ var max_page=maxi(0,ceili(list.size()/float(per_page))-1);vault_page=mini(vault_page,max_page)
  u.text("保管庫 %d / 120  ・ Runをまたいで保持"%list.size(),Vector2(40,303),18,u.GOLD)
- for i in range(mini(48,list.size())):
-  var it=list[i];var r=Rect2(40+(i%8)*70,335+int(i/8)*66,62,58)
+ var start=vault_page*per_page;var end=mini(start+per_page,list.size())
+ for display_i in range(end-start):
+  var i=start+display_i;var it=list[i];var r=Rect2(40+(display_i%8)*70,335+int(display_i/8)*66,62,58)
   u.button(r,str(i+1),"vault_item:"+str(i),vault_selected==i)
   u.text(WeaponDB.type_name(it) if it.slot in Loadout.WEAPONS else ItemDB.slot_text(it.slot),r.position+Vector2(5,51),11,ItemDB.COLORS[int(it.rarity)])
   u.draw_rect(r,ItemDB.COLORS[int(it.rarity)],false,2)
+ u.button(Rect2(40,750,110,38),"◀","vault_page:-1",vault_page>0)
+ u.button(Rect2(165,750,160,38),"▶ %d / %d"%[vault_page+1,max_page+1],"vault_page:1",vault_page<max_page)
  if list.is_empty():
   u.text("保管庫は空です。装備画面の「保管庫へ」から移動できます。",Vector2(720,510),21,u.MUTED,true);return
  vault_selected=clampi(vault_selected,0,list.size()-1)
+ if vault_selected<start or vault_selected>=end:vault_selected=start
  detail(u,list[vault_selected],Rect2(640,300,748,455),"保管庫")
  u.button(Rect2(940,785,448,52),"所持品へ取り出す","vault_take",u.game.player.inventory.size()<80)
 func detail(u,it:Dictionary,r:Rect2,label:String)->void:
