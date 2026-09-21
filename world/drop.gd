@@ -48,13 +48,9 @@ func _draw()->void:
   var detail:String="ティア %d / %s"%[int(item.tier),ItemDB.slot_text(String(item.slot))]
   var detail_color:=Color("9aabb0")
   if near and rarity<3:
+   detail+="  /  "+game.player.item_comparison_text(item)
    var delta:float=game.player.item_upgrade_ratio(item)
-   if delta>.035:
-    detail+="  /  ▲ 強化 +%d%%"%maxi(1,roundi(delta*100.0));detail_color=Color("91d7b8")
-   elif delta<-.035:
-    detail+="  /  ▼ 弱体 %d%%"%roundi(delta*100.0);detail_color=Color("dc8f84")
-   else:
-    detail+="  /  ≈ 同等";detail_color=Color("c9c3a5")
+   detail_color=Color("91d7b8") if delta>.035 else (Color("dc8f84") if delta<-.035 else Color("c9c3a5"))
   if rarity>=3:detail+=" / "+BuildDB.SET_NAMES.get(ItemDB.set_of(item),"固有効果")
   var name_w:float=font.get_string_size(item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,13).x
   var detail_w:float=font.get_string_size(detail,HORIZONTAL_ALIGNMENT_LEFT,-1,11).x
