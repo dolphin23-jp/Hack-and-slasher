@@ -16,7 +16,7 @@ static func strike(p)->void:
   for enemy in g.enemies:
    if not enemy.dead and enemy.position.distance_to(focus)<190:enemy.velocity+=(focus-enemy.position).normalized()*150
  if p.dash_attack_time>0 and p.upgrades.get("dash_hunter",0)>0:reach+=35
- var unique=String(it.get("unique",""))
+ var unique=String(it.get("unique",""));var kind=String(it.get("weapon_type","sword"))
  if unique=="shield_reach" and p.barrier>=5:p.barrier-=5;reach*=1.3
  if unique=="wide_chain" and p.combo==3:reach*=1.2
  if p.counter_time>0:
@@ -24,17 +24,18 @@ static func strike(p)->void:
   if p.upgrades.get("storm_counter",0)>0:g.chain_lightning(p.position,p.stats.attack*.8,null,2)
   p.counter_time=0
  p.attack_cd=w.cooldown/(1+p.stats.haste);p.attack_time=.2
- var rounds=1+(1 if int(it.rarity)==4 and p.combo==3 else 0)+(1 if (int(it.tier)>=5 and p.combo==3) or (unique=="double_spin" and w.shape=="circle") else 0)
+ var rounds=1+(1 if int(it.rarity)==4 and p.combo==3 else 0)+(1 if ((int(it.tier)>=5 and p.combo==3 and kind in ["sword","scythe"]) or (unique=="double_spin" and w.shape=="circle")) else 0)
  if p.combo==3 and WeaponDB.same_family_chain(p.equipment):rounds+=1
  if p.combo==3 and WeaponDB.distinct_primary_chain(p.equipment):rounds+=1
  var landed=0
  for repeat in range(rounds):
   if w.shape in ["bolt","wave"]:
    var angles=[0.0]
-   if int(it.rarity)==4:angles=[-.13,0.0,.13]
+   if int(it.rarity)==4 or (int(it.tier)>=5 and p.combo==3 and kind=="staff"):angles=[-.13,0.0,.13]
    for a in angles:
-    var bolt=g.fire(p.position+p.facing*20,p.facing.rotated(a)*780,amount/(1.7 if angles.size()>1 else 1),true,4 if int(it.tier)>=4 else 2,Color("bfabff"))
-    bolt.tier_shield=int(it.tier)>=3;bolt.damage_types=w.types;bolt.life=reach/780;bolt.radius=22 if w.shape=="wave" else 9;bolt.bounces=2 if unique=="ricochet" else 0
+    var bolt=g.fire(p.position+p.facing*20,p.facing.rotated(a)*780,amount/(1.7 if angles.size()>1 else 1),true,6 if (int(it.tier)>=4 and kind in ["staff","spellblade"]) else (4 if int(it.tier)>=4 else 2),Color("bfabff"))
+    bolt.tier_shield=int(it.tier)>=3 and kind in ["spellblade"];bolt.damage_types=w.types;bolt.life=reach/780;bolt.radius=22 if w.shape=="wave" else 9
+    bolt.bounces=2 if unique=="ricochet" else (1 if int(it.tier)>=3 and kind=="staff" else 0)
   else:
    for hit in range(w.hits):
     for e in g.enemies.duplicate():
@@ -45,8 +46,9 @@ static func strike(p)->void:
      if not inside or not g.dungeon.line_clear(p.position,e.position):continue
      var crit=g.rng.randf()<p.stats.crit
      var damage=(amount+p.stats.attack if p.combo==3 and p.has_effect("execution") and e.hp/e.max_hp<.3 else amount)*DamageModel.multiplier(e.kind,w.types,p.stats)*(1+p.stats.crit_damage if crit else 1)
+     if int(it.tier)>=3 and kind=="spear" and landed>0:damage*=1.2
      if transition.id=="sunder" and e.kind in ["warden","elite","boss"]:damage*=float(transition.guard)
-     if "blunt" in w.types and e.kind=="warden":e.shield_break=maxf(e.shield_break,1.2)
+     if "blunt" in w.types and e.kind=="warden":e.shield_break=maxf(e.shield_break,2.0 if int(it.tier)>=4 and kind=="mace" else 1.2)
      var knock=maxf(w.knock,350 if int(it.tier)>=4 and w.shape!="circle" else 0)*(1+p.stats.stagger)*float(transition.knock)
      e.take_damage(damage,delta.normalized()*knock,crit)
      if not e.dead and p.has_effect("ash_edge"):e.ignite(p.stats.attack*.35,2.5)
@@ -56,10 +58,19 @@ static func strike(p)->void:
    if unique=="split_lance" and w.shape=="line":
     for a in [-.18,.18]:
      var bolt=g.fire(p.position,p.facing.rotated(a)*720,amount*.4,true,3);bolt.damage_types=w.types;bolt.secondary_effect=true;bolt.life=.5
- if landed>=2 and int(it.tier)>=3:p.barrier=minf(p.barrier+8, maxf(20,p.stats.shield_max));p.barrier_time=5
+ if landed>=2 and int(it.tier)>=3 and kind in ["sword","fist","mace","spellblade"]:
+  p.barrier=minf(p.barrier+(12 if kind=="mace" else 8),maxf(20,p.stats.shield_max));p.barrier_time=5
+ if landed>=3 and int(it.tier)>=3 and kind=="scythe":
+  g.area_damage(p.position,reach*.8,amount*.35,true);g.fx.ring(p.position,reach*.8,Color("c7efe1"),.2)
  if p.combo==3:
   if unique=="chain_guard":p.barrier+=12;p.barrier_time=5
-  if unique=="fist_nova":g.area_damage(p.position,155,amount*.8,true);g.fx.ring(p.position,155,Color("ffcc8a"),.3)
+  if unique=="fist_nova" or (int(it.tier)>=5 and kind=="fist"):g.area_damage(p.position,155,amount*.8,true);g.fx.ring(p.position,155,Color("ffcc8a"),.3)
+  if int(it.tier)>=5 and kind=="mace":g.area_damage(p.position,190,amount*.65,true);g.fx.ring(p.position,190,Color("ffd29b"),.3)
+  if int(it.tier)>=5 and kind=="spear":
+   for a in [-.18,.18]:
+    var side=g.fire(p.position+p.facing*20,p.facing.rotated(a)*760,amount*.48,true,4,Color("d9e7ff"));side.damage_types=w.types;side.life=.55
+  if int(it.tier)>=5 and kind=="spellblade":
+   g.queue_blast(p.position+p.facing*minf(reach*.7,280.0),120,amount*.75,.25,Color("c9b5ff"))
   for slot in ItemDB.SLOTS:
    if slot not in Loadout.WEAPONS and (int(p.equipment[slot].tier)>=5 or p.equipment[slot].get("unique","")=="chain_guard"):p.barrier=minf(p.barrier+(8 if int(p.equipment[slot].rarity)==4 else 4),maxf(25,p.stats.shield_max));p.barrier_time=5
  if w.shape=="circle":g.fx.ring(p.position,reach,Color("d4fff0"),.25);g.fx.slash(p.position,p.facing,reach,Color("b4ecdf"),true,true)
