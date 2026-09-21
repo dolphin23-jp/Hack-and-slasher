@@ -78,19 +78,50 @@ func build_score(loadout:Dictionary=equipment)->float:
    "crit_blast":score+=dps*.16
    "chain":score+=dps*.12
  return score
-func item_upgrade_ratio(item:Dictionary)->float:
- if not ItemDB.valid(item):return 0.0
- var slot:String=String(item.slot)
- if slot not in ItemDB.SLOTS:return 0.0
- var current:float=build_score(equipment)
- if current<=0.001:return 0.0
- var targets:Array=Loadout.WEAPONS if slot=="weapon" else [slot]
- var best:float=-INF
+func best_item_target(item:Dictionary)->String:
+ if not ItemDB.valid(item):return ""
+ var slot=String(item.slot)
+ if slot not in ItemDB.SLOTS:return ""
+ var targets:Array=Loadout.WEAPONS if slot=="weapon" else (["accessory","accessory2"] if slot=="accessory" else [slot])
+ var best_target="";var best_score=-INF
  for target in targets:
-  var loadout:Dictionary=equipment.duplicate(true)
-  loadout[target]=item
-  best=maxf(best,build_score(loadout)/current-1.0)
- return best if best>-INF else 0.0
+  var loadout=equipment.duplicate(true);loadout[target]=item
+  var score=build_score(loadout)
+  if score>best_score:best_score=score;best_target=String(target)
+ return best_target
+func item_upgrade_ratio(item:Dictionary)->float:
+ var target=best_item_target(item)
+ if target.is_empty():return 0.0
+ var current=build_score(equipment)
+ if current<=.001:return 0.0
+ var loadout=equipment.duplicate(true);loadout[target]=item
+ return build_score(loadout)/current-1.0
+func item_comparison(item:Dictionary)->Dictionary:
+ var target=best_item_target(item)
+ if target.is_empty():return {}
+ var loadout=equipment.duplicate(true);loadout[target]=item
+ var next=calculated(loadout)
+ var out={"target":target,"attack":next.attack-stats.attack,"hp":next.hp-stats.hp,"armor":next.armor-stats.armor,"range":0.0,"chain":0}
+ if target in Loadout.WEAPONS:
+  var old_reach=float(WeaponDB.get_weapon(equipment[target]).reach);var new_reach=float(WeaponDB.get_weapon(item).reach)
+  out.range=new_reach/maxf(1.0,old_reach)-1.0
+  out.chain=WeaponDB.chain_synergy_score(loadout)-WeaponDB.chain_synergy_score(equipment)
+ return out
+func item_comparison_text(item:Dictionary)->String:
+ var c=item_comparison(item)
+ if c.is_empty():return "比較不可"
+ var bits=[]
+ if c.attack>1.0:bits.append("攻撃+")
+ elif c.attack< -1.0:bits.append("攻撃-")
+ if c.range>.08:bits.append("範囲+")
+ elif c.range<-.08:bits.append("範囲-")
+ if int(c.chain)>0:bits.append("連携+")
+ elif int(c.chain)<0:bits.append("連携-")
+ var durability=float(c.hp)*.02+float(c.armor)*.1
+ if durability>1.0:bits.append("耐久+")
+ elif durability< -1.0:bits.append("耐久-")
+ if bits.is_empty():bits.append("横並び")
+ return " / ".join(bits)+" → "+ItemDB.slot_text(String(c.target))
 func rebuild_stats()->void:stats=calculated();hp=minf(hp,stats.hp)
 func has_effect(effect:String)->bool:
  if OathBoard.has_effect(active_oaths,effect):return true
