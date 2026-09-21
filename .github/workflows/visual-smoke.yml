@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   visual-smoke:
@@ -29,52 +29,6 @@ jobs:
           grep -rl "packages.microsoft.com" /etc/apt/sources.list.d 2>/dev/null | xargs -r sudo rm -f
           sudo apt-get update -o Acquire::Retries=3
           sudo apt-get install -y xvfb unzip libgl1 libx11-6 libxcursor1 libxinerama1 libxi6 libxrandr2 libudev1 libfontconfig1
-
-      - name: Generate supplemental Japanese glyph font
-        run: |
-          mkdir -p test-artifacts
-          python -m pip install --disable-pip-version-check fonttools
-          curl -L --fail --retry 3 -o /tmp/NotoSansJP.ttf             'https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/NotoSansJP%5Bwght%5D.ttf'
-          pyftsubset /tmp/NotoSansJP.ttf             --text-file=scripts/japanese_extra_chars.txt             --output-file=test-artifacts/NotoSansJP-Extra.ttf             --layout-features='*'             --name-IDs='*'             --name-legacy             --name-languages='*'
-          ls -lh test-artifacts/NotoSansJP-Extra.ttf
-
-      - name: Bootstrap supplemental font into PR branch
-        if: github.event_name == 'pull_request' && github.head_ref == 'feat/ashen-vow-0.3-depth-pass'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD_BRANCH: ${{ github.head_ref }}
-          REPO: ${{ github.repository }}
-        run: |
-          python - <<'PY'
-          import base64, json, os, urllib.request, urllib.error
-          path = "test-artifacts/NotoSansJP-Extra.ttf"
-          content = base64.b64encode(open(path, "rb").read()).decode()
-          payload = json.dumps({
-              "message": "Bundle supplemental Japanese glyph font",
-              "content": content,
-              "branch": os.environ["HEAD_BRANCH"],
-          }).encode()
-          req = urllib.request.Request(
-              f"https://api.github.com/repos/{os.environ['REPO']}/contents/assets/fonts/NotoSansJP-Extra.ttf",
-              data=payload,
-              method="PUT",
-              headers={
-                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
-                  "Accept": "application/vnd.github+json",
-                  "X-GitHub-Api-Version": "2022-11-28",
-                  "Content-Type": "application/json",
-              },
-          )
-          try:
-              with urllib.request.urlopen(req) as response:
-                  print("Font commit status:", response.status)
-          except urllib.error.HTTPError as exc:
-              body = exc.read().decode(errors="replace")
-              if exc.code == 422 and "sha" in body:
-                  print("Font already exists on branch; bootstrap skipped.")
-              else:
-                  raise RuntimeError(f"GitHub font bootstrap failed: {exc.code} {body}")
-          PY
 
       - name: Install Godot 4.5.1
         run: |
