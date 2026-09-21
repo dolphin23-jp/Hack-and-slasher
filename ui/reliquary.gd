@@ -26,6 +26,8 @@ var inheritance=""
 var stats_group=0
 var back="title"
 var oath_view="dance"
+var oath_section="tree"
+var preset_selected=0
 var filter_mode="all"
 var inventory_page=0
 var vault_selected=0
@@ -35,6 +37,33 @@ func modal_active()->bool:return forge_screen.opened or salvage_screen.opened
 func close_modal()->void:
  forge_screen.opened=false;forge_screen.pending={};forge_screen.selected={}
  salvage_screen.opened=false;salvage_screen.preview=[]
+func oath_editable()->bool:return back in ["title","build_confirm"]
+func current_weapon_types(g)->Array:
+ var out=[]
+ if is_instance_valid(g.player):
+  for slot in Loadout.WEAPONS:out.append(String(g.player.equipment[slot].get("weapon_type","sword")))
+ elif g.profile.valid_run(g.profile.run):
+  for slot in Loadout.WEAPONS:out.append(String(g.profile.run.equipment[slot].get("weapon_type","sword")))
+ else:
+  var starter=ItemDB.initial_items()
+  for slot in Loadout.WEAPONS:out.append(String(starter[slot].get("weapon_type","sword")))
+ return out
+func departure_weapon_types(g)->Array:
+ var out=["sword","sword","sword"]
+ if g.profile.chronicle.start=="lance" and "first_clear" in g.profile.chronicle.achievements:out[0]="spear"
+ return out
+func weapon_line(kinds:Array)->String:
+ var names=[]
+ for kind in kinds:names.append(WeaponDB.TYPES.get(String(kind),WeaponDB.TYPES.sword).name)
+ return " → ".join(names)
+func active_oath_line(board:Dictionary)->String:
+ var names=[]
+ for i in range(board.active.size()):
+  var key=String(board.active[i]);names.append(("主 " if i==0 else "副 ")+OathBoard.PATHS[key].name)
+ return " / ".join(names)
+func preset_auto_name(board:Dictionary,index:int)->String:
+ var main=String(board.active[0]) if not board.active.is_empty() else "dance"
+ return "Build %d / %s"%[index+1,OathBoard.PATHS[main].name]
 func act(u,action:String)->bool:
  var g=u.game;var p=g.player
  if g.mode not in ["inventory","victory_inventory"]:close_modal()
@@ -42,8 +71,10 @@ func act(u,action:String)->bool:
  if salvage_screen.opened:return salvage_screen.act(u,action)
  if action=="oaths":back=g.mode;g.mode="oaths";return true
  if action=="oath_back":g.mode=back;return true
+ if action.begins_with("oath_section:"):
+  oath_section=action.get_slice(":",1);return true
  if action.begins_with("oath:"):
-  if back!="title":g.toast("誓印の選択は次の探索の出発前に行えます");return true
+  if not oath_editable():g.toast("誓印の選択は次の探索の出発前に行えます");return true
   var key=action.get_slice(":",1);var active=g.profile.oaths.active
   if key in active:
    if active.size()<=1:g.toast("主誓印は1つ以上必要です");return true
@@ -54,21 +85,59 @@ func act(u,action:String)->bool:
  if action.begins_with("oath_view:"):
   oath_view=action.get_slice(":",1);return true
  if action.begins_with("oath_main:"):
-  if back!="title":g.toast("誓印の選択は次の探索の出発前に行えます");return true
+  if not oath_editable():g.toast("誓印の選択は次の探索の出発前に行えます");return true
   var key=action.get_slice(":",1);var active=g.profile.oaths.active
   if key in active:active.erase(key)
   elif active.size()>=3:active.pop_back()
   active.insert(0,key);g.profile.write_save();return true
  if action.begins_with("node:"):
-  if back!="title":g.toast("誓印盤の強化は出発前に行えます");return true
+  if not oath_editable():g.toast("誓印盤の強化は出発前に行えます");return true
   var path=action.get_slice(":",1);var id=action.get_slice(":",2)
-  g.toast(OathBoard.unlock_node(g.profile.oaths,path,id));g.profile.write_save();return true
- if action.begins_with("rank:"):
-  if back!="title":g.toast("刻印の強化は出発前に行えます");return true
-  var key=action.get_slice(":",1);var rank=int(g.profile.oaths.ranks.get(key,0));var price=(rank+1)*3
-  if rank<3 and g.profile.oaths.points>=price:g.profile.oaths.points-=price;g.profile.oaths.ranks[key]=rank+1;g.profile.write_save()
-  else:g.toast("誓片が不足、または解放済みです")
-  return true
+  var conflict=OathBoard.branch_conflict(g.profile.oaths,path,id)
+  g.toast(OathBoard.switch_branch(g.profile.oaths,path,id) if not conflict.is_empty() else OathBoard.unlock_node(g.profile.oaths,path,id))
+  g.profile.write_save();return true
+ if action.begins_with("respec_path:"):
+  if not oath_editable():g.toast("リスペックは出発前のみ可能です");return true
+  var path=action.get_slice(":",1);var refund=OathBoard.respec_path(g.profile.oaths,path)
+  g.profile.write_save();g.toast("リスペック / %s / 誓片 %d返還"%[OathBoard.PATHS[path].name,refund]);return true
+ if action=="respec_all":
+  if not oath_editable():g.toast("リスペックは出発前のみ可能です");return true
+  var refund=OathBoard.respec_all(g.profile.oaths);g.profile.write_save();g.toast("全リスペック / 誓片 %d返還"%refund);return true
+ if action.begins_with("preset_select:"):
+  preset_selected=clampi(int(action.get_slice(":",1)),0,maxi(0,g.profile.build_presets.size()-1));return true
+ if action=="preset_new":
+  if not oath_editable():g.toast("Preset保存は出発前のみ可能です");return true
+  if g.profile.build_presets.size()>=5:g.toast("Presetは5件までです");return true
+  var name=preset_auto_name(g.profile.oaths,g.profile.build_presets.size())
+  g.profile.build_presets.append(OathBoard.make_preset(g.profile.oaths,name,g.profile.chronicle.start,current_weapon_types(g)))
+  preset_selected=g.profile.build_presets.size()-1;g.profile.write_save();g.toast("Preset保存 / "+name);return true
+ if action=="preset_load":
+  if not oath_editable():g.toast("Preset読込は出発前のみ可能です");return true
+  if g.profile.build_presets.is_empty():return true
+  preset_selected=clampi(preset_selected,0,g.profile.build_presets.size()-1)
+  var preset=g.profile.build_presets[preset_selected]
+  var result=OathBoard.apply_preset(g.profile.oaths,preset)
+  if result.begins_with("Preset読込"):g.profile.chronicle.start=String(preset.starter)
+  g.profile.write_save();g.toast(result);return true
+ if action=="preset_overwrite":
+  if not oath_editable() or g.profile.build_presets.is_empty():return true
+  preset_selected=clampi(preset_selected,0,g.profile.build_presets.size()-1)
+  var old_name=String(g.profile.build_presets[preset_selected].name)
+  g.profile.build_presets[preset_selected]=OathBoard.make_preset(g.profile.oaths,old_name,g.profile.chronicle.start,current_weapon_types(g))
+  g.profile.write_save();g.toast("Preset上書き / "+old_name);return true
+ if action=="preset_rename":
+  if not oath_editable() or g.profile.build_presets.is_empty():return true
+  preset_selected=clampi(preset_selected,0,g.profile.build_presets.size()-1)
+  var labels=["汎用","火力","耐久","探索","対王","周回"];var preset=g.profile.build_presets[preset_selected]
+  var current=String(preset.name);var next=0
+  for i in range(labels.size()):
+   if current.ends_with(labels[i]):next=(i+1)%labels.size()
+  var main=String(preset.active[0]) if not preset.active.is_empty() else "dance"
+  preset.name=OathBoard.PATHS[main].name+" / "+labels[next];g.profile.write_save();return true
+ if action=="preset_delete":
+  if not oath_editable() or g.profile.build_presets.is_empty():return true
+  g.profile.build_presets.remove_at(clampi(preset_selected,0,g.profile.build_presets.size()-1))
+  preset_selected=clampi(preset_selected,0,maxi(0,g.profile.build_presets.size()-1));g.profile.write_save();g.toast("Presetを削除しました");return true
  if action.begins_with("tab:"):
   tab=action.get_slice(":",1);focus_detail=false;return true
  if action=="filter":
