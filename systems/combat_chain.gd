@@ -5,8 +5,8 @@ static func strike(p)->void:
  var w=WeaponDB.get_weapon(it);var g=p.game
  var amount=(p.stats.attack-p.average_weapon_power()+p.weapon_power(it))*w.damage
  var transition={"id":"","name":"","damage":1.0,"guard":1.0,"knock":1.0}
- if p.swing_count>1:
-  var previous=p.equipment[Loadout.WEAPONS[(p.combo+1)%3]]
+ if p.swing_count>1 and p.last_weapon_index>=0:
+  var previous=p.equipment[Loadout.WEAPONS[p.last_weapon_index]]
   transition=WeaponDB.transition(previous,it)
   amount*=float(transition.damage)*(1+float(p.upgrades.get("transition_power",0)))
   if p.has_unique("transition_echo"):amount*=1.18 if p.unique_rarity("transition_echo")==4 else 1.12
