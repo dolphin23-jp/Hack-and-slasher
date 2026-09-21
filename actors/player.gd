@@ -23,6 +23,7 @@ var attack_time=0.0
 var combo=0
 var combo_expire=0.0
 var swing_count=0
+var last_weapon_index=-1
 var invulnerable=0.0
 var flash=0.0
 var crit_blast_cd=0.0
@@ -230,6 +231,7 @@ func attack()->bool:
   game.fx.number(position+facing*38,"回避連環",Color("bfe9ff"))
  combo_expire=1.25;swing_count+=1
  CombatChain.strike(self)
+ last_weapon_index=combo-1
  var amount=stats.attack
  if combo==3:
   if has_effect("reaper"):game.area_damage(position,165,stats.attack*.75);game.fx.ring(position,165,Color("cbd4ff"),.4)
