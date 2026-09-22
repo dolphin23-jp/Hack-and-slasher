@@ -180,11 +180,18 @@ func move_with_steering(motion:Vector2)->void:
  position=next
 func start_windup()->void:
  state="windup";aim=(game.player.position-position).normalized();target=game.player.position;windup=spec.windup
- if kind=="elite" and affix=="frenzied":windup*=.78
+ if kind in ["elite","champion"] and affix=="frenzied":windup*=.78
  if kind=="boss":
-  windup=[1.1,1.35,1.5,1.35][pattern%4]*(.92 if phase==2 else 1)
-  ring_gap=aim.angle()+PI*.5
+  windup=[1.1,1.35,1.5,1.35][pattern%4]*(.92 if phase==2 else 1);ring_gap=aim.angle()+PI*.5
+ elif kind=="forge_boss":
+  windup=[1.05,1.25,1.2,1.0][pattern%4]*(.9 if phase==2 else 1);ring_gap=aim.angle()+PI*.5
+ elif kind=="thorn_boss":
+  windup=[1.15,1.25,1.35,1.05][pattern%4]*(.9 if phase==2 else 1);ring_gap=aim.angle()+PI*.5
+ elif kind=="miniboss":
+  windup=[1.05,1.3,1.0][pattern%3]*(.9 if phase==2 else 1);ring_gap=aim.angle()+PI*.5
  if kind=="summoner":game.fx.ring(position,72,Color("cf9eff"),windup)
+ if kind=="weaver":game.fx.ring(target,92,Color("c7a1ed"),windup)
+ if kind=="brute":game.fx.ring(position,132,Color("e1ae7d"),windup)
  timer=windup
  if kind=="boss" and pattern%4==1:
   game.add_hazard(target,95,.15,damage,false,windup)
@@ -193,8 +200,17 @@ func start_windup()->void:
   if phase==2:
    game.add_hazard(target+Vector2(0,160),85,.15,damage,false,windup+.4)
    game.add_hazard(target-Vector2(0,160),85,.15,damage,false,windup+.7)
+ if kind=="forge_boss" and pattern%4==1:
+  var side=aim.orthogonal()
+  for i in range(-2,3):game.add_hazard(target+side*i*112,72,.15,damage,false,windup+abs(i)*.10)
+ if kind=="thorn_boss" and pattern%4==1:
+  var offsets=[Vector2.ZERO,Vector2(145,0),Vector2(-145,0),Vector2(0,145),Vector2(0,-145)]
+  for i in range(offsets.size()):game.add_hazard(target+offsets[i],70,.15,damage,false,windup+i*.08)
+ if kind=="weaver":
+  game.add_hazard(target,78,.15,damage*.8,false,windup)
+  game.add_hazard(target-aim*120,66,.15,damage*.65,false,windup+.28)
 func release_attack()->void:
- state="recover";timer=2.1 if kind=="boss" else spec.recovery
+ state="recover";timer=2.1 if kind=="boss" else (1.9 if is_boss_like() else spec.recovery)
  match kind:
   "hollow":hit_cone(74,1.1,damage);game.fx.slash(position,aim,60,Color("dd9680"))
   "cantor":
@@ -210,12 +226,72 @@ func release_attack()->void:
     child.summoner_id=get_instance_id();child.spawned_minion=true
    game.sound.play("boss",.3)
   "hound":state="charge";timer=.48;charge_hit=false
+  "lancer":
+   state="charge";timer=.36;charge_hit=false;game.fx.slash(position,aim,180,Color("d7d3c5"),true)
+  "weaver":
+   game.fire(position+aim*22,aim*270,damage*.8,false,0,Color("c7a1ed"));game.sound.play("bolt",.35)
+  "brute":
+   if position.distance_to(game.player.position)<142:game.player.take_damage(damage*1.05,aim*245,true)
+   for j in range(8):game.fire(position+Vector2.from_angle(j*TAU/8)*38,Vector2.from_angle(j*TAU/8)*150,damage*.45,false,0,Color("d4ad82"))
+   game.fx.ring(position,132,Color("e1ae7d"),.4);game.sound.play("heavy",.55)
   "warden":
    if position.distance_to(game.player.position)<118:game.player.take_damage(damage,aim*230)
    game.fx.ring(position,112,Color("e4ab76"),.35);game.fx.burst(position,Color("b69677"),16,170);game.sound.play("heavy",.4)
   "elite":
    hit_cone(180,1.45,damage);game.fx.slash(position,aim,173,Color("df99be"),true)
    for j in range(8):game.fire(position+Vector2.from_angle(j*TAU/8)*35,Vector2.from_angle(j*TAU/8)*180,damage*.65,false,0,Color("dea2c5"))
+  "champion":
+   match pattern%3:
+    0:
+     hit_cone(200,1.35,damage*1.05);game.fx.slash(position,aim,190,Color("e0b0da"),true)
+     for a in [-.36,0.0,.36]:game.fire(position+aim*32,aim.rotated(a)*260,damage*.55,false,0,Color("e2b0e0"))
+    1:
+     for j in range(10):game.fire(position+Vector2.from_angle(j*TAU/10)*38,Vector2.from_angle(j*TAU/10)*205,damage*.55,false,0,Color("b8c6f0"))
+     game.fx.ring(position,165,Color("b8c6f0"),.45)
+    2:state="charge";timer=.55;charge_hit=false
+   if affix=="echoing" and state!="charge":
+    for j in range(4):game.fire(position,Vector2.from_angle(j*TAU/4+PI*.25)*175,damage*.4,false,0,Color("b5cdf2"))
+   pattern+=1
+  "miniboss":
+   match pattern%3:
+    0:
+     hit_cone(235,1.45,damage*1.15);game.fx.slash(position,aim,225,Color("e4c48c"),true);game.sound.play("heavy",.65)
+    1:
+     for j in range(16):
+      var a=j*TAU/16+ring_gap
+      if absf(wrapf(a-ring_gap,-PI,PI))<.42:continue
+      game.fire(position+Vector2.from_angle(a)*48,Vector2.from_angle(a)*(210 if phase==1 else 250),damage*.55,false,0,Color("dcc194"))
+     game.fx.ring(position,180,Color("dcc194"),.5)
+    2:state="charge";timer=.68;charge_hit=false;charge_chain=1 if phase==2 else 0
+   pattern+=1;game.metrics.boss_patterns+=1
+  "forge_boss":
+   match pattern%4:
+    0:
+     if position.distance_to(game.player.position)<205:game.player.take_damage(damage*1.2,aim*260,true)
+     for j in range(8):game.fire(position+Vector2.from_angle(j*TAU/8)*42,Vector2.from_angle(j*TAU/8)*175,damage*.5,false,0,Color("ffbd7a"))
+     game.fx.ring(position,205,Color("ffbd7a"),.5);game.sound.play("heavy",.75)
+    1:game.sound.play("nova",.5)
+    2:
+     for a in [-.46,-.23,0.0,.23,.46]:game.fire(position+aim*35,aim.rotated(a)*(285 if phase==1 else 335),damage*.62,false,0,Color("ffc37f"))
+     game.sound.play("bolt",.55)
+    3:state="charge";timer=.68;charge_hit=false;charge_chain=1 if phase==2 else 0
+   pattern+=1;game.metrics.boss_patterns+=1
+  "thorn_boss":
+   match pattern%4:
+    0:
+     for j in range(20):
+      var a=j*TAU/20+ring_gap
+      if absf(wrapf(a-ring_gap,-PI,PI))<.5:continue
+      game.fire(position+Vector2.from_angle(a)*48,Vector2.from_angle(a)*(220 if phase==1 else 270),damage*.55,false,0,Color("e6a8c8"))
+     game.fx.ring(position,205,Color("d59ab8"),.5)
+    1:game.sound.play("nova",.5)
+    2:
+     var living=game.enemies.filter(func(e):return e!=self and e.spawned_minion).size()
+     for j in range(mini(3,maxi(0,5-living))):
+      var child=game.spawn_enemy("hound" if j%2==0 else "weaver",game.dungeon.spawn_point(room_id,j),maxi(3,game.dungeon.rooms[room_id].tier-1),room_id);child.spawned_minion=true
+    3:
+     for a in [-.72,-.48,-.24,0.0,.24,.48,.72]:game.fire(position+aim*32,aim.rotated(a)*(260 if phase==1 else 310),damage*.58,false,0,Color("e6a8c8"))
+   pattern+=1;game.metrics.boss_patterns+=1
   "boss":
    match pattern%4:
     0:hit_cone(220,1.48,damage*1.2);game.fx.slash(position,aim,214,Color("ffd899"),true);game.sound.play("heavy",.8)
