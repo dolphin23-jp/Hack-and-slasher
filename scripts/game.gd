@@ -339,7 +339,7 @@ func spawn_wave()->void:
    if special in ["forge_boss","thorn_boss","miniboss"]:
     room_modifier_timer=999.0;sound.set_music("boss_music");sound.play("boss")
     var title={"forge_boss":"炎冠の聖者","thorn_boss":"いばらの王","miniboss":"灰の守衛"}.get(special,"")
-    var hint={"forge_boss":"予告された炉床を抜け、魔撃・貫撃で攻めろ","thorn_boss":"弾幕の隙間と眷属を範囲攻撃で崩せ","miniboss":"大振りと突進の後を狙え"}.get(special,"")
+    var hint={"forge_boss":"予告された炎床から離れ、魔撃・貫撃で攻めろ","thorn_boss":"遠隔攻撃の隙間と眷属を範囲攻撃で崩せ","miniboss":"大撃と突進の後を狙え"}.get(special,"")
     banner(title,hint)
    spawn_enemy(special,room.center+Vector2(170,0),room.tier,room.id);return
  var pool=encounter_pool(room.id,wave)
