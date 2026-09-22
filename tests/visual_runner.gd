@@ -444,6 +444,8 @@ func _run() -> void:
 	for actor in game.enemies.duplicate():
 		actor.queue_free()
 	game.enemies.clear()
+	for bolt in game.projectiles.duplicate():
+		bolt.remove()
 	game.projectiles.clear()
 	game.hazards.clear()
 	game.player.position = game.dungeon.rooms[4].center
