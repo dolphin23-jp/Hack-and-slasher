@@ -85,6 +85,9 @@ func run()->void:
   game.spawn_wave()
   check("final wave special "+str(room),game.enemies.size()==1 and game.enemies[0].kind==String(spec[1]))
   clear_combat()
+ game.dungeon.active=5;game.wave=int(game.dungeon.rooms[5].waves)-1;game.spawn_wave()
+ check("main route retains a normal Elite tier",game.enemies.any(func(v):return v.kind=="elite"))
+ clear_combat()
 
  game.dungeon.active=4;game.wave=game.dungeon.rooms[4].waves
  e=foe("forge_boss",Vector2(180,0),4,4);e.hp=1;e.take_damage(9999,Vector2.ZERO)
