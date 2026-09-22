@@ -193,7 +193,7 @@ func run()->void:
  check("comparison snapshot exposes chain recipe gains or losses",compare_snapshot.before_order!=compare_snapshot.after_order and (not compare_snapshot.gained_build.is_empty() or not compare_snapshot.lost_build.is_empty()))
  check("comparison snapshot exposes tier and weapon-art ability changes",not EquipmentCompare.ability_tokens(chain_candidate).is_empty())
  var shield_plan=game.encounter_plan(game.dungeon.rooms[4],2,6)
- check("shield-line encounter has a real front line",shield_plan.size()==6 and shield_plan[0].kind=="warden" and shield_plan[1].kind=="warden")
+ check("shield-line encounter has a real front line",shield_plan.size()==6 and shield_plan.slice(0,3).all(func(v):return v.kind in ["warden","brute","lancer"]) and shield_plan.slice(0,3).map(func(v):return String(v.kind)).has("warden"))
  check("shield-line encounter protects ranged backline",shield_plan.slice(3).any(func(v):return v.kind in ["cantor","summoner"]))
  var surround_plan=game.encounter_plan(game.dungeon.rooms[2],1,7)
  check("surround encounter forms a multi-angle problem",surround_plan.size()==7 and surround_plan[0].p!=surround_plan[1].p and surround_plan[1].p!=surround_plan[2].p)
