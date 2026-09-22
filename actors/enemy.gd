@@ -342,22 +342,33 @@ func take_damage(amount:float,knock:Vector2,crit:bool=false,proc:bool=false)->vo
    game.toast("爆裂の誓い / 爆発範囲から離れろ")
   game.enemy_died(self,proc);queue_free()
 func _draw()->void:
- var size=145 if kind=="boss" else (104 if kind in ["elite","warden"] else (77 if kind=="hound" else 79))
+ var size=145 if is_full_boss() else (125 if kind=="miniboss" else (110 if kind=="champion" else (104 if kind in ["elite","warden","brute"] else (88 if kind=="lancer" else (77 if kind=="hound" else 79)))))
  draw_set_transform(Vector2(0,8),0,Vector2(1,.4));draw_circle(Vector2.ZERO,radius*1.3,Color(0,0,0,.4));draw_set_transform(Vector2.ZERO)
- if kind=="boss":
-  draw_arc(Vector2.ZERO,radius+8,0,TAU,48,Color("8cf3d2") if state=="recover" else Color("e9b171"),3,true)
+ if is_full_boss():
+  var boss_color={"forge_boss":Color("ffba72"),"thorn_boss":Color("e6a1c8"),"boss":Color("e9b171")}.get(kind,Color("e9b171"))
+  draw_arc(Vector2.ZERO,radius+8,0,TAU,48,Color("8cf3d2") if state=="recover" else boss_color,3,true)
   if phase==2:
-   for side in [-1,1]:
-    var wing=PackedVector2Array([Vector2(side*28,-24),Vector2(side*123,-104),Vector2(side*91,-10),Vector2(side*54,12)])
-    draw_colored_polygon(wing,Color(.93,.35,.18,.36));draw_polyline(wing,Color("ffc489"),2,true)
-   draw_arc(Vector2(0,-83),39,PI,TAU,32,Color("ffcc87"),4,true)
- elif kind=="elite":
+   if kind=="boss":
+    for side in [-1,1]:
+     var wing=PackedVector2Array([Vector2(side*28,-24),Vector2(side*123,-104),Vector2(side*91,-10),Vector2(side*54,12)])
+     draw_colored_polygon(wing,Color(.93,.35,.18,.36));draw_polyline(wing,Color("ffc489"),2,true)
+    draw_arc(Vector2(0,-83),39,PI,TAU,32,Color("ffcc87"),4,true)
+   elif kind=="forge_boss":
+    for j in range(6):draw_line(Vector2.from_angle(j*TAU/6)*(radius+8),Vector2.from_angle(j*TAU/6)*(radius+26),Color("ffc071"),4)
+   elif kind=="thorn_boss":
+    for j in range(8):draw_line(Vector2.from_angle(j*TAU/8)*(radius+6),Vector2.from_angle(j*TAU/8)*(radius+30),Color("efb0d1"),3)
+ elif kind in ["elite","champion"]:
+
   draw_arc(Vector2.ZERO,radius+9,0,TAU,48,Color(affix_color(),.72),3,true)
   draw_arc(Vector2.ZERO,radius+14,age*.7,age*.7+PI*1.15,32,Color(affix_color(),.34),2,true)
  var tint=Color(2.7,2.7,2.7) if flash>0 else Color.WHITE
  if kind=="boss" and phase==2 and flash<=0:tint=Color(1.3,.75,.56)
+ if kind=="forge_boss" and flash<=0:tint=Color(1.25,.82,.58) if phase==2 else Color(1.05,.88,.72)
+ if kind=="thorn_boss" and flash<=0:tint=Color(1.18,.72,1.0) if phase==2 else Color(1.02,.88,1.08)
+ if kind=="weaver" and flash<=0:tint=Color(.88,.72,1.22)
+ if kind=="brute" and flash<=0:tint=Color(1.05,.88,.72)
  if kind=="summoner" and flash<=0:tint=Color(.85,.7,1.3)
- if state=="spawn":tint.a=clampf(1-timer/(1.5 if kind=="boss" else .65),.15,1)
+ if state=="spawn":tint.a=clampf(1-timer/(1.5 if is_full_boss() else (.9 if kind=="miniboss" else .65)),.15,1)
  if slow_time>0 and flash<=0:tint=Color(.65,1,1.12)
  draw_set_transform(Vector2(0,sin(age*7)*(2.2 if state=="approach" else .5)),sin(age*7)*.025 if state=="approach" else 0,Vector2(1 if aim.x>=0 else -1,1))
  draw_texture_rect(texture,Rect2(-size*.5,-size*.76,size,size),false,tint);draw_set_transform(Vector2.ZERO)
@@ -365,6 +376,6 @@ func _draw()->void:
   draw_arc(Vector2(0,-10),36,aim.angle()-1.05,aim.angle()+1.05,28,Color("b4e3f2"),7,true)
  if kind=="summoner":draw_arc(Vector2(0,-57),25,age,age+TAU*.8,32,Color("dfa8ff"),3,true)
  if burn_time>0:draw_arc(Vector2.ZERO,radius+4,0,TAU,32,Color("ffa45e"),3,true)
- if hp<max_hp and kind!="boss":
-  var w=62 if kind=="elite" else 42
+ if hp<max_hp and not is_full_boss():
+  var w=78 if kind in ["champion","miniboss"] else (62 if kind=="elite" else 42)
   draw_rect(Rect2(-w/2.0,-size*.81,w,5),Color("131824"));draw_rect(Rect2(-w/2.0,-size*.81,w*maxf(0,hp/max_hp),5),Color("d3a281") if kind=="elite" else Color("ab6b65"))
