@@ -240,6 +240,8 @@ func release_attack()->void:
   "elite":
    hit_cone(180,1.45,damage);game.fx.slash(position,aim,173,Color("df99be"),true)
    for j in range(8):game.fire(position+Vector2.from_angle(j*TAU/8)*35,Vector2.from_angle(j*TAU/8)*180,damage*.65,false,0,Color("dea2c5"))
+   if affix=="echoing":
+    for j in range(4):game.fire(position,Vector2.from_angle(j*TAU/4+PI*.25)*170,damage*.38,false,0,Color("b5cdf2"))
   "champion":
    match pattern%3:
     0:
@@ -306,7 +308,7 @@ func release_attack()->void:
    pattern+=1;game.metrics.boss_patterns+=1
 func hit_cone(reach:float,angle:float,amount:float)->void:
  var to=game.player.position-position
- if to.length()<reach and absf(aim.angle_to(to))<angle and game.dungeon.line_clear(position,game.player.position):game.player.take_damage(amount,aim*170,kind in ["elite","boss"])
+ if to.length()<reach and absf(aim.angle_to(to))<angle and game.dungeon.line_clear(position,game.player.position):game.player.take_damage(amount,aim*170,kind in ["elite","champion","miniboss","forge_boss","thorn_boss","boss"])
 func ignite(amount:float,duration:float)->void:
  burn_damage=maxf(burn_damage,amount);burn_time=maxf(burn_time,duration)
 func take_damage(amount:float,knock:Vector2,crit:bool=false,proc:bool=false)->void:
@@ -316,20 +318,25 @@ func take_damage(amount:float,knock:Vector2,crit:bool=false,proc:bool=false)->vo
    shield_break=3;state="recover";timer=1.5;game.fx.number(position,"盾崩し",Color("ffdaa1"),true);game.sound.play("heavy",.6)
   else:
    amount*=.25+clampf(game.player.stats.get("penetration",0),0,.6);game.fx.number(position,"防御",Color("b8d8e0"));knock*=.15
- if kind=="boss" and state=="recover":amount*=1.35
+ if state=="recover":
+  if kind=="boss":amount*=1.35
+  elif kind in ["forge_boss","thorn_boss"]:amount*=1.30
+  elif kind=="miniboss":amount*=1.22
  if burn_time>0 and game.player.synergy("cinder") and not proc:amount*=1.3
- if not proc and stagger_guard<=0 and kind in ["hollow","cantor","hound","summoner"] and state!="charge":
+ if not proc and stagger_guard<=0 and kind in ["hollow","cantor","hound","summoner","lancer","weaver"] and state!="charge":
   stagger_time=.16 if knock.length()<300 else .38;stagger_guard=.9
   if state=="windup":state="recover";timer=.55
+ if not proc and kind=="brute" and knock.length()>=320 and stagger_guard<=0:
+  stagger_time=.28;stagger_guard=1.2;state="recover";timer=.7
  hp-=amount;flash=.12
- var knock_scale=.13 if kind=="boss" else (.35 if kind=="warden" else (.28 if kind=="elite" and affix=="bulwark" else .8))
+ var knock_scale=.1 if is_full_boss() else (.18 if kind=="miniboss" else (.22 if kind=="champion" else (.35 if kind in ["warden","brute"] else (.28 if kind=="elite" and affix=="bulwark" else .8))))
  velocity+=knock*knock_scale
  game.fx.number(position,str(ceili(amount)),Color("ffe6a0") if crit else Color("e1e7db"),crit)
  game.fx.burst(position,Color("edaf84") if crit else Color("a0d1c7"),14 if crit else 6,180 if crit else 100)
  game.metrics.damage_dealt+=amount
  if hp<=0:
   dead=true
-  if kind=="elite" and affix=="volatile":
+  if kind in ["elite","champion"] and affix=="volatile":
    game.add_hazard(position,118,.12,damage*.9,false,.9)
    game.fx.ring(position,118,affix_color(),.9)
    game.toast("爆裂の誓い / 爆発範囲から離れろ")
