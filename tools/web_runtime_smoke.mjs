@@ -127,6 +127,8 @@ await touchPage.waitForTimeout(5000);
 const touchCanvas = await touchPage.locator("canvas").boundingBox();
 if (!touchCanvas) throw new Error("Touch smoke canvas has no bounds");
 const tapBase = async (x, y) => {
+  // UI ignores touches for 180 ms after a mode change to prevent click-through.
+  await touchPage.waitForTimeout(250);
   const scale = Math.min(touchCanvas.width / 1440, touchCanvas.height / 900);
   const offsetX = (touchCanvas.width - 1440 * scale) * 0.5;
   const offsetY = (touchCanvas.height - 900 * scale) * 0.5;
