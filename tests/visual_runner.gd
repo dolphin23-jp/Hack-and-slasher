@@ -438,6 +438,43 @@ func _run() -> void:
 	await _click(Vector2(1000, 810))
 	_expect("bulk confirm removes reviewed junk", game.player.inventory.is_empty())
 
+	# Phase 4 encounter readability: Champion, Mini Boss, two new Bosses, and paged bestiary.
+	game.ui.reliquary.close_modal()
+	game.mode = "play"
+	for actor in game.enemies.duplicate():
+		actor.queue_free()
+	game.enemies.clear()
+	game.projectiles.clear()
+	game.hazards.clear()
+	game.player.position = game.dungeon.rooms[4].center
+	game.camera.position = game.player.position
+	game.dungeon.active = 4
+	var champion = game.spawn_enemy("champion", game.player.position + Vector2(245,0), 4, 4, "echoing")
+	champion.state="approach";champion.pattern=1;champion.start_windup()
+	await _shot("43_champion_telegraph_ipad")
+	champion.queue_free();game.enemies.clear()
+	var mini = game.spawn_enemy("miniboss", game.player.position + Vector2(260,0), 5, 6)
+	mini.state="approach";mini.pattern=1;mini.start_windup()
+	await _shot("44_miniboss_gap_ipad")
+	mini.queue_free();game.enemies.clear()
+	var forge_boss = game.spawn_enemy("forge_boss", game.player.position + Vector2(285,0), 4, 4)
+	forge_boss.state="approach";forge_boss.pattern=1;forge_boss.start_windup()
+	await _shot("45_forge_boss_floor_ipad")
+	forge_boss.state="recover";forge_boss.timer=1.6
+	await _shot("46_forge_boss_opening_ipad")
+	forge_boss.queue_free();game.enemies.clear();game.hazards.clear()
+	game.player.position = game.dungeon.rooms[8].center;game.camera.position=game.player.position;game.dungeon.active=8
+	var thorn_boss = game.spawn_enemy("thorn_boss", game.player.position + Vector2(285,0), 6, 8)
+	thorn_boss.state="approach";thorn_boss.pattern=0;thorn_boss.start_windup()
+	await _shot("47_thorn_boss_gap_ipad")
+	thorn_boss.queue_free();game.enemies.clear();game.hazards.clear()
+	for kind in ChronicleDB.ENEMIES:game.profile.chronicle.enemies[kind]=1
+	game.mode="journal";game.ui.journal_tab="enemies";game.ui.journal_page=0
+	await _shot("48_enemy_bestiary_page1_ipad")
+	await _click(Vector2(720,830))
+	_expect("expanded enemy bestiary pages on iPad",game.ui.journal_page==1)
+	await _shot("49_enemy_bestiary_page2_ipad")
+
 	var summary := "VISUAL_SMOKE shots=%d failures=%d\n" % [shots, failures.size()]
 	for failure in failures:
 		summary += "FAIL: " + failure + "\n"
