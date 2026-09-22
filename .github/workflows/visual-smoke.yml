@@ -94,6 +94,11 @@ jobs:
           set -o pipefail
           timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/build_manager_runner.gd -- --test 2>&1 | tee test-artifacts/build-manager.log
 
+      - name: Run Phase 4 enemy and boss regression
+        run: |
+          set -o pipefail
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/phase4_enemy_runner.gd -- --test 2>&1 | tee test-artifacts/phase4-enemies.log
+
       - name: Play four weapon chains through the cathedral
         run: |
           set -o pipefail
