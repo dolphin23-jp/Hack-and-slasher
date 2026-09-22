@@ -384,7 +384,7 @@ func draw_hud()->void:
   elite=null
  if elite!=null:
   var elite_color=elite.affix_color()
-  text(("誓約の覇者" if elite.kind=="champion" else "誓いなき騎士")+" / "+elite.affix_name(),Vector2(720,160),16,elite_color,true,true)
+  text(("誓いの騎士" if elite.kind=="champion" else "誓いなき騎士")+" / "+elite.affix_name(),Vector2(720,160),16,elite_color,true,true)
   bar(Rect2(565,170,310,7),elite.hp/elite.max_hp,elite_color)
   text(elite.affix_hint(),Vector2(720,194),10,MUTED,true)
  if game.banner_time>0 and game.mode=="play" and game.enemies.is_empty():
