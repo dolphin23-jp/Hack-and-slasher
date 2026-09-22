@@ -79,6 +79,7 @@ func _input(event:InputEvent)->void:
    if reliquary.modal_active():reliquary.close_modal();return
    match game.mode:
     "play":game.mode="pause"
+    "route":game.mode="play"
     "pause","inventory":game.mode="play";game.save_run()
     "settings","help","journal":game.mode=settings_return
    return
@@ -193,6 +194,12 @@ func pointer_blocked()->bool:
   if b.rect.has_point(hover):return true
  return false
 func act(action:String)->void:
+ if action.begins_with("route_go:"):game.travel_route(int(action.get_slice(":",1)));return
+ if action=="route_open":
+  if not RunRoutes.choices(game.dungeon).is_empty():game.mode="route";reset_touch()
+  return
+ if action=="route_back":game.mode="play";return
+ if action.begins_with("route_event:"):game.choose_route_event(action.ends_with("pay"));return
  if reliquary.act(self,action):return
  if action in ["attack","dash","heal","interact"] and game.mode!="play":return
  if action.begins_with("contract:"):game.choose_contract(action.split(":")[1]);return
@@ -280,8 +287,11 @@ func _draw()->void:
   "journal":draw_journal()
   "oaths":reliquary.draw_oaths(self)
   "build_confirm":reliquary.draw_build_confirm(self)
+  "route":draw_routes()
+  "route_event":draw_route_event()
   "event":draw_event()
   "play":
+   if game.dungeon.layout_version>=3 and not RunRoutes.choices(game.dungeon).is_empty():button(Rect2(540,105,360,54),"次の部屋 / 報酬を確認","route_open")
    if big_map:draw_map(Rect2(280,195,880,440),true)
  if game.toast_time>0:
   var w=body.get_string_size(game.toast_text,HORIZONTAL_ALIGNMENT_LEFT,-1,16).x+42
@@ -448,6 +458,8 @@ func draw_critical_health(p)->void:
  draw_rect(Rect2(720-warning_w/2-12,724,warning_w+24,28),Color(RED.r,RED.g,RED.b,.32),false,1)
  text(warning,Vector2(720,743),12,label_color,true,true)
 func draw_map(r:Rect2,large:bool)->void:
+ if game.dungeon.layout_version>=3:
+  draw_route_map(r,large);return
  panel(r,Color(.04,.075,.11,.96),LINE)
  var world=Rect2(-560,-1670,9500,3300 if game.dungeon.layout_version>=2 else 2590);var size=r.size-Vector2(28,42);var f=minf(size.x/world.size.x,size.y/world.size.y)
  var origin=r.get_center()-world.size*f/2-world.position*f+Vector2(0,9)
@@ -586,3 +598,39 @@ func draw_journal()->void:
    panel(Rect2(105,y-26,1230,96));text(("達成 / " if done else "未達成 / ")+entry[0],Vector2(125,y+2),21,TEAL if done else GOLD)
    text(entry[1],Vector2(125,y+40),16,TEXT);i+=1
   text("見切り %d / 5  ・  契約達成 %d  ・  発見 %d / 23"%[history.evades,history.contracts,history.legends.size()],Vector2(720,820),17,GOLD,true)
+
+func draw_route_map(r:Rect2,large:bool)->void:
+ panel(r)
+ var dx=r.size.x/7.0;var dy=(r.size.y-70)/3.0
+ var points={0:r.position+Vector2(dx*.5,r.size.y*.5)}
+ for stage in range(game.dungeon.route_stages.size()):
+  var ids=game.dungeon.route_stages[stage]
+  for j in range(ids.size()):points[ids[j]]=r.position+Vector2(dx*(stage+1.5),40+dy*(j+(3-ids.size())*.5)+dy*.5)
+ for link in game.dungeon.connections:draw_line(points[link[0]],points[link[1]],LINE,1)
+ for id in points:
+  var c=TEAL if id in game.dungeon.route_path else MUTED
+  draw_circle(points[id],9 if large else 4,c)
+  if large:
+   var label="入口" if id==0 else RunRoutes.TYPES[game.dungeon.rooms[id].room_type][0]
+   text(label,points[id]+Vector2(0,-16),14,c,true)
+ text("今回の巡礼路 / 選択した道は戻れません" if large else "巡礼路",r.position+Vector2(10,22),14 if large else 10,GOLD)
+func draw_routes()->void:
+ dim();text("次の部屋を選ぶ",Vector2(65,70),32,GOLD)
+ text("一室を選ぶと同じ分岐の他の道は閉じます。戦利品は出発前に回収してください。",Vector2(65,113),19,MUTED)
+ draw_route_map(Rect2(65,145,1310,205),true)
+ var ids=RunRoutes.choices(game.dungeon)
+ for i in range(ids.size()):
+  var room=game.dungeon.rooms[ids[i]];var x=65+i*445
+  panel(Rect2(x,380,420,350))
+  text(RunRoutes.TYPES[room.room_type][0],Vector2(x+24,425),30,GOLD)
+  wrapped_text(room.name,Vector2(x+24,466),370,19,TEXT,28)
+  text("危険度 "+room.danger+" / 階層 "+str(room.tier),Vector2(x+24,530),20,RED if room.danger in ["高","極高"] else TEAL)
+  wrapped_text(room.reward,Vector2(x+24,570),370,22,TEXT,32)
+  if not room.special.is_empty():text("待ち受ける敵: "+ChronicleDB.ENEMIES[room.special][0],Vector2(x+24,650),17,RED)
+  button(Rect2(x+20,750,380,66),"この道へ進む","route_go:"+str(ids[i]))
+ button(Rect2(1120,35,250,55),"戦利品へ戻る","route_back")
+func draw_route_event()->void:
+ dim();text("残響の泉",Vector2(720,190),38,GOLD,true)
+ text("生命を捧げて装備を得るか、泉で休むか。",Vector2(720,260),24,TEXT,true)
+ button(Rect2(240,380,450,100),"生命25% → Epic装備","route_event:pay")
+ button(Rect2(750,380,450,100),"生命30%回復 / 代償なし","route_event:rest")

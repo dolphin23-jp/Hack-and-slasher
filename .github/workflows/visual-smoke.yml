@@ -48,62 +48,68 @@ jobs:
       - name: Run 67-check gameplay regression
         run: |
           set -o pipefail
-          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --qa \
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --legacy-layout --qa \
             2>&1 | tee test-artifacts/qa.log
 
       - name: Run Cathedral Reborn behavioral regression
         run: |
           set -o pipefail
-          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --expansion \
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --legacy-layout --expansion \
             2>&1 | tee test-artifacts/expansion.log
 
       - name: Run ten-room basic-combat campaign
         run: |
           set -o pipefail
-          timeout 240s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --campaign \
+          timeout 240s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --legacy-layout --campaign \
             2>&1 | tee test-artifacts/campaign.log
 
       - name: Run alternate-route campaign with skills and contracts
         run: |
           set -o pipefail
-          timeout 240s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --campaign --southern \
+          timeout 240s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --legacy-layout --campaign --southern \
             2>&1 | tee test-artifacts/southern.log
 
       - name: Run 0.3 item, forge, migration and combat regression
         run: |
           set -o pipefail
-          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/v03_runner.gd -- --test 2>&1 | tee test-artifacts/v03.log
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/v03_runner.gd -- --test --legacy-layout 2>&1 | tee test-artifacts/v03.log
 
       - name: Run Skill 2.0 and chain recipe behavioral regression
         run: |
           set -o pipefail
-          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/skill_runner.gd -- --test 2>&1 | tee test-artifacts/skill.log
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/skill_runner.gd -- --test --legacy-layout 2>&1 | tee test-artifacts/skill.log
 
       - name: Run forge and salvage safety regression
         run: |
           set -o pipefail
-          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/forge_runner.gd -- --test 2>&1 | tee test-artifacts/forge.log
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/forge_runner.gd -- --test --legacy-layout 2>&1 | tee test-artifacts/forge.log
 
       - name: Run Equipment / Inventory UI 2.0 regression
         run: |
           set -o pipefail
-          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/equipment_ui_runner.gd -- --test 2>&1 | tee test-artifacts/equipment-ui.log
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/equipment_ui_runner.gd -- --test --legacy-layout 2>&1 | tee test-artifacts/equipment-ui.log
 
       - name: Run Oath / Build Management 2.0 regression
         run: |
           set -o pipefail
-          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/build_manager_runner.gd -- --test 2>&1 | tee test-artifacts/build-manager.log
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/build_manager_runner.gd -- --test --legacy-layout 2>&1 | tee test-artifacts/build-manager.log
 
       - name: Run Phase 4 enemy and boss regression
         run: |
           set -o pipefail
-          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/phase4_enemy_runner.gd -- --test 2>&1 | tee test-artifacts/phase4-enemies.log
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/phase4_enemy_runner.gd -- --test --legacy-layout 2>&1 | tee test-artifacts/phase4-enemies.log
+
+      - name: Run branching-route regression and campaign
+        run: |
+          set -o pipefail
+          timeout 90s /tmp/godot/godot --headless --path . --script res://tests/phase5_runner.gd -- --test 2>&1 | tee test-artifacts/phase5.log
+          timeout 240s /tmp/godot/godot --headless --path . -- --test --campaign 2>&1 | tee test-artifacts/branching-campaign.log
 
       - name: Play four weapon chains through the cathedral
         run: |
           set -o pipefail
           for chain in sword,scythe,staff spear,spear,scythe fist,mace,fist staff,spellblade,staff; do
-            timeout 240s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --campaign --southern --chain="$chain" 2>&1 | tee "test-artifacts/chain-$chain.log"
+            timeout 240s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . -- --test --legacy-layout --campaign --southern --chain="$chain" 2>&1 | tee "test-artifacts/chain-$chain.log"
           done
 
       - name: Render and click through UI
@@ -111,8 +117,13 @@ jobs:
         run: |
           set -o pipefail
           timeout 90s xvfb-run -a -s "-screen 0 1440x900x24" \
-            /tmp/godot/godot --audio-driver Dummy --path . --script res://tests/visual_runner.gd -- --test \
+            /tmp/godot/godot --audio-driver Dummy --path . --script res://tests/visual_runner.gd -- --test --legacy-layout \
             2>&1 | tee test-artifacts/visual.log
+
+      - name: Render and tap branching routes on iPad
+        run: |
+          set -o pipefail
+          timeout 90s xvfb-run -a -s "-screen 0 1440x900x24" /tmp/godot/godot --audio-driver Dummy --path . --script res://tests/phase5_visual.gd -- --test 2>&1 | tee test-artifacts/phase5-visual.log
 
       - name: Fail on resource leak warnings
         if: always()

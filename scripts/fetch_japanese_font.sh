@@ -5,7 +5,7 @@ set -euo pipefail
 DEST="assets/fonts/NotoSansJP-Regular.subset.ttf"
 EXTRA="assets/fonts/NotoSansJP-Extra.ttf"
 EXPECTED_SHA256="631e3b9873fb83ca5b4572991b7ceebe8189bd05914ae1340b2d7257b0d35e1e"
-EXPECTED_EXTRA_SHA256="ad4153093031d4727c7ddffda8da9d7a0e5bba89b2ef14988e4b3953ead38ad7"
+EXPECTED_EXTRA_SHA256="bea0abc6d5d05d4e7299ddc0665d3a6d81ff66005f9b53ebd8d7d01aa282be87"
 for file in "$DEST" "$EXTRA"; do
   if [ ! -s "$file" ]; then
     echo "Bundled Japanese font missing. Restore $file from this repository." >&2

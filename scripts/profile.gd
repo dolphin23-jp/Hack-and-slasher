@@ -128,11 +128,21 @@ func valid_run(v:Variant)->bool:
  if v.has("pending_upgrades") and not (v.pending_upgrades is int or v.pending_upgrades is float):return false
  if v.has("victory_ready") and not v.victory_ready is bool:return false
  if v.has("world_version"):
-  if not (v.world_version is int or v.world_version is float) or v.world_version!=int(v.world_version) or int(v.world_version) not in [1,2]:return false
+  if not (v.world_version is int or v.world_version is float) or v.world_version!=int(v.world_version) or int(v.world_version) not in [1,2,3]:return false
+ if int(v.get("world_version",1))>=3:
+  var path=v.get("route_path",[])
+  if not path is Array or path.is_empty() or path.size()>6 or path[0]!=0:return false
+  var seen=[]
+  for id in path:
+   if not (id is int or id is float) or id!=int(id) or id<0 or id>11 or id in seen:return false
+   seen.append(id)
  if v.has("loot_favor") and (not (v.loot_favor is float or v.loot_favor is int) or not is_finite(float(v.loot_favor)) or v.loot_favor<0 or v.loot_favor>.15):return false
  if v.has("event_choices"):
   if not v.event_choices is Dictionary:return false
   for key in v.event_choices:
+   if int(v.get("world_version",1))>=3 and key in ["1","2","3","4","5","6","7","8"]:
+    if v.event_choices[key] not in ["sacrifice","rest"]:return false
+    continue
    if key not in ["10","11"]:return false
    if key=="10" and v.event_choices[key] not in ["blood","danger","leave"]:return false
    if key=="11" and v.event_choices[key] not in ["wager","leave"]:return false

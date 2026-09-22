@@ -9,6 +9,8 @@ var cleared=[0]
 var visited=[0]
 var active=-1
 var layout_version=2
+var route_stages=[]
+var route_path=[0]
 var encounter_labels=["聖域","集会","骨の狩り","秘宝の試練","鉄の誓い","詠唱者の合唱","火の狩り","聖域","最後の行進","最後の鐘","血の供物","失われた武具"]
 var crest=preload("res://assets/icons/crest.svg")
 func setup(g)->void:
@@ -35,7 +37,9 @@ func setup(g)->void:
   var s=specs[i];rooms.append({"id":i,"center":s[0],"rect":Rect2(s[0]-s[1]/2,s[1]),"name":s[2],"tier":s[3],"waves":s[4],"count":s[5],"lore":s[6],"encounter":encounter_labels[i],"optional":i in [10,11],"variant":layout_rng.randi_range(0,2) if layout_version>=2 else 0})
   if layout_version>=2 and i not in [0,7,9]:
    rooms[i].count=maxi(4,rooms[i].count+layout_rng.randi_range(-2,1))
+ if layout_version>=3:RunRoutes.configure(self)
  for link in connections:
+  if layout_version>=3:continue
   var a=rooms[link[0]].center;var b=rooms[link[1]].center
   if absf(a.x-b.x)>10:corridors.append(Rect2(Vector2(minf(a.x,b.x),a.y-96),Vector2(absf(a.x-b.x),192)))
   else:corridors.append(Rect2(Vector2(a.x-96,minf(a.y,b.y)),Vector2(192,absf(a.y-b.y))))
@@ -51,6 +55,7 @@ func setup(g)->void:
  queue_redraw()
 func floor_at(p:Vector2)->bool:
  for room in rooms:
+  if layout_version>=3 and room.id!=int(route_path[-1]):continue
   if room.rect.has_point(p):return true
  for r in corridors:
   if r.has_point(p):return true
