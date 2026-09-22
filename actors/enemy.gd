@@ -111,45 +111,57 @@ func tick(dt:float)->void:
    if dead:return
  if stagger_time>0:
   stagger_time-=dt;position=game.dungeon.move_body(position,velocity*dt,radius);velocity=velocity.move_toward(Vector2.ZERO,dt*1400);queue_redraw();return
- if kind=="boss" and hp<max_hp*.5 and phase==1:
-  phase=2;state="transform";timer=1.6;charge_chain=0;velocity=Vector2.ZERO
+ if is_boss_like() and hp<max_hp*phase_threshold() and phase==1:
+  phase=2;state="transform";timer=1.45 if kind=="miniboss" else 1.6;charge_chain=0;velocity=Vector2.ZERO
   game.hazards=game.hazards.filter(func(h):return h.friendly)
   for bolt in game.projectiles.duplicate():
    if not bolt.friendly:bolt.remove()
-  game.banner("最後の鐘 / 灰冠の王","連続突進のあとが反撃の好機。");game.toast("灰冠が砕ける / 攻撃後の青緑の輪を狙え")
+  match kind:
+   "forge_boss":
+    pattern=2;game.banner("炉心開放 / 炉心の聖者","炉床の列を抜け、火花扇のあとを狙え。");game.toast("炉心が露出 / 魔撃・貫撃が有効")
+   "thorn_boss":
+    pattern=2;game.banner("荊冠開花 / 荊冠の母","眷属をまとめて処理し、弾幕の隙間へ。");game.toast("荊冠が開く / 斬撃で押し切れ")
+   "miniboss":
+    pattern=2;game.banner("鐘殻崩壊 / 灰塊の巨像","突進の停止後が最大の攻撃機会。");game.toast("巨像が暴走 / 重い攻撃後を狙え")
+   _:
+    pattern=3;game.banner("最後の鐘 / 灰冠の王","連続突進のあとが反撃の好機。");game.toast("灰冠が砕ける / 攻撃後の青緑の輪を狙え")
   game.sound.set_music("boss_awakened");game.sound.play("boss");game.fx.ring(position,300,Color("e5ad76"),1)
- if kind=="boss" and phase==2 and state!="transform":
+ if phase==2 and state!="transform" and kind in ["boss","thorn_boss"]:
   summon_timer-=dt
   if summon_timer<=0:
-   summon_timer=20
+   summon_timer=20 if kind=="boss" else 17
+   var summon_kinds=["hollow","hollow"] if kind=="boss" else ["hound","weaver"]
    for j in range(2):
-    var minion=game.spawn_enemy("hollow",position+Vector2.from_angle(j*PI)*130,5,room_id);minion.spawned_minion=true
+    var minion=game.spawn_enemy(summon_kinds[j],position+Vector2.from_angle(j*PI)*135,maxi(3,game.dungeon.rooms[room_id].tier-1),room_id);minion.spawned_minion=true
  match state:
   "spawn":
    if timer<=0:state="approach";timer=0
   "approach":
    aim=dir;var motion=dir
-   if kind in ["cantor","summoner"]:
-    if distance<230:motion=-dir
-    elif distance<365:motion=dir.orthogonal()*sin(age*.9)*.65
+   if kind in ["cantor","summoner","weaver"]:
+    if distance<(250 if kind=="weaver" else 230):motion=-dir
+    elif distance<(405 if kind=="weaver" else 365):motion=dir.orthogonal()*sin(age*.9)*.65
    var separation=Vector2.ZERO
    for e in game.enemies:
     if e==self or e.dead:continue
     var diff=position-e.position
     if diff.length_squared()<pow(radius+e.radius+7,2):separation+=diff.normalized()*50
    move_with_steering((motion*speed*(.53 if slow_time>0 else 1)+separation)*dt)
-   var reach=spec.reach
-   if kind=="boss":reach=650 if pattern%4 in [1,2,3] else 175
+   var reach=attack_reach()
    if timer<=0 and distance<reach and game.dungeon.line_clear(position,game.player.position):start_windup()
   "windup":
    if timer<=0:release_attack()
   "charge":
-   var before=position;position=game.dungeon.move_body(position,aim*(610 if kind=="boss" else 550)*dt,radius)
+   var before=position
+   var charge_speed=610.0 if kind=="boss" else (720.0 if kind=="lancer" else (660.0 if kind in ["champion","forge_boss"] else (620.0 if kind=="miniboss" else 550.0)))
+   position=game.dungeon.move_body(position,aim*charge_speed*dt,radius)
    if not charge_hit and position.distance_to(game.player.position)<radius+23:game.player.take_damage(damage*1.2,aim*190);charge_hit=true
    if timer<=0 or position.distance_to(before)<dt*90:
-    if kind=="boss" and charge_chain>0:
+    if kind in ["boss","forge_boss","miniboss"] and charge_chain>0:
      charge_chain-=1;state="chain_windup";timer=.7;windup=.7;aim=dir
-    else:state="recover";timer=2.4 if kind=="boss" else 1.2
+    else:
+     state="recover"
+     timer=2.4 if kind=="boss" else (2.05 if is_boss_like() else (1.5 if kind in ["lancer","champion"] else 1.2))
    if int(age*30)%3==0:game.fx.burst(position,Color("ad796a"),2,30)
   "transform":
    if timer<=0:state="approach";timer=.5;pattern=3
