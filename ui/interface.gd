@@ -235,7 +235,9 @@ func act(action:String)->void:
   "settings":settings_return=game.mode;game.mode="settings"
   "help":settings_return=game.mode;game.mode="help"
   "journal":settings_return=game.mode;game.mode="journal"
-  "journal_next":journal_page=(journal_page+1)%ceili(ItemDB.LEGENDS.size()/8.0)
+  "journal_next":
+   var pages=ceili(ItemDB.LEGENDS.size()/8.0) if journal_tab=="legends" else (ceili(ChronicleDB.ENEMIES.size()/8.0) if journal_tab=="enemies" else 1)
+   journal_page=(journal_page+1)%maxi(1,pages)
   "back":game.mode=settings_return
   "title":game.return_to_title()
   "equip":game.player.equip(selected,reliquary.target);salvage_confirm=-1
@@ -367,14 +369,22 @@ func draw_hud()->void:
   if id==2 and game.dungeon.layout_version>=2:status="東 / 工房・書庫の道  |  南 / 契約の近道"
   if id in [10,11]:status="東 / 忘却の鍛冶場" if id==10 else "北 / 礼拝堂"
  text(status,Vector2(720,74),12,GOLD,true);draw_map(Rect2(1175,20,238,136),false);buttons.append({"rect":Rect2(1175,20,238,136),"action":"map"})
- var elite=null
+ var elite=null;var major=null
  for e in game.enemies:
-  if e.kind=="boss":
-   text("鐘なき王",Vector2(720,173),23,Color("efd5a5"),true,true);bar(Rect2(400,185,640,10),e.hp/e.max_hp,Color("be756b"));text(("II / 灰冠覚醒" if e.phase==2 else "I / 鐘なき王")+"  |  "+("反撃の好機 +35%" if e.state=="recover" else ("覚醒中" if e.state=="transform" else ["薙ぎ払い / 背後へ","落鐘 / 予告床から離れろ","鐘の波 / 青緑の隙間へ","突進 / 横へ回避"][e.pattern%4])),Vector2(720,216),13,TEAL if e.state=="recover" else GOLD,true);elite=null;break
-  if e.kind=="elite" and elite==null:elite=e
+  if e.is_boss_like():
+   if major==null or e.is_full_boss():major=e
+   if e.is_full_boss():break
+  if e.kind in ["elite","champion"] and elite==null:elite=e
+ if major!=null:
+  var boss_color={"forge_boss":Color("e7a566"),"thorn_boss":Color("d991b8"),"miniboss":Color("c8ae82"),"boss":Color("be756b")}.get(major.kind,Color("be756b"))
+  text(major.boss_title(),Vector2(720,173),23,Color("efd5a5"),true,true)
+  bar(Rect2(400,185,640,10),major.hp/major.max_hp,boss_color)
+  var opening="+35%" if major.kind=="boss" else ("+30%" if major.kind in ["forge_boss","thorn_boss"] else "+22%")
+  text(("II" if major.phase==2 else "I")+" / "+major.boss_title()+"  |  "+(major.boss_phase_text()+" "+opening if major.state=="recover" else major.boss_phase_text()),Vector2(720,216),13,TEAL if major.state=="recover" else GOLD,true)
+  elite=null
  if elite!=null:
   var elite_color=elite.affix_color()
-  text("誓いなき騎士 / "+elite.affix_name(),Vector2(720,160),16,elite_color,true,true)
+  text(("誓いの騎士" if elite.kind=="champion" else "誓いなき騎士")+" / "+elite.affix_name(),Vector2(720,160),16,elite_color,true,true)
   bar(Rect2(565,170,310,7),elite.hp/elite.max_hp,elite_color)
   text(elite.affix_hint(),Vector2(720,194),10,MUTED,true)
  if game.banner_time>0 and game.mode=="play" and game.enemies.is_empty():
@@ -562,13 +572,13 @@ func draw_journal()->void:
    wrapped_text(ItemDB.unique_text(preview) if found else "宝箱、精鋭、危険な契約、王の戦利品から発見できる。",pos+Vector2(19,62),590,15,TEXT if found else MUTED,24)
   button(Rect2(566,806,308,48),"次の頁" if journal_page==0 else "前の頁","journal_next")
  elif journal_tab=="enemies":
-  var i=0
-  for kind in ChronicleDB.ENEMIES:
-   var known=history.enemies.has(kind);var entry=ChronicleDB.ENEMIES[kind];var pos=Vector2(70+(i%2)*670,207+int(i/2)*143)
+  var kinds=ChronicleDB.ENEMIES.keys();var start=journal_page*8;var shown=kinds.slice(start,mini(start+8,kinds.size()))
+  for i in range(shown.size()):
+   var kind=String(shown[i]);var known=history.enemies.has(kind);var entry=ChronicleDB.ENEMIES[kind];var pos=Vector2(70+(i%2)*670,207+int(i/2)*143)
    panel(Rect2(pos,Vector2(630,126)));text(entry[0] if known else "未遭遇",pos+Vector2(19,29),20,GOLD)
    wrapped_text(entry[1]+" / "+DamageModel.hint(kind) if known else "撃破すると行動と対処の記録が残る。",pos+Vector2(19,61),590,16,MUTED,24)
    if known:text("討伐 %d"%history.enemies[kind],pos+Vector2(495,30),13,TEAL)
-   i+=1
+  if kinds.size()>8:button(Rect2(566,806,308,48),"敵図鑑 / 次の頁","journal_next")
  else:
   var i=0
   for id in ChronicleDB.ACHIEVEMENTS:

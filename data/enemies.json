@@ -51,7 +51,7 @@
   "xp": 75,
   "radius": 30,
   "reach": 170,
-  "windup": 1.0,
+  "windup": 1,
   "recovery": 1.55
  },
  "boss": {
@@ -75,5 +75,82 @@
   "reach": 560,
   "windup": 1.6,
   "recovery": 5.5
+ },
+ "lancer": {
+  "name": "Ash Lancer",
+  "hp": 112,
+  "speed": 108,
+  "damage": 25,
+  "xp": 18,
+  "radius": 20,
+  "reach": 320,
+  "windup": 0.92,
+  "recovery": 1.35
+ },
+ "weaver": {
+  "name": "Grave Weaver",
+  "hp": 88,
+  "speed": 74,
+  "damage": 21,
+  "xp": 20,
+  "radius": 18,
+  "reach": 470,
+  "windup": 1.08,
+  "recovery": 2.25
+ },
+ "brute": {
+  "name": "Bell Brute",
+  "hp": 340,
+  "speed": 57,
+  "damage": 35,
+  "xp": 35,
+  "radius": 31,
+  "reach": 128,
+  "windup": 1.18,
+  "recovery": 1.85
+ },
+ "champion": {
+  "name": "Oath Champion",
+  "hp": 1280,
+  "speed": 86,
+  "damage": 37,
+  "xp": 105,
+  "radius": 32,
+  "reach": 190,
+  "windup": 1,
+  "recovery": 1.6
+ },
+ "miniboss": {
+  "name": "Ashen Behemoth",
+  "hp": 3400,
+  "speed": 66,
+  "damage": 41,
+  "xp": 190,
+  "radius": 39,
+  "reach": 240,
+  "windup": 1.08,
+  "recovery": 1.7
+ },
+ "forge_boss": {
+  "name": "THE FORGE SAINT",
+  "hp": 6800,
+  "speed": 62,
+  "damage": 41,
+  "xp": 340,
+  "radius": 45,
+  "reach": 540,
+  "windup": 1.2,
+  "recovery": 1.7
+ },
+ "thorn_boss": {
+  "name": "THE THORN MATRON",
+  "hp": 9200,
+  "speed": 72,
+  "damage": 43,
+  "xp": 440,
+  "radius": 45,
+  "reach": 610,
+  "windup": 1.18,
+  "recovery": 1.65
  }
 }

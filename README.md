@@ -13,6 +13,8 @@
 
 **誓印盤 / Build管理 2.0:** 出発前の無料リスペック、排他分岐切替、主/副誓印変更、最大5件のBuild preset、3武器・誓印・Run祝福の統合表示、出発前Build確認を追加。[Build管理仕様](docs/BUILD_MANAGEMENT_2.md)。
 
+**Phase 4 — Enemy / Boss Expansion:** 新雑魚3種、Champion、Mini Boss、Forge/Thorn Boss、Elite affix拡張、Boss固有報酬、複数Boss対応HUD/予告表示、拡張敵図鑑を追加。既存の12部屋構造は維持し、ルート再設計はPhase 5へ分離。[Phase 4戦闘仕様](docs/PHASE4_ENCOUNTERS.md)。
+
 以下は維持している0.2基盤の概要です（旧装備セットの炎・雷は0.3で誓印盤へ移行）。
 
 A playable top-down action RPG / hack-and-slasher vertical slice built in Godot 4.5.1.
