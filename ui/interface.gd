@@ -235,7 +235,9 @@ func act(action:String)->void:
   "settings":settings_return=game.mode;game.mode="settings"
   "help":settings_return=game.mode;game.mode="help"
   "journal":settings_return=game.mode;game.mode="journal"
-  "journal_next":journal_page=(journal_page+1)%ceili(ItemDB.LEGENDS.size()/8.0)
+  "journal_next":
+   var pages=ceili(ItemDB.LEGENDS.size()/8.0) if journal_tab=="legends" else (ceili(ChronicleDB.ENEMIES.size()/8.0) if journal_tab=="enemies" else 1)
+   journal_page=(journal_page+1)%maxi(1,pages)
   "back":game.mode=settings_return
   "title":game.return_to_title()
   "equip":game.player.equip(selected,reliquary.target);salvage_confirm=-1
@@ -570,13 +572,13 @@ func draw_journal()->void:
    wrapped_text(ItemDB.unique_text(preview) if found else "宝箱、精鋭、危険な契約、王の戦利品から発見できる。",pos+Vector2(19,62),590,15,TEXT if found else MUTED,24)
   button(Rect2(566,806,308,48),"次の頁" if journal_page==0 else "前の頁","journal_next")
  elif journal_tab=="enemies":
-  var i=0
-  for kind in ChronicleDB.ENEMIES:
-   var known=history.enemies.has(kind);var entry=ChronicleDB.ENEMIES[kind];var pos=Vector2(70+(i%2)*670,207+int(i/2)*143)
+  var kinds=ChronicleDB.ENEMIES.keys();var start=journal_page*8;var shown=kinds.slice(start,mini(start+8,kinds.size()))
+  for i in range(shown.size()):
+   var kind=String(shown[i]);var known=history.enemies.has(kind);var entry=ChronicleDB.ENEMIES[kind];var pos=Vector2(70+(i%2)*670,207+int(i/2)*143)
    panel(Rect2(pos,Vector2(630,126)));text(entry[0] if known else "未遭遇",pos+Vector2(19,29),20,GOLD)
    wrapped_text(entry[1]+" / "+DamageModel.hint(kind) if known else "撃破すると行動と対処の記録が残る。",pos+Vector2(19,61),590,16,MUTED,24)
    if known:text("討伐 %d"%history.enemies[kind],pos+Vector2(495,30),13,TEAL)
-   i+=1
+  if kinds.size()>8:button(Rect2(566,806,308,48),"敵図鑑 / 次の頁","journal_next")
  else:
   var i=0
   for id in ChronicleDB.ACHIEVEMENTS:
