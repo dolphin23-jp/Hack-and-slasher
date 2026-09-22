@@ -36,6 +36,7 @@ const ENCOUNTER_PATTERN_TEXT={
  "arcane_court":"遠隔散開 / 距離のある詠唱者を連続で捉えろ",
  "rush_cross":"交差突撃 / 直線突進を避けて群れを束ねろ",
  "combined":"混成陣 / 盾・突撃・後衛を三連で処理しろ"}
+const BOSS_REWARD_INDEX={"forge_boss":21,"thorn_boss":17}
 const ASCENSION_VOWS=[
  {"id":"ember_tide","name":"炎の波","detail":"聖域のギミック発生間隔が22%短くなる。"},
  {"id":"thickened_veil","name":"厚い帳","detail":"誓いなき騎士の生命 +28%、攻撃 +8%。"},
@@ -452,13 +453,26 @@ func enemy_died(e,proc:bool=false)->void:
  if player.has_effect("chain") and not proc:chain_lightning(e.position,player.stats.attack*.9,e)
  if e.spawned_minion:return
  player.materials+=roll_material_yield(player.stats.material_find)
- if e.kind in ["elite","boss"]:profile.oaths.points+=3 if e.kind=="boss" else 1
+ if e.kind in ["elite","champion","miniboss","forge_boss","thorn_boss","boss"]:
+  profile.oaths.points+=3 if e.kind=="boss" else (2 if e.kind in ["forge_boss","thorn_boss"] else 1)
  var tier=maxi(1,dungeon.rooms[e.room_id].tier+ascension*2)
  if e.kind=="boss":
   for i in range(4):
    var reward=ItemDB.generate(rng,tier,3,(i+ascension*4+int(run_seed%4)*4)%ItemDB.LEGENDS.size());reward.boss_reward=true;spawn_drop(e.position+Vector2.from_angle(i*TAU/4)*70,reward)
   for other in enemies.duplicate():other.dead=true;enemies.erase(other);other.queue_free()
   victory_pending=true
+ elif e.kind in ["forge_boss","thorn_boss"]:
+  var reward=ItemDB.generate(rng,tier+1,3,int(BOSS_REWARD_INDEX[e.kind]))
+  reward.name=("炎冠の戦利品 / " if e.kind=="forge_boss" else "いばらの戦利品 / ")+reward.name
+  spawn_drop(e.position,reward)
+  for i in range(2):spawn_drop(e.position+Vector2(i*56-28,55),ItemDB.generate(rng,tier,2))
+  toast(("炎冠" if e.kind=="forge_boss" else "いばら")+"を破った / 固有聖遺物が現れた")
+ elif e.kind=="miniboss":
+  spawn_drop(e.position,ItemDB.generate(rng,tier+1,2))
+  for i in range(2):spawn_drop(e.position+Vector2(i*50-25,45),ItemDB.generate(rng,tier,1))
+ elif e.kind=="champion":
+  spawn_drop(e.position,ItemDB.generate(rng,tier,3,-1))
+  spawn_drop(e.position+Vector2(44,35),ItemDB.generate(rng,tier,2))
  elif e.kind=="elite":
   spawn_drop(e.position,ItemDB.generate(rng,tier,3,-1))
   for i in range(2):spawn_drop(e.position+Vector2(i*42-20,40),ItemDB.generate(rng,tier,2))
