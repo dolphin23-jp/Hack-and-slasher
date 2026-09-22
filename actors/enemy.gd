@@ -41,17 +41,44 @@ var ring_gap=0.0
 const ELITE_AFFIXES={
  "frenzied":{"name":"狂乱","hint":"移動高速化 / 予備動作短縮","color":Color("df756f")},
  "bulwark":{"name":"城塞","hint":"重装甲 / ノックバック耐性","color":Color("d3b06f")},
- "volatile":{"name":"爆裂","hint":"死亡後に爆発","color":Color("c98bd8")}}
+ "volatile":{"name":"爆裂","hint":"死亡後に爆発","color":Color("c98bd8")},
+ "echoing":{"name":"反響","hint":"攻撃後に追加弾","color":Color("9cbbe8")}} 
+const FULL_BOSSES=["forge_boss","thorn_boss","boss"]
+func is_full_boss()->bool:return kind in FULL_BOSSES
+func is_boss_like()->bool:return is_full_boss() or kind=="miniboss"
+func boss_title()->String:
+ return {"forge_boss":"炉心の聖者","thorn_boss":"荊冠の母","boss":"鐘なき王","miniboss":"灰塊の巨像"}.get(kind,spec.get("name",kind))
+func boss_phase_text()->String:
+ if state=="transform":return "形態移行 / 攻撃不可"
+ if state=="recover":return "反撃の好機"
+ match kind:
+  "forge_boss":return ["炉槌 / 外へ","炉床 / 予告列を抜けろ","火花扇 / 横へ","突進 / 横へ"][pattern%4]
+  "thorn_boss":return ["荊輪 / 隙間へ","根走り / 十字から離れろ","眷属 / 範囲で処理","荊扇 / 横へ"][pattern%4]
+  "miniboss":return ["大振り / 背後へ","鐘片 / 隙間へ","突進 / 横へ"][pattern%3]
+  _:return ["薙ぎ払い / 背後へ","落鐘 / 予告床から離れろ","鐘の波 / 青緑の隙間へ","突進 / 横へ回避"][pattern%4]
+func texture_kind()->String:
+ return {"summoner":"cantor","lancer":"warden","weaver":"cantor","brute":"warden","champion":"elite","miniboss":"boss","forge_boss":"boss","thorn_boss":"boss"}.get(kind,kind)
+func phase_threshold()->float:
+ return .58 if kind=="forge_boss" else .5
+func attack_reach()->float:
+ if kind=="boss":return 650 if pattern%4 in [1,2,3] else 175
+ if kind=="forge_boss":return 620 if pattern%4 in [1,2,3] else 215
+ if kind=="thorn_boss":return 650
+ if kind=="miniboss":return 520 if pattern%3==1 else (330 if pattern%3==2 else 210)
+ if kind=="champion" and pattern%3==2:return 340
+ return float(spec.reach)
 func setup(g,type:String,p:Vector2,tier:int,room:int,forced_affix:String="")->void:
  game=g;kind=type;position=p;room_id=room;spec=game.enemy_data[kind];radius=spec.radius
  max_hp=spec.hp*(1+maxi(0,tier-1)*.25+game.ascension*.45);hp=max_hp
  damage=spec.damage*(1+maxi(0,tier-1)*.085+game.ascension*.15);speed=spec.speed;xp=int(spec.xp*(1+maxi(0,tier-1)*.12))
- texture=load("res://assets/characters/"+("cantor" if kind=="summoner" else kind)+".svg");windup=spec.windup
- if kind=="elite":
+ texture=load("res://assets/characters/"+texture_kind()+".svg");windup=spec.windup
+ if kind in ["elite","champion"]:
   max_hp*=game.ascension_elite_hp_mult();hp=max_hp;damage*=game.ascension_elite_damage_mult()
   affix=forced_affix if forced_affix in ELITE_AFFIXES else ELITE_AFFIXES.keys()[game.rng.randi_range(0,ELITE_AFFIXES.size()-1)]
   apply_elite_affix()
- if kind=="boss":max_hp=spec.hp*(1+game.ascension*.55);hp=max_hp;timer=1.5
+ if is_full_boss():
+  max_hp=spec.hp*(1+game.ascension*.55);hp=max_hp;timer=1.5
+ if kind=="miniboss":timer=1.2
  damage*=game.risk_damage_multiplier()
 func apply_elite_affix()->void:
  match affix:
