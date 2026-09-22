@@ -378,6 +378,7 @@ func draw_hud()->void:
   if id==1 and 3 not in game.dungeon.cleared:status+=" - 任意の秘宝: 北"
   if id==2 and game.dungeon.layout_version>=2:status="東 / 工房・書庫の道  |  南 / 契約の近道"
   if id in [10,11]:status="東 / 忘却の鍛冶場" if id==10 else "北 / 礼拝堂"
+ if game.dungeon.layout_version>=3 and game.dungeon.active<0:status="戦利品を回収して、次の部屋の報酬を選べ。"
  text(status,Vector2(720,74),12,GOLD,true);draw_map(Rect2(1175,20,238,136),false);buttons.append({"rect":Rect2(1175,20,238,136),"action":"map"})
  var elite=null;var major=null
  for e in game.enemies:

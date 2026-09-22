@@ -510,12 +510,15 @@ func collect(d)->bool:
   return false
  player.inventory.append(d.item.duplicate(true));record_item(d.item);metrics.pickups+=1;sound.play("loot",.65);toast("回収: "+d.item.name+"  [I] 比較");d.take();return true
 func interact()->void:
+ var handled=false
  for d in drops.duplicate():
   if d.position.distance_to(player.position)>150 or d.taken:continue
+  handled=true
   if d.kind=="chest":
    var at=d.position;var tier=int(d.item.tier);var gilded=d.item.gilded;d.take();sound.play("chest")
    for i in range(4 if gilded else 3):spawn_drop(at+Vector2.from_angle(i*1.7)*50,roll_loot(maxi(1,tier),2 if i==0 else -1))
   elif d.kind=="item":collect(d)
+ if not handled and not RunRoutes.choices(dungeon).is_empty():ui.act("route_open")
 func inventory_before(a:Dictionary,b:Dictionary)->bool:
  var ar:int=int(a.rarity);var br:int=int(b.rarity)
  if ar!=br:return ar>br
