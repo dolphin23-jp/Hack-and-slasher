@@ -348,6 +348,7 @@ func spawn_wave()->void:
  for i in range(enemy_total):
   var kind=String(plan[i].kind) if i<plan.size() else String(pool[rng.randi_range(0,pool.size()-1)])
   var spawn_at=plan[i].p if i<plan.size() else dungeon.spawn_point(room.id,i)
+  if i==0 and wave==room.waves and room.id==5:kind="elite"
   spawn_enemy(kind,spawn_at,room.tier,room.id)
  if not pattern.is_empty():toast(ENCOUNTER_PATTERN_TEXT[pattern]+"  /  %d-%d"%[wave,room.waves])
  elif wave>1:toast("%s  /  ウェーブ %d / %d"%[room.encounter,wave,room.waves])
