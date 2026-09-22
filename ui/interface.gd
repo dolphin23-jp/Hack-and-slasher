@@ -367,14 +367,22 @@ func draw_hud()->void:
   if id==2 and game.dungeon.layout_version>=2:status="東 / 工房・書庫の道  |  南 / 契約の近道"
   if id in [10,11]:status="東 / 忘却の鍛冶場" if id==10 else "北 / 礼拝堂"
  text(status,Vector2(720,74),12,GOLD,true);draw_map(Rect2(1175,20,238,136),false);buttons.append({"rect":Rect2(1175,20,238,136),"action":"map"})
- var elite=null
+ var elite=null;var major=null
  for e in game.enemies:
-  if e.kind=="boss":
-   text("鐘なき王",Vector2(720,173),23,Color("efd5a5"),true,true);bar(Rect2(400,185,640,10),e.hp/e.max_hp,Color("be756b"));text(("II / 灰冠覚醒" if e.phase==2 else "I / 鐘なき王")+"  |  "+("反撃の好機 +35%" if e.state=="recover" else ("覚醒中" if e.state=="transform" else ["薙ぎ払い / 背後へ","落鐘 / 予告床から離れろ","鐘の波 / 青緑の隙間へ","突進 / 横へ回避"][e.pattern%4])),Vector2(720,216),13,TEAL if e.state=="recover" else GOLD,true);elite=null;break
-  if e.kind=="elite" and elite==null:elite=e
+  if e.is_boss_like():
+   if major==null or e.is_full_boss():major=e
+   if e.is_full_boss():break
+  if e.kind in ["elite","champion"] and elite==null:elite=e
+ if major!=null:
+  var boss_color={"forge_boss":Color("e7a566"),"thorn_boss":Color("d991b8"),"miniboss":Color("c8ae82"),"boss":Color("be756b")}.get(major.kind,Color("be756b"))
+  text(major.boss_title(),Vector2(720,173),23,Color("efd5a5"),true,true)
+  bar(Rect2(400,185,640,10),major.hp/major.max_hp,boss_color)
+  var opening="+35%" if major.kind=="boss" else ("+30%" if major.kind in ["forge_boss","thorn_boss"] else "+22%")
+  text(("II" if major.phase==2 else "I")+" / "+major.boss_title()+"  |  "+(major.boss_phase_text()+" "+opening if major.state=="recover" else major.boss_phase_text()),Vector2(720,216),13,TEAL if major.state=="recover" else GOLD,true)
+  elite=null
  if elite!=null:
   var elite_color=elite.affix_color()
-  text("誓いなき騎士 / "+elite.affix_name(),Vector2(720,160),16,elite_color,true,true)
+  text(("誓約の覇者" if elite.kind=="champion" else "誓いなき騎士")+" / "+elite.affix_name(),Vector2(720,160),16,elite_color,true,true)
   bar(Rect2(565,170,310,7),elite.hp/elite.max_hp,elite_color)
   text(elite.affix_hint(),Vector2(720,194),10,MUTED,true)
  if game.banner_time>0 and game.mode=="play" and game.enemies.is_empty():
