@@ -337,7 +337,7 @@ func spawn_wave()->void:
   var special={3:"champion",4:"forge_boss",6:"miniboss",8:"thorn_boss",11:"champion"}.get(int(room.id),"")
   if not special.is_empty():
    if special in ["forge_boss","thorn_boss","miniboss"]:
-    sound.set_music("boss_music");sound.play("boss")
+    room_modifier_timer=999.0;sound.set_music("boss_music");sound.play("boss")
     var title={"forge_boss":"炎冠の聖者","thorn_boss":"いばらの王","miniboss":"灰の守衛"}.get(special,"")
     var hint={"forge_boss":"予告された炉床を抜け、魔撃・貫撃で攻めろ","thorn_boss":"弾幕の隙間と眷属を範囲攻撃で崩せ","miniboss":"大振りと突進の後を狙え"}.get(special,"")
     banner(title,hint)
