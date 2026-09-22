@@ -17,13 +17,13 @@ const UPGRADE_POOL=[
  {"name":"鋼の誓い","detail":"+9 攻撃力。剣と3つの攻撃スキルを強化。","icon":"cleave","key":"attack","value":9.0},
  {"name":"旅人","detail":"+10% 移動速度、+10 防御力。","icon":"dash","key":"speed","value":.1}]
 const ROOM_ENEMY_POOLS={
- 1:["hollow","hollow","hollow","cantor"],
- 2:["hollow","hollow","hound","hound","cantor"],
- 3:["hound","hound","hollow","cantor"],
- 4:["hollow","hollow","warden","cantor"],
- 5:["cantor","cantor","hollow","warden"],
- 6:["hound","hound","hound","hollow","warden"],
- 8:["hollow","cantor","hound","warden","hollow"]}
+ 1:["hollow","hollow","lancer","cantor"],
+ 2:["hollow","hound","hound","lancer","cantor"],
+ 3:["hound","lancer","hollow","cantor"],
+ 4:["hollow","warden","lancer","brute"],
+ 5:["cantor","weaver","hollow","warden"],
+ 6:["hound","lancer","brute","hollow","warden"],
+ 8:["hollow","weaver","hound","brute","lancer"]}
 const ROOM_MODIFIER_TEXT={
  4:"工房の噴出口 / 足元から炎が噴き出す",
  5:"炎の刻印 / 直線状に危険地帯が出現",
@@ -259,9 +259,12 @@ func tick_room_modifier(dt:float)->void:
 func encounter_pool(room_id:int,current_wave:int)->Array:
  var pool=ROOM_ENEMY_POOLS.get(room_id,["hollow","hound","warden","summoner"]).duplicate()
  if room_id in [4,5,6,8,10,11]:pool.append("summoner")
+ if room_id in [4,6,8,11]:pool.append("lancer")
+ if room_id in [5,8,10]:pool.append("weaver")
+ if room_id in [6,8,11]:pool.append("brute")
  var variant=int(dungeon.rooms[room_id].get("variant",0))
- if variant==1:pool.append_array(["hound","cantor"])
- elif variant==2:pool.append_array(["warden","summoner"])
+ if variant==1:pool.append_array(["hound","cantor","lancer"])
+ elif variant==2:pool.append_array(["warden","summoner","brute"])
  if current_wave>=2:
   match room_id:
    1:pool.append("cantor")
@@ -293,7 +296,7 @@ func encounter_plan(room:Dictionary,current_wave:int,total:int)->Array:
  var side=inward.orthogonal()
  match pattern:
   "lane":
-   var kinds=["hollow","hound","hollow","cantor","hound","hollow"]
+   var kinds=["hollow","lancer","hollow","cantor","hound","lancer"]
    for i in range(mini(total,6)):
     var depth=-220+i*92
     plan.append({"kind":kinds[i%kinds.size()],"p":formation_point(room,inward*depth+side*((i%2)*28-14),i)})
@@ -305,7 +308,7 @@ func encounter_plan(room:Dictionary,current_wave:int,total:int)->Array:
   "shield_line":
    var front_count=mini(3,total)
    for i in range(front_count):
-    plan.append({"kind":"warden","p":formation_point(room,inward*-65+side*((i-(front_count-1)/2.0)*120),i)})
+    plan.append({"kind":"brute" if i==1 and current_wave>1 else ("lancer" if i==front_count-1 else "warden"),"p":formation_point(room,inward*-65+side*((i-(front_count-1)/2.0)*120),i)})
    var back_kinds=["cantor","summoner","cantor"]
    for i in range(front_count,total):
     var j=i-front_count
@@ -313,29 +316,37 @@ func encounter_plan(room:Dictionary,current_wave:int,total:int)->Array:
   "arcane_court":
    var offsets=[Vector2(-260,-190),Vector2(260,-190),Vector2(-260,190),Vector2(260,190),Vector2(0,-250),Vector2(0,250)]
    for i in range(mini(total,offsets.size())):
-    plan.append({"kind":"summoner" if i==0 and current_wave>1 else "cantor","p":formation_point(room,offsets[i],i)})
+    plan.append({"kind":"summoner" if i==0 and current_wave>1 else ("weaver" if i%2==1 else "cantor"),"p":formation_point(room,offsets[i],i)})
   "rush_cross":
    var offsets=[Vector2(-250,0),Vector2(250,0),Vector2(0,-230),Vector2(0,230),Vector2(-170,-170),Vector2(170,170)]
    for i in range(mini(total,offsets.size())):
-    plan.append({"kind":"hound" if i<4 else "hollow","p":formation_point(room,offsets[i],i)})
+    plan.append({"kind":"hound" if i<2 else ("lancer" if i<4 else "hollow"),"p":formation_point(room,offsets[i],i)})
   "combined":
    var specs=[
-    ["warden",inward*-90+side*-105],["warden",inward*-90+side*105],
-    ["summoner",inward*220],["cantor",inward*170+side*230],
-    ["hound",side*-270],["hound",side*270]]
+    ["warden",inward*-90+side*-105],["brute",inward*-90+side*105],
+    ["summoner",inward*220],["weaver",inward*170+side*230],
+    ["hound",side*-270],["lancer",side*270]]
    for i in range(mini(total,specs.size())):
     plan.append({"kind":specs[i][0],"p":formation_point(room,specs[i][1],i)})
  return plan
 func spawn_wave()->void:
  var room=dungeon.rooms[dungeon.active];wave+=1;wave_delay=3
  if room.id==9:spawn_enemy("boss",room.center+Vector2(200,0),7,9);return
+ if wave==room.waves:
+  var special={3:"champion",4:"forge_boss",6:"miniboss",8:"thorn_boss",11:"champion"}.get(int(room.id),"")
+  if not special.is_empty():
+   if special in ["forge_boss","thorn_boss","miniboss"]:
+    sound.set_music("boss_music");sound.play("boss")
+    var title={"forge_boss":"炎冠の聖者","thorn_boss":"いばらの王","miniboss":"灰の守衛"}.get(special,"")
+    var hint={"forge_boss":"予告された炉床を抜け、魔撃・貫撃で攻めろ","thorn_boss":"弾幕の隙間と眷属を範囲攻撃で崩せ","miniboss":"大振りと突進の後を狙え"}.get(special,"")
+    banner(title,hint)
+   spawn_enemy(special,room.center+Vector2(170,0),room.tier,room.id);return
  var pool=encounter_pool(room.id,wave)
  var enemy_total=room.count+wave*2+ascension_wave_bonus()
  var pattern=encounter_pattern(room.id,wave);var plan=encounter_plan(room,wave,enemy_total)
  for i in range(enemy_total):
   var kind=String(plan[i].kind) if i<plan.size() else String(pool[rng.randi_range(0,pool.size()-1)])
   var spawn_at=plan[i].p if i<plan.size() else dungeon.spawn_point(room.id,i)
-  if i==0 and wave==room.waves and room.id in [3,4,6,8]:kind="elite"
   spawn_enemy(kind,spawn_at,room.tier,room.id)
  if not pattern.is_empty():toast(ENCOUNTER_PATTERN_TEXT[pattern]+"  /  %d-%d"%[wave,room.waves])
  elif wave>1:toast("%s  /  ウェーブ %d / %d"%[room.encounter,wave,room.waves])
