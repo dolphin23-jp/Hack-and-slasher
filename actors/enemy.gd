@@ -47,14 +47,14 @@ const FULL_BOSSES=["forge_boss","thorn_boss","boss"]
 func is_full_boss()->bool:return kind in FULL_BOSSES
 func is_boss_like()->bool:return is_full_boss() or kind=="miniboss"
 func boss_title()->String:
- return {"forge_boss":"炉心の聖者","thorn_boss":"荊冠の母","boss":"鐘なき王","miniboss":"灰塊の巨像"}.get(kind,spec.get("name",kind))
+ return {"forge_boss":"炎冠の聖者","thorn_boss":"いばらの王","boss":"鐘なき王","miniboss":"灰の守衛"}.get(kind,spec.get("name",kind))
 func boss_phase_text()->String:
  if state=="transform":return "形態移行 / 攻撃不可"
  if state=="recover":return "反撃の好機"
  match kind:
-  "forge_boss":return ["炉槌 / 外へ","炉床 / 予告列を抜けろ","火花扇 / 横へ","突進 / 横へ"][pattern%4]
-  "thorn_boss":return ["荊輪 / 隙間へ","根走り / 十字から離れろ","眷属 / 範囲で処理","荊扇 / 横へ"][pattern%4]
-  "miniboss":return ["大振り / 背後へ","鐘片 / 隙間へ","突進 / 横へ"][pattern%3]
+  "forge_boss":return ["大火 / 外へ","炎床 / 予告列から離れろ","火花扇 / 横へ","突進 / 横へ"][pattern%4]
+  "thorn_boss":return ["いばら輪 / 隙間へ","十字火 / 離れろ","眷属 / 範囲で処理","いばら扇 / 横へ"][pattern%4]
+  "miniboss":return ["大撃 / 背後へ","鐘片 / 隙間へ","突進 / 横へ"][pattern%3]
   _:return ["薙ぎ払い / 背後へ","落鐘 / 予告床から離れろ","鐘の波 / 青緑の隙間へ","突進 / 横へ回避"][pattern%4]
 func texture_kind()->String:
  return {"summoner":"cantor","lancer":"warden","weaver":"cantor","brute":"warden","champion":"elite","miniboss":"boss","forge_boss":"boss","thorn_boss":"boss"}.get(kind,kind)
@@ -118,11 +118,11 @@ func tick(dt:float)->void:
    if not bolt.friendly:bolt.remove()
   match kind:
    "forge_boss":
-    pattern=2;game.banner("炉心開放 / 炉心の聖者","炉床の列を抜け、火花扇のあとを狙え。");game.toast("炉心が露出 / 魔撃・貫撃が有効")
+    pattern=2;game.banner("炎冠開放 / 炎冠の聖者","炎床の列から離れ、火花扇のあとを狙え。");game.toast("炎冠が開く / 魔撃・貫撃が有効")
    "thorn_boss":
-    pattern=2;game.banner("荊冠開花 / 荊冠の母","眷属をまとめて処理し、弾幕の隙間へ。");game.toast("荊冠が開く / 斬撃で押し切れ")
+    pattern=2;game.banner("いばら開花 / いばらの王","眷属をまとめて処理し、遠隔攻撃の隙間へ。");game.toast("いばらが開く / 斬撃で押し切れ")
    "miniboss":
-    pattern=2;game.banner("鐘殻崩壊 / 灰塊の巨像","突進の停止後が最大の攻撃機会。");game.toast("巨像が暴走 / 重い攻撃後を狙え")
+    pattern=2;game.banner("鐘が崩れる / 灰の守衛","突進の停止後が最大の攻撃機会。");game.toast("守衛が加速 / 重い攻撃後を狙え")
    _:
     pattern=3;game.banner("最後の鐘 / 灰冠の王","連続突進のあとが反撃の好機。");game.toast("灰冠が砕ける / 攻撃後の青緑の輪を狙え")
   game.sound.set_music("boss_awakened");game.sound.play("boss");game.fx.ring(position,300,Color("e5ad76"),1)
