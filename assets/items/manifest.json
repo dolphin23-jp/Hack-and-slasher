@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "items": {
+    "example_sword": {
+      "default": "example_sword_default.svg"
+    }
+  }
+}

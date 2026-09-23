@@ -15,7 +15,8 @@ func run()->void:
  var generated=ItemDB.generate(game.rng,5,2)
  check("new items use schema 4",generated.schema==4 and ItemDB.valid(generated))
  check("new items carry stable art fields",not String(generated.art_id).is_empty() and generated.art_variant=="default")
- check("missing art falls back to shared placeholder",ItemDB.art_path(generated)=="res://assets/icons/chest.svg" and not ItemDB.art_ready(generated))
+ var placeholder=String(generated.weapon_type) if String(generated.slot).begins_with("weapon") else ("accessory" if String(generated.slot).begins_with("accessory") else "armor")
+ check("missing art falls back to typed shared placeholder",ItemDB.art_path(generated)=="res://assets/icons/"+placeholder+".svg" and not ItemDB.art_ready(generated))
  var same=generated.duplicate(true);same.id="different-id"
  check("art identity does not depend on random item id",same.art_id==generated.art_id)
 

@@ -127,10 +127,9 @@ static func strike(p,linked:bool=false)->void:
     "feet":p.dash_cd=maxf(0,p.dash_cd-.35)
     "accessory","accessory2":
      for i in range(3):p.cooldowns[i]=maxf(0,p.cooldowns[i]-.65)
- if w.shape=="circle":g.fx.ring(p.position,reach,Color("d4fff0"),.25);g.fx.slash(p.position,p.facing,reach,Color("b4ecdf"),true,true)
- elif w.shape=="line":g.fx.lightning(p.position,p.position+p.facing*reach)
- else:g.fx.slash(p.position,p.facing,minf(reach,160),Color("b4ecdf"),p.combo==3,true)
+ g.fx.weapon(p.position,p.facing,kind,reach)
  if linked and not String(transition.label).is_empty():
+  g.fx.recipe(p.position,transition.recipes)
   var recipe_color=WeaponActionResolver.ARTS[kind].color
   g.fx.number(p.position+p.facing*48,String(transition.label),recipe_color,true);g.sound.play("crit",.25,1.15)
  g.sound.play("slash" if w.shape!="bolt" else "bolt",.8,1.2 if w.cooldown<.25 else .95)

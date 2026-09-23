@@ -1,13 +1,16 @@
-# Item art pipeline
+# Shared item art
 
-Equipment UI resolves artwork from each item's `art_id`.
+`art_id` identifies an item image and `art_variant` selects a variant (`default` when omitted). Inventory cards, comparison/detail, Vault, Forge, world drops and rare-loot notices share `ItemArt.texture()` and preserve the image aspect ratio.
 
-Place one of these files here:
+Install reviewed PNG/WebP/SVG files:
 
-- `<art_id>.png`
-- `<art_id>.webp`
-- `<art_id>.svg`
+```sh
+python tools/import_item_art.py my_sword.webp legend_ash_edge
+python tools/import_item_art.py frosted_sword.webp legend_ash_edge --variant frost
+```
 
-The same asset is reused by Inventory, item detail, Vault, and Forge. If no matching file exists, the UI uses the shared reliquary placeholder.
+The importer writes `manifest.json` and a stable filename; existing art requires `--replace`. PNG/WebP dimensions are limited to 16–1024 pixels and files to 4 MiB. SVG must be self-contained. Commit the source and manifest, then let Godot import normally. No code change is needed. `example_sword` is a pipeline example using the existing sword icon, not final item artwork.
 
-Generated IDs are stable by equipment family/grade, while Legendary/Mythic items use `legend_<effect>`. The item schema also carries `art_variant` for future alternate treatments without changing save identity.
+Resolution: manifest variant → manifest default → `<art_id>_<variant>.<extension>` → `<art_id>.<extension>` → uniform weapon/armor/accessory placeholder. Unknown or malformed IDs never escape the art directory. Caches are bounded to 96 textures. Use `ItemArt.clear()` after changing assets in a running editor session.
+
+Prefer square transparent images at 256 or 512 pixels, with the silhouette inside an 80% safe area. Rarity frames, Mythic corners, loot beams and sound are supplied by the game and should not be baked into images. Full bespoke artwork can be added incrementally without altering saves.

@@ -105,6 +105,12 @@ jobs:
           timeout 90s /tmp/godot/godot --headless --path . --script res://tests/phase5_runner.gd -- --test 2>&1 | tee test-artifacts/phase5.log
           timeout 240s /tmp/godot/godot --headless --path . -- --test --campaign 2>&1 | tee test-artifacts/branching-campaign.log
 
+      - name: Run art and VFX regression
+        run: |
+          set -o pipefail
+          timeout 90s /tmp/godot/godot --headless --path . --script res://tests/phase6_runner.gd -- --test 2>&1 | tee test-artifacts/phase6.log
+          timeout 90s xvfb-run -a -s "-screen 0 1440x900x24" /tmp/godot/godot --audio-driver Dummy --path . --script res://tests/phase6_visual.gd -- --test 2>&1 | tee test-artifacts/phase6-visual.log
+
       - name: Play four weapon chains through the cathedral
         run: |
           set -o pipefail
