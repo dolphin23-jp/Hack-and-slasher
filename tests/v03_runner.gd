@@ -62,16 +62,18 @@ func run()->void:
  check("T5 third slot adds a strike",tier_damage>(10000-e.hp)*1.8)
  clear();it=weapon("fist","weapon3");it.tier=5;p.rebuild_stats();p.combo=2;var rear=foe(Vector2(-90,0));p.attack()
  check("T5 fist finisher hits around the player",rear.hp<10000)
- var values=[]
  for r in range(5):
   var low=INF;var high=0.0
   for i in range(30):
    var item=ItemDB.generate(game.rng,1,r)
    check_roll(item)
    for key in item.base:low=minf(low,item.base[key]);high=maxf(high,item.base[key])
-   values.append(item.base)
   check("rarity roll bounds "+str(r),low>0 and high>low)
- check("random roll diversity",values[0]!=values[1])
+ var diversity_rng=RandomNumberGenerator.new();diversity_rng.seed=20260923;var signatures={}
+ for i in range(40):
+  var rolled=ItemDB.generate(diversity_rng,1,2)
+  signatures[JSON.stringify(rolled.base)]=true
+ check("random roll diversity",signatures.size()>=4)
  var weighted_rng=RandomNumberGenerator.new();weighted_rng.seed=771;var spear_pierce=0;var spear_blunt=0;var head_crit=0;var head_material=0;var affix_keys=ItemDB.AFFIXES.keys()
  for i in range(2000):
   var wk=ItemDB.pick_affix(weighted_rng,affix_keys,"weapon","spear");spear_pierce+=1 if wk=="pierce" else 0;spear_blunt+=1 if wk=="blunt" else 0
