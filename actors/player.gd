@@ -310,7 +310,7 @@ func equip(index:int,target:String="")->bool:
  reset_chain()
  rebuild_stats();game.sound.play("equip");game.metrics.equips+=1;game.save_run();return true
 func reset_chain()->void:
- combo_expire=0;chain_streak=0;chain_history.clear();normal_groups.clear();last_mace_time=-10.0
+ combo_expire=0;chain_streak=0;chain_history.clear();normal_groups.clear();last_chain_weapon="";last_mace_time=-10.0
 func xp_required()->int:return 60+(level-1)*45+int(pow(level-1,1.65)*16)
 func gain_xp(amount:int)->void:
  xp+=amount
