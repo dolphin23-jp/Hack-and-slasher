@@ -6,4 +6,6 @@ Seven weapon trails distinguish sword arcs, circular scythes, spear arrows, para
 
 VFX allocation is capped (48 weapon trails, 16 sigils, 64 rings/slashes, 48 lightning arcs, 450 particles), and effects expire normally. Combat timing and damage are unchanged. No continuous texture loading or new full-screen shader is introduced.
 
+Phase 6 is based on merged Phase 5. The frozen per-run oath-board snapshot remains authoritative for both numerical stats and node special effects across Continue; visual changes must not replace it with the next-run profile board.
+
 Validation: 35 art/lookup/effect-budget/attack-and-dash checks, importer success/path/overwrite checks, and 10 rendered iPad-proportion captures. The normal branching campaign verifies combat through victory. Web export and touch runtime checks run in PR CI. Physical iPad Safari remains untested.
