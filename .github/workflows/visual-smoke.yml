@@ -117,6 +117,15 @@ jobs:
           timeout 90s /tmp/godot/godot --headless --audio-driver Dummy --path . --script res://tests/phase7_runner.gd -- --test 2>&1 | tee test-artifacts/phase7.log
           timeout 90s xvfb-run -a -s "-screen 0 1440x900x24" /tmp/godot/godot --audio-driver Dummy --path . --script res://tests/phase7_visual.gd -- --test 2>&1 | tee test-artifacts/phase7-visual.log
 
+      - name: Validate three boss identities and play every fight rendered
+        run: |
+          set -o pipefail
+          timeout 90s /tmp/godot/godot --headless --audio-driver Dummy --path . --script res://tests/phase8_runner.gd -- --test 2>&1 | tee test-artifacts/phase8.log
+          timeout 90s xvfb-run -a -s "-screen 0 1440x900x24" /tmp/godot/godot --audio-driver Dummy --path . --script res://tests/phase8_visual.gd -- --test 2>&1 | tee test-artifacts/phase8-visual.log
+          for guardian in forge_boss thorn_boss; do
+            timeout 240s xvfb-run -a -s "-screen 0 1440x900x24" /tmp/godot/godot --audio-driver Dummy --path . -- --test --campaign --guardian="$guardian" --render-guardian 2>&1 | tee "test-artifacts/phase8-play-$guardian.log"
+          done
+
       - name: Play four weapon chains through the cathedral
         run: |
           set -o pipefail

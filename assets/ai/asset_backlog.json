@@ -54,12 +54,32 @@
     {
       "id": "character_boss",
       "kind": "character",
-      "runtime_path": "assets/characters/boss.svg",
-      "status": "baseline",
-      "generation_method": "legacy_original_svg_baseline",
+      "runtime_path": "assets/characters/boss_king.png",
+      "status": "integrated",
+      "generation_method": "GPT_Image_original_two_phase_sheet",
       "priority": "high",
       "ai_target": true,
-      "notes": "Shared boss base currently differentiated by tint/VFX; long-term target is distinct boss identity without breaking telegraph readability."
+      "notes": "The Bellless King has an original transparent two-phase atlas, unique crowned silhouette, transition and attack/recovery poses. Rendered campaign, Web and CI validation pending."
+    },
+    {
+      "id": "character_forge_boss",
+      "kind": "character",
+      "runtime_path": "assets/characters/forge_boss.png",
+      "status": "integrated",
+      "generation_method": "GPT_Image_original_two_phase_sheet",
+      "priority": "high",
+      "ai_target": true,
+      "notes": "Forge saint: furnace hammer and molten armored awakening. Rendered campaign, Web and CI validation pending."
+    },
+    {
+      "id": "character_thorn_boss",
+      "kind": "character",
+      "runtime_path": "assets/characters/thorn_boss.png",
+      "status": "integrated",
+      "generation_method": "GPT_Image_original_two_phase_sheet",
+      "priority": "high",
+      "ai_target": true,
+      "notes": "Thorn king: spined root silhouette and expanded thorn awakening. Rendered campaign, Web and CI validation pending."
     },
     {
       "id": "character_cantor",
