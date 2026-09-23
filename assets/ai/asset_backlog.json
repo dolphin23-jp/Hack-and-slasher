@@ -15,11 +15,11 @@
       "id": "character_player",
       "kind": "character",
       "runtime_path": "assets/characters/oath_knight.png",
-      "status": "integrated",
+      "status": "validated",
       "generation_method": "GPT_Image_original_upper_lower_atlas",
       "priority": "high",
       "ai_target": true,
-      "notes": "Generated separated transparent 1254px upper/left/right atlas, rendered at iPad proportion; Phase 7 motion and gameplay checks pass locally. CI/Web confirmation pending."
+      "notes": "Original separated transparent atlas used in gameplay. 15 iPad-class touch-layout renders inspected; Phase 7 tests and full campaign pass; PR #44 Visual smoke and Web/browser CI green. Physical iPad Safari remains untested."
     },
     {
       "id": "character_hollow",
@@ -165,11 +165,11 @@
       "id": "motion_three_weapon_chain",
       "kind": "motion",
       "runtime_path": "actors/player.gd",
-      "status": "integrated",
+      "status": "validated",
       "generation_method": "procedural_godot_motion_with_generated_atlas",
       "priority": "high",
       "ai_target": true,
-      "notes": "Seven weapon-specific strikes, idle/walk, dash, hurt and collapse poses use the generated atlas; seven dodge-cancel checks and six-step chain order pass. CI/Web confirmation pending."
+      "notes": "Seven attacks, idle/movement, dash, hit, collapse and real three-weapon chain rendered; dodge cancel and chain order tests pass. PR #44 Visual smoke and Web/browser CI green."
     },
     {
       "id": "vfx_weapon_families",
