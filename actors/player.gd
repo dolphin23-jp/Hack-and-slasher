@@ -205,7 +205,7 @@ func tick(dt:float)->void:
  WeaponActionResolver.tick(self,dt)
  for i in range(3):cooldowns[i]=maxf(0,cooldowns[i]-dt)
  dash_cd=maxf(0,dash_cd-dt);attack_cd=maxf(0,attack_cd-dt);invulnerable=maxf(0,invulnerable-dt);flash=maxf(0,flash-dt)
- crit_blast_cd=maxf(0,crit_blast_cd-dt);attack_time=maxf(0,attack_time/dt if false else attack_time-dt);combo_expire=maxf(0,combo_expire-dt)
+ crit_blast_cd=maxf(0,crit_blast_cd-dt);attack_time=maxf(0,attack_time-dt);combo_expire=maxf(0,combo_expire-dt)
  var move=Input.get_vector("move_left","move_right","move_up","move_down")
  if touch_move.length()>.1:move=touch_move
  if controlled_by_test:move=test_move.limit_length()
@@ -310,7 +310,7 @@ func equip(index:int,target:String="")->bool:
  reset_chain()
  rebuild_stats();game.sound.play("equip");game.metrics.equips+=1;game.save_run();return true
 func reset_chain()->void:
- combo_expire=0;chain_streak=0;chain_history.clear();normal_groups.clear();last_chain_weapon="";last_mace_time=-10.0
+ combo_expire=0;chain_streak=0;chain_history.clear();normal_groups.clear();last_mace_time=-10.0
 func xp_required()->int:return 60+(level-1)*45+int(pow(level-1,1.65)*16)
 func gain_xp(amount:int)->void:
  xp+=amount
