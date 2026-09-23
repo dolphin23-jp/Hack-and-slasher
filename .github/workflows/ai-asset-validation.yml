@@ -1,0 +1,46 @@
+name: AI asset validation
+
+on:
+  pull_request:
+    paths:
+      - "AGENTS.md"
+      - ".codex/**"
+      - "assets/ai/**"
+      - "assets/characters/**"
+      - "assets/icons/**"
+      - "assets/items/**"
+      - "assets/audio/**"
+      - "actors/**"
+      - "world/**"
+      - "tools/**"
+      - "docs/AI_ASSET_PIPELINE.md"
+      - ".github/workflows/ai-asset-validation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "AGENTS.md"
+      - ".codex/**"
+      - "assets/ai/**"
+      - "assets/characters/**"
+      - "assets/icons/**"
+      - "assets/items/**"
+      - "assets/audio/**"
+      - "actors/**"
+      - "world/**"
+      - "tools/**"
+      - "docs/AI_ASSET_PIPELINE.md"
+      - ".github/workflows/ai-asset-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate AI asset bookkeeping
+        run: python tools/validate_ai_assets.py
