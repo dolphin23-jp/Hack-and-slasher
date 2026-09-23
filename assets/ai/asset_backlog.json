@@ -1,0 +1,268 @@
+{
+  "version": 1,
+  "project": "ASHEN VOW — 灰冠の再誓",
+  "intent": "Track visual, motion, music, and SFX assets as they move from the existing baseline to AI-assisted, integrated, gameplay-validated production assets.",
+  "status_values": ["baseline", "planned", "generated", "integrated", "validated", "deferred"],
+  "targets": [
+    {
+      "id": "character_player",
+      "kind": "character",
+      "runtime_path": "assets/characters/player.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "high",
+      "ai_target": true,
+      "notes": "Preserve or deliberately replace the 128x128 upper-body/lower-leg atlas contract used by actors/player.gd."
+    },
+    {
+      "id": "character_hollow",
+      "kind": "character",
+      "runtime_path": "assets/characters/hollow.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Simple degraded melee silhouette; must read at small top-down scale."
+    },
+    {
+      "id": "character_warden",
+      "kind": "character",
+      "runtime_path": "assets/characters/warden.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Heavy frontal armor language; shared by several heavy enemy roles."
+    },
+    {
+      "id": "character_elite",
+      "kind": "character",
+      "runtime_path": "assets/characters/elite.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Needs a stronger silhouette than ordinary enemies without relying only on aura color."
+    },
+    {
+      "id": "character_boss",
+      "kind": "character",
+      "runtime_path": "assets/characters/boss.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "high",
+      "ai_target": true,
+      "notes": "Shared boss base currently differentiated by tint/VFX; long-term target is distinct boss identity without breaking telegraph readability."
+    },
+    {
+      "id": "character_cantor",
+      "kind": "character",
+      "runtime_path": "assets/characters/cantor.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Caster/summoner silhouette with elevated ritual focus."
+    },
+    {
+      "id": "character_hound",
+      "kind": "character",
+      "runtime_path": "assets/characters/hound.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Low fast quadruped silhouette."
+    },
+    {
+      "id": "item_art_catalog",
+      "kind": "item_art",
+      "runtime_path": "assets/items/manifest.json",
+      "status": "integrated",
+      "generation_method": "shared_manifest_pipeline_ready",
+      "priority": "high",
+      "ai_target": true,
+      "notes": "Runtime/import pipeline exists; bespoke AI artwork can replace fallbacks incrementally without changing save identity."
+    },
+    {
+      "id": "weapon_icon_sword",
+      "kind": "icon",
+      "runtime_path": "assets/icons/sword.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Compact slash family."
+    },
+    {
+      "id": "weapon_icon_scythe",
+      "kind": "icon",
+      "runtime_path": "assets/icons/scythe.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Broad circular sweep family."
+    },
+    {
+      "id": "weapon_icon_spear",
+      "kind": "icon",
+      "runtime_path": "assets/icons/spear.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Long axial thrust family."
+    },
+    {
+      "id": "weapon_icon_staff",
+      "kind": "icon",
+      "runtime_path": "assets/icons/staff.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Straight magic projection family."
+    },
+    {
+      "id": "weapon_icon_fist",
+      "kind": "icon",
+      "runtime_path": "assets/icons/fist.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Short rapid impact family."
+    },
+    {
+      "id": "weapon_icon_mace",
+      "kind": "icon",
+      "runtime_path": "assets/icons/mace.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Heavy wide impact family."
+    },
+    {
+      "id": "weapon_icon_spellblade",
+      "kind": "icon",
+      "runtime_path": "assets/icons/spellblade.svg",
+      "status": "baseline",
+      "generation_method": "legacy_original_svg_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Physical blade plus restrained magical core."
+    },
+    {
+      "id": "motion_three_weapon_chain",
+      "kind": "motion",
+      "runtime_path": "actors/player.gd",
+      "status": "integrated",
+      "generation_method": "procedural_godot_motion",
+      "priority": "high",
+      "ai_target": true,
+      "notes": "Seven weapon families already have distinct procedural movement; future AI iterations must preserve dodge canceling and damage timing."
+    },
+    {
+      "id": "vfx_weapon_families",
+      "kind": "vfx",
+      "runtime_path": "world/effects.gd",
+      "status": "validated",
+      "generation_method": "procedural_godot_vfx",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Phase 6 provides bounded distinct weapon trails and chain/recipe/finisher effects."
+    },
+    {
+      "id": "music_menu",
+      "kind": "music",
+      "runtime_path": "assets/audio/menu.wav",
+      "status": "baseline",
+      "generation_method": "legacy_original_pcm_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Restrained menu/cathedral atmosphere; replacement should loop cleanly."
+    },
+    {
+      "id": "music_dungeon",
+      "kind": "music",
+      "runtime_path": "assets/audio/dungeon.wav",
+      "status": "baseline",
+      "generation_method": "legacy_original_pcm_baseline",
+      "priority": "high",
+      "ai_target": true,
+      "notes": "Main long-duration exploration/combat bed; prioritize non-fatiguing loop."
+    },
+    {
+      "id": "music_elite",
+      "kind": "music",
+      "runtime_path": "assets/audio/elite_music.wav",
+      "status": "baseline",
+      "generation_method": "deterministic_python_pcm",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Higher-density escalation built from the same musical world."
+    },
+    {
+      "id": "music_boss",
+      "kind": "music",
+      "runtime_path": "assets/audio/boss_music.wav",
+      "status": "baseline",
+      "generation_method": "legacy_original_pcm_baseline",
+      "priority": "high",
+      "ai_target": true,
+      "notes": "Boss phase-1 loop; must leave spectral room for combat cues."
+    },
+    {
+      "id": "music_boss_awakened",
+      "kind": "music",
+      "runtime_path": "assets/audio/boss_awakened.wav",
+      "status": "baseline",
+      "generation_method": "deterministic_python_pcm",
+      "priority": "high",
+      "ai_target": true,
+      "notes": "Phase-2 escalation designed to crossfade naturally from boss music."
+    },
+    {
+      "id": "music_victory",
+      "kind": "music",
+      "runtime_path": "assets/audio/victory_music.wav",
+      "status": "baseline",
+      "generation_method": "deterministic_python_pcm",
+      "priority": "low",
+      "ai_target": true,
+      "notes": "Short release/resolution related to the game's tonal palette."
+    },
+    {
+      "id": "sfx_combat_set",
+      "kind": "sfx",
+      "runtime_path": "assets/audio/slash.wav",
+      "status": "baseline",
+      "generation_method": "legacy_original_pcm_baseline",
+      "priority": "high",
+      "ai_target": true,
+      "notes": "Representative runtime path for the combat SFX family; replace as a coherent layered set rather than one isolated sound at a time."
+    },
+    {
+      "id": "sfx_loot_rarity_set",
+      "kind": "sfx",
+      "runtime_path": "assets/audio/legendary.wav",
+      "status": "baseline",
+      "generation_method": "legacy_original_pcm_baseline",
+      "priority": "medium",
+      "ai_target": true,
+      "notes": "Rare/Legendary/Mythic hierarchy should remain immediately audible at modest volume."
+    },
+    {
+      "id": "background_cathedral_runtime",
+      "kind": "background",
+      "runtime_path": "world/dungeon.gd",
+      "status": "planned",
+      "generation_method": "procedural_runtime_baseline",
+      "priority": "high",
+      "ai_target": true,
+      "notes": "Introduce richer AI-assisted floor/architecture art only when it preserves route, collision, and telegraph clarity."
+    }
+  ]
+}
