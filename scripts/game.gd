@@ -81,7 +81,10 @@ var last_room=-1
 var victory_pending=false
 var test_mode=false
 var metrics={}
+var browser_smoke=false
+var browser_state=""
 func _ready()->void:
+ if OS.has_feature("web"):browser_smoke=bool(JavaScriptBridge.eval("new URLSearchParams(location.search).has('smoke')"))
  configure_input();test_mode=OS.get_cmdline_user_args().has("--test")
  if test_mode:
   profile.path="user://ashen_vow_test.json"
@@ -133,7 +136,7 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
  elapsed=0;kills=0;ascension=0
  if resume and profile.valid_run(profile.run):run_seed=int(profile.run.seed)
  rng.seed=run_seed
- dungeon=DungeonScript.new();dungeon.layout_version=int(profile.run.get("world_version",1)) if resume and profile.valid_run(profile.run) else 2;add_child(dungeon);dungeon.setup(self)
+ dungeon=DungeonScript.new();dungeon.layout_version=int(profile.run.get("world_version",1)) if resume and profile.valid_run(profile.run) else (2 if OS.get_cmdline_user_args().has("--legacy-layout") else 3);add_child(dungeon);dungeon.setup(self)
  fx=EffectScript.new();fx.z_index=2000;add_child(fx)
  overlay=OverlayScript.new();overlay.game=self;overlay.z_index=100;add_child(overlay)
  player=PlayerScript.new();add_child(player);player.setup(self);player.position=Vector2(-240,0)
@@ -148,9 +151,11 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
   if saved_metrics is Dictionary:
    for key in metrics:
     if saved_metrics.has(key) and (saved_metrics[key] is int or saved_metrics[key] is float):metrics[key]=saved_metrics[key]
+  if dungeon.layout_version>=3:RunRoutes.restore_path(dungeon,s.get("route_path",[0]))
   var pos=Vector2(s.position[0],s.position[1]);player.position=pos if dungeon.walkable(pos,18,false) else Vector2.ZERO
   var id=dungeon.room_at(player.position)
   if id<0 or id not in dungeon.cleared:player.position=dungeon.rooms[int(dungeon.cleared[-1])].center
+  if dungeon.layout_version>=3:player.position=dungeon.rooms[int(dungeon.route_path[-1])].center+Vector2(-230,0)
   pending_upgrades=int(s.get("pending_upgrades",0))
   for record in s.get("drops",[]):
    var d=DropScript.new();add_child(d);d.setup(self,Vector2(record.position[0],record.position[1]),record.item.duplicate(true),record.kind);d.age=1;d.z_index=1400;drops.append(d)
@@ -180,6 +185,10 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
   spawn_drop(Vector2(80,-25),gift);spawn_chest(Vector2(160,100),1,false)
  ui.selected=0;save_run()
 func _process(dt:float)->void:
+ if browser_smoke:
+  var state=JSON.stringify({"mode":mode,"path":dungeon.route_path if is_instance_valid(dungeon) else [],"active":dungeon.active if is_instance_valid(dungeon) else -1})
+  if state!=browser_state:
+   browser_state=state;JavaScriptBridge.eval("window.__ashenSmoke="+state)
  banner_time=maxf(0,banner_time-dt);toast_time=maxf(0,toast_time-dt)
  if is_instance_valid(player):
   camera.position=camera.position.lerp(player.position+(player.facing*42 if mode=="play" else Vector2.ZERO),1-exp(-dt*7))
@@ -211,7 +220,9 @@ func check_rooms(dt:float)->void:
   if id not in dungeon.visited:dungeon.visited.append(id)
   var room=dungeon.rooms[id];banner(room.name,room.lore)
   if id not in dungeon.cleared and dungeon.active<0:
-   if room.waves==0:
+   if dungeon.layout_version>=3 and room.waves==0:
+    resolve_route_service(id)
+   elif room.waves==0:
     dungeon.cleared.append(id);player.heal(player.stats.hp);player.potions=3
     spawn_chest(room.center+Vector2(0,125),room.tier,true);toast("生命と回復薬を補充しました。");save_run()
    elif room.get("optional",false) and not event_choices.has(str(id)):
@@ -335,6 +346,7 @@ func spawn_wave()->void:
  if room.id==9:spawn_enemy("boss",room.center+Vector2(200,0),7,9);return
  if wave==room.waves:
   var special={3:"champion",4:"forge_boss",6:"miniboss",8:"thorn_boss",11:"champion"}.get(int(room.id),"")
+  if dungeon.layout_version>=3:special=String(room.get("special",""))
   if not special.is_empty():
    if special in ["forge_boss","thorn_boss","miniboss"]:
     room_modifier_timer=999.0;sound.set_music("boss_music");sound.play("boss")
@@ -361,6 +373,7 @@ func clear_encounter()->void:
  for p in projectiles.duplicate():p.remove()
  hazards.clear();player.heal(player.stats.hp*.22);player.potions=mini(3,player.potions+1)
  if room.get("optional",false):resolve_contract(id)
+ if dungeon.layout_version>=3 and room.room_type=="elite":spawn_drop(room.center+Vector2(80,80),roll_loot(room.tier,2))
  sound.set_music("dungeon")
  spawn_chest(room.center+Vector2(0,125),room.tier,id in [3,4,6,8,10,11]);banner("聖域を解放","回復薬 +1。宝箱が開きました。次へ進む前に戦利品を確認できます。");save_run()
 func nearest_enemy(p:Vector2,reach:float=1000):
@@ -497,12 +510,15 @@ func collect(d)->bool:
   return false
  player.inventory.append(d.item.duplicate(true));record_item(d.item);metrics.pickups+=1;sound.play("loot",.65);toast("回収: "+d.item.name+"  [I] 比較");d.take();return true
 func interact()->void:
+ var handled=false
  for d in drops.duplicate():
   if d.position.distance_to(player.position)>150 or d.taken:continue
+  handled=true
   if d.kind=="chest":
    var at=d.position;var tier=int(d.item.tier);var gilded=d.item.gilded;d.take();sound.play("chest")
    for i in range(4 if gilded else 3):spawn_drop(at+Vector2.from_angle(i*1.7)*50,roll_loot(maxi(1,tier),2 if i==0 else -1))
   elif d.kind=="item":collect(d)
+ if not handled and not RunRoutes.choices(dungeon).is_empty():ui.act("route_open")
 func inventory_before(a:Dictionary,b:Dictionary)->bool:
  var ar:int=int(a.rarity);var br:int=int(b.rarity)
  if ar!=br:return ar>br
@@ -555,7 +571,7 @@ func run_snapshot(victory_ready:bool=false)->Dictionary:
  if not victory_ready:
   for d in drops:
    if not d.taken and d.kind!="health":saved_drops.append({"kind":d.kind,"item":d.item.duplicate(true),"position":[d.position.x,d.position.y]})
- return {"finisher_charge":player.finisher_charge,"skill_cooldowns":player.cooldowns.duplicate(),"materials":player.materials,"active_oaths":player.active_oaths.duplicate(),"oath_board":player.oath_board.duplicate(true),"combo":player.combo,"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades,"victory_ready":victory_ready,"metrics":metrics.duplicate(true),"world_version":dungeon.layout_version,"event_choices":event_choices.duplicate(true),"loot_favor":loot_favor}
+ return {"finisher_charge":player.finisher_charge,"skill_cooldowns":player.cooldowns.duplicate(),"materials":player.materials,"active_oaths":player.active_oaths.duplicate(),"oath_board":player.oath_board.duplicate(true),"combo":player.combo,"drops":saved_drops,"level":player.level,"xp":player.xp,"hp":player.hp,"potions":player.potions,"equipment":player.equipment.duplicate(true),"inventory":player.inventory.duplicate(true),"upgrades":player.upgrades.duplicate(true),"cleared":dungeon.cleared.duplicate(),"visited":dungeon.visited.duplicate(),"seed":run_seed,"kills":kills,"elapsed":elapsed,"ascension":ascension,"position":[pos.x,pos.y],"pending_upgrades":pending_upgrades,"victory_ready":victory_ready,"metrics":metrics.duplicate(true),"world_version":dungeon.layout_version,"route_path":dungeon.route_path.duplicate(),"event_choices":event_choices.duplicate(true),"loot_favor":loot_favor}
 func finish_run()->void:
  victory_pending=false;mode="victory"
  if 9 not in dungeon.cleared:dungeon.cleared.append(9)
@@ -649,3 +665,33 @@ func check_achievements()->void:
  for id in earned:
   if earned[id] and id not in c.achievements:
    c.achievements.append(id);toast("記録達成 / "+ChronicleDB.ACHIEVEMENTS[id][0]);sound.play("level",.5)
+
+func travel_route(id:int)->bool:
+ if mode not in ["play","route"] or id not in RunRoutes.choices(dungeon):return false
+ if not enemies.is_empty() or pending_upgrades>0:return false
+ dungeon.route_path.append(id)
+ player.position=dungeon.rooms[id].center+Vector2(-230,0)
+ camera.position=player.position;last_room=-1;mode="play";ui.big_map=false;ui.reset_touch()
+ save_run();check_rooms(0)
+ return true
+func resolve_route_service(id:int)->void:
+ var room=dungeon.rooms[id]
+ if room.room_type=="event":event_room=id;mode="route_event";ui.reset_touch();return
+ dungeon.cleared.append(id)
+ match String(room.room_type):
+  "heal":player.heal(player.stats.hp);player.potions=3
+  "treasure":
+   for i in range(3):spawn_drop(room.center+Vector2(i*65-65,100),roll_loot(room.tier,2 if i==0 else -1))
+  "forge":
+   player.materials+=80;mode="inventory";ui.reliquary.tab="forge"
+  "oath":pending_upgrades+=1;prepare_upgrade()
+ save_run()
+func choose_route_event(sacrifice:bool)->void:
+ if mode!="route_event" or event_room in dungeon.cleared:return
+ if sacrifice and player.hp<=player.stats.hp*.25+1:toast("生命が足りません");return
+ if sacrifice:
+  player.hp-=player.stats.hp*.25
+  spawn_drop(dungeon.rooms[event_room].center+Vector2(0,100),roll_loot(dungeon.rooms[event_room].tier+1,2))
+ else:player.heal(player.stats.hp*.3)
+ event_choices[str(event_room)]="sacrifice" if sacrifice else "rest"
+ dungeon.cleared.append(event_room);mode="play";save_run()

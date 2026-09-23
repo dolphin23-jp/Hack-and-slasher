@@ -1,7 +1,9 @@
 import { chromium } from "playwright";
 import fs from "node:fs";
 
-const baseUrl = process.env.ASHEN_VOW_URL || "http://127.0.0.1:8080/index.html";
+const url = new URL(process.env.ASHEN_VOW_URL || "http://127.0.0.1:8080/index.html");
+url.searchParams.set("smoke", "1");
+const baseUrl = url.href;
 const outDir = process.env.ASHEN_VOW_BROWSER_ARTIFACTS || "build/browser-smoke";
 fs.mkdirSync(outDir, { recursive: true });
 
@@ -37,8 +39,21 @@ if (!titleCanvas || titleCanvas.width < 640 || titleCanvas.height < 360) {
 }
 await page.screenshot({ path: `${outDir}/01_web_title.png`, fullPage: true });
 
+const clickBase = async (x,y) => {
+  const c=await page.locator("canvas").boundingBox();
+  const scale=Math.min(c.width/1440,c.height/900);
+  await page.mouse.click(c.x+(c.width-1440*scale)/2+x*scale,c.y+(c.height-900*scale)/2+y*scale);
+};
 await page.keyboard.press("Enter");
-await page.waitForTimeout(4000);
+await page.waitForFunction(()=>window.__ashenSmoke?.mode==="build_confirm");
+await clickBase(720,677);
+await page.waitForFunction(()=>window.__ashenSmoke?.mode==="play");
+await clickBase(720,132);
+await page.waitForFunction(()=>window.__ashenSmoke?.mode==="route");
+await page.screenshot({path:`${outDir}/02a_web_routes.png`});
+await clickBase(255,780);
+await page.waitForFunction(()=>window.__ashenSmoke?.path.length===2 && window.__ashenSmoke.active>=0);
+
 await page.screenshot({ path: `${outDir}/02_web_gameplay.png`, fullPage: true });
 
 await page.keyboard.down("KeyD");
@@ -112,6 +127,8 @@ await touchPage.waitForTimeout(5000);
 const touchCanvas = await touchPage.locator("canvas").boundingBox();
 if (!touchCanvas) throw new Error("Touch smoke canvas has no bounds");
 const tapBase = async (x, y) => {
+  // UI ignores touches for 180 ms after a mode change to prevent click-through.
+  await touchPage.waitForTimeout(250);
   const scale = Math.min(touchCanvas.width / 1440, touchCanvas.height / 900);
   const offsetX = (touchCanvas.width - 1440 * scale) * 0.5;
   const offsetY = (touchCanvas.height - 900 * scale) * 0.5;
@@ -121,7 +138,14 @@ const tapBase = async (x, y) => {
 };
 
 await tapBase(281, 577);
-await touchPage.waitForTimeout(3500);
+await touchPage.waitForFunction(()=>window.__ashenSmoke?.mode==="build_confirm");
+await tapBase(720,677);
+await touchPage.waitForFunction(()=>window.__ashenSmoke?.mode==="play");
+await tapBase(720,132);
+await touchPage.waitForFunction(()=>window.__ashenSmoke?.mode==="route");
+await touchPage.screenshot({path:`${outDir}/04a_web_ipad_routes.png`,fullPage:true});
+await tapBase(255,780);
+await touchPage.waitForFunction(()=>window.__ashenSmoke?.path.length===2 && window.__ashenSmoke.active>=0);
 await touchPage.screenshot({ path: `${outDir}/04_web_touch_gameplay.png`, fullPage: true });
 
 await tapBase(1128, 698);

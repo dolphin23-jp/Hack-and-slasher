@@ -6,6 +6,7 @@ const SUBSTEPS_PER_FRAME = 120
 const MAX_SIM_SECONDS = 2400.0
 var route = [1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
 var southern = false
+var branching = false
 var chain_build=[]
 
 var game
@@ -31,6 +32,7 @@ func _run() -> void:
 	southern = OS.get_cmdline_user_args().has("--southern")
 	if southern: route = [1, 2, 10, 11, 7, 8, 9]
 	game.start_run()
+	branching=game.dungeon.layout_version>=3
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--chain="):chain_build=arg.trim_prefix("--chain=").split(",")
 	if chain_build.size()==3:
@@ -45,6 +47,8 @@ func _run() -> void:
 
 	while simulated < MAX_SIM_SECONDS and game.mode not in ["victory", "dead"]:
 		for _substep in range(SUBSTEPS_PER_FRAME):
+			if branching and game.mode=="route_event":game.choose_route_event(false)
+			if branching and game.mode=="inventory":game.mode="play"
 			if game.mode == "event":
 				game.choose_contract(("blood" if game.player.hp>game.player.stats.hp*.25+1 else "danger") if game.event_room==10 else "wager")
 			if game.mode == "upgrade":
@@ -56,7 +60,7 @@ func _run() -> void:
 				break
 
 			_drive_player()
-			if southern: _use_build_actions()
+			if southern or branching: _use_build_actions()
 			game.step(DT)
 			simulated += DT
 			if game.player.hp < last_hp - 0.5:
@@ -98,9 +102,11 @@ func _run() -> void:
 	if game.mode != "victory":
 		failures.append("campaign did not reach victory; mode=%s t=%.1f" % [game.mode, simulated])
 	var expected = [0,1,2,7,8,9,10,11] if southern else [0,1,2,3,4,5,6,7,8,9]
+	if branching:
+		expected=game.dungeon.route_path.duplicate();expected.sort()
 	if unique_visited != expected:
 		failures.append("expected route rooms %s, got %s" % [expected,unique_visited])
-	if southern and game.metrics.contracts != 2:
+	if southern and not branching and game.metrics.contracts != 2:
 		failures.append("southern route must complete both paid contracts")
 	if attacks <= 0:
 		failures.append("normal attack was never used")
@@ -121,6 +127,18 @@ func _run() -> void:
 	game.shutdown(0 if failures.is_empty() else 1)
 
 func _advance_route_if_ready() -> void:
+	if branching:
+		var choices=RunRoutes.choices(game.dungeon)
+		if not choices.is_empty():
+			# Pick up visible rewards before committing to another stage.
+			var current=int(game.dungeon.route_path[-1])
+			if game.drops.any(func(d):return d.kind!="health" and game.dungeon.rooms[current].rect.has_point(d.position)):return
+			_equip_best_collected_gear()
+			var chosen=int(choices[0])
+			for id in choices:
+				if game.dungeon.rooms[id].room_type=="combat":chosen=int(id)
+			game.travel_route(chosen)
+		return
 	if route_index >= route.size() or game.dungeon.active >= 0 or not game.enemies.is_empty():
 		return
 	var target_room: int = route[route_index]
@@ -207,6 +225,16 @@ func _drive_player() -> void:
 
 	if game.dungeon.active >= 0:
 		player.test_move = Vector2.ZERO
+		return
+
+	if branching:
+		var current=int(game.dungeon.route_path[-1])
+		for drop in game.drops.duplicate():
+			if drop.kind=="health" or not game.dungeon.rooms[current].rect.has_point(drop.position):continue
+			player.test_move=_navigate_toward(drop.position)
+			if player.position.distance_to(drop.position)<145:game.interact()
+			return
+		player.test_move=Vector2.ZERO
 		return
 
 	if route_index >= route.size():

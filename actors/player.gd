@@ -180,7 +180,7 @@ func has_unique(id:String)->bool:
   if String(equipment[slot].get("unique",""))==id:return true
  return false
 func has_effect(effect:String)->bool:
- if OathBoard.has_effect(game.profile.oaths,active_oaths,effect):return true
+ if OathBoard.has_effect(oath_board,active_oaths,effect):return true
  for slot in ItemDB.SLOTS:
   if effect in ["echo","reaper","execution","judgement_echo","lance_fork","lance_return","echo_guard","dash_nova"] and equipment[slot].effect==effect:return true
  return false
