@@ -83,6 +83,10 @@ func run()->void:
  check("UI full respec clears purchased nodes",game.profile.oaths.nodes.is_empty())
  game.ui.reliquary.act(game.ui,"preset_load")
  check("UI preset load restores allocation","dance_tempo" in game.profile.oaths.nodes)
+ OathBoard.unlock_node(game.profile.oaths,"dance","dance_edge")
+ OathBoard.unlock_node(game.profile.oaths,"dance","dance_flow")
+ OathBoard.unlock_node(game.profile.oaths,"dance","dance_flow2")
+ check("pre-run node effect is active",OathBoard.has_effect(game.profile.oaths,game.profile.oaths.active,"flow_chain"))
  game.ui.reliquary.act(game.ui,"oath_back")
  check("oath back returns to build confirmation",game.mode=="build_confirm")
  game.ui.act("confirm_start");await process_frame
@@ -100,6 +104,8 @@ func run()->void:
  check("continued run restores frozen oath nodes",game.player.oath_board.nodes==run_nodes_before and "dance_tempo" in game.player.oath_board.nodes)
  check("continued run restores frozen active oaths",game.player.active_oaths!=game.profile.oaths.active and game.player.active_oaths==game.player.oath_board.active)
  check("run stats use frozen board instead of next-build board",float(game.player.stats.haste)>=.04)
+ check("next-build profile no longer owns frozen node effect",not OathBoard.has_effect(game.profile.oaths,game.player.active_oaths,"flow_chain"))
+ check("continued run special effects use frozen oath board",game.player.has_effect("flow_chain"))
 
  game.profile.write_save()
  var disk=ProfileStore.new();disk.path=game.profile.path;disk.read_save()
