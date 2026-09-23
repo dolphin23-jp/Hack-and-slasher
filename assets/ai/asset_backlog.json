@@ -55,31 +55,31 @@
       "id": "character_boss",
       "kind": "character",
       "runtime_path": "assets/characters/boss_king.png",
-      "status": "integrated",
+      "status": "validated",
       "generation_method": "GPT_Image_original_two_phase_sheet",
       "priority": "high",
       "ai_target": true,
-      "notes": "The Bellless King has an original transparent two-phase atlas, unique crowned silhouette, transition and attack/recovery poses. Rendered campaign, Web and CI validation pending."
+      "notes": "The Bellless King has an original transparent two-phase atlas, unique crowned silhouette, transition and attack/recovery poses. Both rendered guardian campaigns reached victory and final boss Phase 2; 18 iPad-proportion captures, 18 behavior checks, Visual smoke, Web/Chromium and AI asset CI passed in PR #45. Physical iPad Safari remains untested."
     },
     {
       "id": "character_forge_boss",
       "kind": "character",
       "runtime_path": "assets/characters/forge_boss.png",
-      "status": "integrated",
+      "status": "validated",
       "generation_method": "GPT_Image_original_two_phase_sheet",
       "priority": "high",
       "ai_target": true,
-      "notes": "Forge saint: furnace hammer and molten armored awakening. Rendered campaign, Web and CI validation pending."
+      "notes": "Forge saint: furnace hammer and molten armored awakening. Both rendered guardian campaigns reached victory and final boss Phase 2; 18 iPad-proportion captures, 18 behavior checks, Visual smoke, Web/Chromium and AI asset CI passed in PR #45. Physical iPad Safari remains untested."
     },
     {
       "id": "character_thorn_boss",
       "kind": "character",
       "runtime_path": "assets/characters/thorn_boss.png",
-      "status": "integrated",
+      "status": "validated",
       "generation_method": "GPT_Image_original_two_phase_sheet",
       "priority": "high",
       "ai_target": true,
-      "notes": "Thorn king: spined root silhouette and expanded thorn awakening. Rendered campaign, Web and CI validation pending."
+      "notes": "Thorn king: spined root silhouette and expanded thorn awakening. Both rendered guardian campaigns reached victory and final boss Phase 2; 18 iPad-proportion captures, 18 behavior checks, Visual smoke, Web/Chromium and AI asset CI passed in PR #45. Physical iPad Safari remains untested."
     },
     {
       "id": "character_cantor",
