@@ -17,6 +17,7 @@ func setup(g,p:Vector2,value:Dictionary,type:String="item")->void:
   if ResourceLoader.exists(extra_path):fallbacks.append(load(extra_path))
   if not fallbacks.is_empty():font.fallbacks=fallbacks
  icon=load("res://assets/icons/"+("potion" if kind=="health" else ("chest" if kind=="chest" else ("sword" if item.slot in Loadout.WEAPONS else ("accessory" if item.slot in ["accessory","accessory2"] else "armor"))))+".svg")
+ if kind=="item":icon=ItemArt.texture(item)
 func tick(dt:float)->void:
  age+=dt
  if taken:return
@@ -41,7 +42,7 @@ func _draw()->void:
   draw_line(Vector2(-7,0),Vector2(-7,-270),Color(c,.65),3,true)
   draw_line(Vector2(7,0),Vector2(7,-270),Color(c,.65),3,true)
  var size=52 if kind=="chest" else (29 if kind=="health" else 36)
- draw_texture_rect(icon,Rect2(-size/2.0,-size+12+sin(age*3)*3,size,size),false)
+ draw_texture_rect(icon,ItemArt.fitted(icon,Rect2(-size/2.0,-size+12+sin(age*3)*3,size,size)),false)
  if kind=="item" and rarity>=3:
   var pulse=.65+.35*sin(age*3)
   draw_line(Vector2(0,4),Vector2(0,-205),Color(c,.5+pulse*.3),4,true)

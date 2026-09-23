@@ -329,9 +329,15 @@ func _draw()->void:
  draw_texture_rect_region(texture,Rect2(0,13-step_y,42,29),Rect2(64,84,64,44),tint)
  draw_set_transform(Vector2(0,bob-25),velocity.x*.000035,Vector2(sx,1))
  draw_texture_rect_region(texture,Rect2(-42,-42,84,56),Rect2(0,0,128,85),tint);draw_set_transform(Vector2.ZERO)
- var a=facing.angle()
+ var a=facing.angle();var kind=String(equipment[Loadout.WEAPONS[maxi(0,combo-1)]].weapon_type)
+ var extension=0.0
  if attack_time>0:a+=lerpf(TAU,0,attack_time/.2) if equipment[Loadout.WEAPONS[maxi(0,combo-1)]].weapon_type=="scythe" else lerpf(1.2,-1.1,attack_time/.3)
- draw_set_transform(Vector2.from_angle(a)*29+Vector2(0,-24),a+PI*.25,Vector2(.67,.67))
+ if attack_time>0:
+  if kind in ["spear","staff","fist"]:
+   a=facing.angle();extension=sin(clampf(1-attack_time/.3,0,1)*PI)*(28 if kind=="spear" else 17)
+  elif kind=="mace":a=facing.angle()+lerpf(1.7,-1.4,clampf(attack_time/.3,0,1))
+  elif kind=="spellblade":extension=sin(attack_time*18)*9
+ draw_set_transform(Vector2.from_angle(a)*(29+extension)+Vector2(0,-24),a+PI*.25,Vector2(.67,.67))
  draw_texture_rect(weapon_art.get(equipment[Loadout.WEAPONS[maxi(0,combo-1)]].weapon_type,sword),Rect2(-26,-78,64,64),false,tint);draw_set_transform(Vector2.ZERO)
  if barrier>0:draw_arc(Vector2.ZERO,40,0,TAU,48,Color("c9b5ff"),3,true)
  if counter_time>0:draw_arc(Vector2.ZERO,30,0,TAU,48,Color("eeecad"),2,true)

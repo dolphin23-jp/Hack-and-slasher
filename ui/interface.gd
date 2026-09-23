@@ -363,6 +363,12 @@ func draw_title()->void:
  text("オリジナルアクションRPG  /  プロトタイプ",Vector2(105,859),12,MUTED);text("GODOT 4.5.1",Vector2(1329,859),12,MUTED,true)
 func draw_hud()->void:
  var p=game.player
+ if game.mode=="play" and game.loot_notice_time>0 and not game.loot_notice.is_empty():
+  var it=game.loot_notice
+  panel(Rect2(24,104,323,102))
+  reliquary.draw_item_art(self,it,Rect2(34,114,70,70))
+  text(ItemDB.RARITIES[int(it.rarity)],Vector2(116,134),17,ItemDB.COLORS[int(it.rarity)])
+  wrapped_text(it.name,Vector2(116,161),220,17,TEXT,23)
  panel(Rect2(24,20,323,69),Color(.045,.08,.12,.94),LINE);icon("crest",Rect2(35,28,47,47))
  text("ASHEN VOW",Vector2(94,51),20,TEXT,false,true)
  var oath_line="誓約者 / LV %02d"%p.level
@@ -478,7 +484,7 @@ func draw_inventory()->void:reliquary.draw(self)
 func dps(s:Dictionary)->float:return s.attack*(1+s.haste)*(1+s.crit*s.crit_damage)
 func item_card(it:Dictionary,r:Rect2,tag:String)->void:
  var c=ItemDB.COLORS[int(it.rarity)];panel(r,Color("13252f"),Color(c,.7));draw_rect(Rect2(r.position,Vector2(r.size.x,3)),c)
- var x=r.position.x+19;var y=r.position.y+30;text(tag,Vector2(x,y),11,MUTED);icon("sword" if it.slot=="weapon" else it.slot,Rect2(x,y+13,60,60))
+ var x=r.position.x+19;var y=r.position.y+30;text(tag,Vector2(x,y),11,MUTED);reliquary.draw_item_art(self,it,Rect2(x,y+13,60,60))
  text(ItemDB.RARITIES[int(it.rarity)],Vector2(x+78,y+38),12,c);text("ティア %d / %s"%[it.tier,ItemDB.slot_text(String(it.slot))],Vector2(x+78,y+62),10,MUTED)
  y=wrapped_text(it.name,Vector2(x,y+105),r.size.x-38,20,c,26)+9;rule(x,y,r.size.x-38,Color(c,.3));y+=28
  for key in it.base:text(ItemDB.stat_text(key,it.base[key]),Vector2(x,y),15);y+=25

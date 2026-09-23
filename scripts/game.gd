@@ -81,6 +81,8 @@ var last_room=-1
 var victory_pending=false
 var test_mode=false
 var metrics={}
+var loot_notice={}
+var loot_notice_time=0.0
 var browser_smoke=false
 var browser_state=""
 func _ready()->void:
@@ -122,6 +124,7 @@ func ascension_wave_bonus()->int:return 1 if has_ascension_vow("hollow_choir") e
 func ascension_elite_hp_mult()->float:return 1.28 if has_ascension_vow("thickened_veil") else 1.0
 func ascension_elite_damage_mult()->float:return 1.08 if has_ascension_vow("thickened_veil") else 1.0
 func clear_world()->void:
+ loot_notice={};loot_notice_time=0
  for child in get_children():
   if child is Node2D:remove_child(child);child.queue_free()
  enemies.clear();projectiles.clear();drops.clear();hazards.clear();delayed_blasts.clear();event_choices.clear();event_room=-1;loot_favor=0
@@ -185,6 +188,7 @@ func start_run(resume:bool=false,ascend:bool=false)->void:
   spawn_drop(Vector2(80,-25),gift);spawn_chest(Vector2(160,100),1,false)
  ui.selected=0;save_run()
 func _process(dt:float)->void:
+ loot_notice_time=maxf(0,loot_notice_time-dt)
  if browser_smoke:
   var state=JSON.stringify({"mode":mode,"path":dungeon.route_path if is_instance_valid(dungeon) else [],"active":dungeon.active if is_instance_valid(dungeon) else -1})
   if state!=browser_state:
@@ -496,6 +500,7 @@ func enemy_died(e,proc:bool=false)->void:
 func spawn_drop(p:Vector2,item:Dictionary):
  var d=DropScript.new();add_child(d);d.setup(self,p,item);d.z_index=1400;drops.append(d);metrics.drops+=1
  if item.rarity>=2:
+  loot_notice=item.duplicate(true);loot_notice_time=3.5
   sound.play("mythic" if item.rarity==4 else ("legendary" if item.rarity==3 else "rare"),.75);fx.ring(p,110 if item.rarity>=3 else 60,ItemDB.COLORS[int(item.rarity)],1);fx.burst(p,ItemDB.COLORS[int(item.rarity)],38 if item.rarity>=3 else 18,210)
   if item.rarity>=3:toast(("ミシック  /  " if item.rarity==4 else "レジェンダリー  /  ")+item.name)
  return d

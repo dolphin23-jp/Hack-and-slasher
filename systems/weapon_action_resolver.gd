@@ -51,7 +51,7 @@ static func cast(p,i:int)->bool:
   if p.has_effect("conductor"):g.chain_lightning(center,p.stats.attack*.9,null)
   if p.upgrades.get("chain_echo",0)>0:g.queue_blast(center,180,p.stats.attack*1.3,.6,Color("92e8d5"))
   if i==2:
-   p.finisher_charge=0;g.fx.ring(center,260,Color("ffe4a3"),.5);g.sound.play("legendary",.65)
+   p.finisher_charge=0;g.fx.recipe(center,[],true);g.fx.ring(center,260,Color("ffe4a3"),.5);g.sound.play("legendary",.65)
   g.fx.number(origin,"三連奥義" if i==2 else "連携技",Color("f2d790"),true)
   tick(p,0)
  return true
@@ -65,6 +65,7 @@ static func tick(p,dt:float)->void:
 static func execute(p,action:Dictionary,origin:Vector2,aim:Vector2,chained:bool)->void:
  var g=p.game;var kind=String(action.kind);var color:Color=ARTS[kind].color
  var reach=220.0+p.upgrades.get("chain_radius",0) if chained else 220.0
+ g.fx.weapon(origin,aim,kind,reach,"finisher" if action.get("finisher",false) else ("chain" if chained else "art"))
  var amount=float(action.damage)
  match kind:
   "sword":

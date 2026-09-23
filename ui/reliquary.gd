@@ -197,18 +197,17 @@ func filtered_inventory(p)->Array:
  return out
 func filter_label()->String:
  return {"all":"すべて","weapon":"武器","armor":"防具・装飾","legendary":"Legendary+","junk":"ジャンク"}.get(filter_mode,"すべて")
-var art_cache={}
-func art_texture(it:Dictionary):
- var path=ItemDB.art_path(it)
- if not art_cache.has(path):art_cache[path]=load(path)
- return art_cache[path]
+func art_texture(it:Dictionary):return ItemArt.texture(it)
 func draw_item_art(u,it:Dictionary,r:Rect2)->void:
- u.panel(r,Color("0b1720"),ItemDB.COLORS[int(it.rarity)])
+ var color=ItemDB.COLORS[int(it.rarity)]
+ u.panel(r,Color("0b1720"),color)
  var tex=art_texture(it)
- if tex!=null:u.draw_texture_rect(tex,r.grow(-5),false)
- if not ItemDB.art_ready(it):
-  u.panel(Rect2(r.position+Vector2(5,r.size.y-25),Vector2(r.size.x-10,20)),Color(.03,.06,.08,.88),Color(.2,.3,.32,.5))
-  u.text("ART PLACEHOLDER",Vector2(r.get_center().x,r.end.y-10),9,u.MUTED,true)
+ if tex!=null:u.draw_texture_rect(tex,ItemArt.fitted(tex,r.grow(-5)),false)
+ if int(it.rarity)>=3:
+  var inset=4 if int(it.rarity)==3 else 7
+  u.draw_rect(r.grow(-inset),Color(color,.65),false,1.5)
+  if int(it.rarity)==4:
+   for corner in [r.position,r.end,Vector2(r.position.x,r.end.y),Vector2(r.end.x,r.position.y)]:u.draw_circle(corner,3,color)
 func draw_inventory_card(u,it:Dictionary,index:int,r:Rect2,selected:bool,action_prefix:String="item")->void:
  u.button(r,"",action_prefix+":"+str(index),selected)
  draw_item_art(u,it,Rect2(r.position+Vector2(6,6),Vector2(42,42)))
@@ -382,7 +381,7 @@ func detail(u,it:Dictionary,r:Rect2,label:String)->void:
  u.text(it.name,Vector2(tx,y+48),21,ItemDB.COLORS[int(it.rarity)])
  u.text("%s / 階級%d / T%d / +%d"%[ItemDB.RARITIES[int(it.rarity)],it.grade,it.tier,it.enhance],Vector2(tx,y+76),14,u.GOLD)
  u.text((WeaponDB.attributes(it)+" / "+WeaponDB.type_name(it)) if String(it.slot) in Loadout.WEAPONS else ItemDB.slot_text(String(it.slot)),Vector2(tx,y+100),13,u.TEAL)
- u.text("Art: "+String(it.get("art_id",""))+(" ✓" if ItemDB.art_ready(it) else " / placeholder"),Vector2(tx,y+124),10,u.MUTED)
+
  var contribution=EquipmentCompare.item_contribution(it);var contribution_parts=[]
  for key in EquipmentCompare.PRIORITY_STATS:
   if contribution.has(key) and absf(float(contribution[key]))>.0001:

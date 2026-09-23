@@ -62,16 +62,18 @@ func run()->void:
  check("T5 third slot adds a strike",tier_damage>(10000-e.hp)*1.8)
  clear();it=weapon("fist","weapon3");it.tier=5;p.rebuild_stats();p.combo=2;var rear=foe(Vector2(-90,0));p.attack()
  check("T5 fist finisher hits around the player",rear.hp<10000)
- var values=[]
  for r in range(5):
   var low=INF;var high=0.0
   for i in range(30):
    var item=ItemDB.generate(game.rng,1,r)
    check_roll(item)
    for key in item.base:low=minf(low,item.base[key]);high=maxf(high,item.base[key])
-   values.append(item.base)
   check("rarity roll bounds "+str(r),low>0 and high>low)
- check("random roll diversity",values[0]!=values[1])
+ var diversity_rng=RandomNumberGenerator.new();diversity_rng.seed=20260923;var signatures={}
+ for i in range(40):
+  var rolled=ItemDB.generate(diversity_rng,1,2)
+  signatures[JSON.stringify(rolled.base)]=true
+ check("random roll diversity",signatures.size()>=4)
  var weighted_rng=RandomNumberGenerator.new();weighted_rng.seed=771;var spear_pierce=0;var spear_blunt=0;var head_crit=0;var head_material=0;var affix_keys=ItemDB.AFFIXES.keys()
  for i in range(2000):
   var wk=ItemDB.pick_affix(weighted_rng,affix_keys,"weapon","spear");spear_pierce+=1 if wk=="pierce" else 0;spear_blunt+=1 if wk=="blunt" else 0
@@ -182,7 +184,8 @@ func run()->void:
  var compare_tags=p.item_comparison(comparison,"weapon2")
  check("item comparison exposes multidimensional signals",compare_tags.size()>0 and not compare_tags.any(func(v):return String(v).contains("%強い")))
  check("generated items expose stable art metadata",comparison.schema==4 and not String(comparison.art_id).is_empty() and String(comparison.art_variant)=="default")
- check("missing item art uses shared placeholder",ItemDB.art_path(comparison).ends_with("assets/icons/chest.svg") and not ItemDB.art_ready(comparison))
+ var placeholder_kind=String(comparison.weapon_type) if String(comparison.slot).begins_with("weapon") else ("accessory" if String(comparison.slot).begins_with("accessory") else "armor")
+ check("missing item art uses typed placeholder",ItemDB.art_path(comparison)=="res://assets/icons/"+placeholder_kind+".svg" and not ItemDB.art_ready(comparison))
  var schema3_item=comparison.duplicate(true);schema3_item.schema=3;schema3_item.erase("art_id");schema3_item.erase("art_variant")
  var schema4_item=SaveMigration.item(schema3_item)
  check("schema 3 items migrate to art schema 4",schema4_item.schema==4 and not String(schema4_item.art_id).is_empty() and ItemDB.valid(schema4_item))

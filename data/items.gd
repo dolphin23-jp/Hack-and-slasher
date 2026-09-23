@@ -86,11 +86,8 @@ static func default_art_id(item:Dictionary)->String:
  if slot=="accessory2":slot="accessory"
  return slot+"_g"+str(grade)
 static func art_path(item:Dictionary)->String:
- var id=String(item.get("art_id",default_art_id(item)))
- for extension in ["png","webp","svg"]:
-  var path="res://assets/items/"+id+"."+extension
-  if ResourceLoader.exists(path):return path
- return "res://assets/icons/chest.svg"
+ var value=item.duplicate();value.art_id=item.get("art_id",default_art_id(item))
+ return ItemArt.path(value)
 static func art_ready(item:Dictionary)->bool:
  return art_path(item).begins_with("res://assets/items/")
 static func stat_name(key:String)->String:return String(AFFIXES.get(key,[key])[0])
