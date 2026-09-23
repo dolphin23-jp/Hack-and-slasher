@@ -6,7 +6,7 @@ This document is the canonical roadmap for the next implementation stages after 
 
 - Phase 1–6: existing v0.3 implementation, gameplay systems, UI/equipment work, routes/encounters, shared ItemArt, weapon VFX and visual-regression foundation are already in `main`.
 - AI asset production pipeline: installed in `main` via `AGENTS.md`, `.codex/skills/ashen-vow-asset-studio/`, `assets/ai/asset_backlog.json`, validation tooling and CI.
-- **Next phase: Phase 7 — Player visual vertical slice.**
+- **Current phase: Phase 7 — Player visual vertical slice.** The generated player atlas, seven strike motions, dodge/hit/death poses and iPad-proportion captures are implemented in the Phase 7 PR; Web/runtime CI and final review are the remaining completion gates. Phase 8 starts only after those gates pass.
 
 The asset backlog is the source of truth for individual asset state. This roadmap is the source of truth for implementation order and phase completion.
 

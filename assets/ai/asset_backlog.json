@@ -2,17 +2,24 @@
   "version": 1,
   "project": "ASHEN VOW — 灰冠の再誓",
   "intent": "Track visual, motion, music, and SFX assets as they move from the existing baseline to AI-assisted, integrated, gameplay-validated production assets.",
-  "status_values": ["baseline", "planned", "generated", "integrated", "validated", "deferred"],
+  "status_values": [
+    "baseline",
+    "planned",
+    "generated",
+    "integrated",
+    "validated",
+    "deferred"
+  ],
   "targets": [
     {
       "id": "character_player",
       "kind": "character",
-      "runtime_path": "assets/characters/player.svg",
-      "status": "baseline",
-      "generation_method": "legacy_original_svg_baseline",
+      "runtime_path": "assets/characters/oath_knight.png",
+      "status": "integrated",
+      "generation_method": "GPT_Image_original_upper_lower_atlas",
       "priority": "high",
       "ai_target": true,
-      "notes": "Preserve or deliberately replace the 128x128 upper-body/lower-leg atlas contract used by actors/player.gd."
+      "notes": "Generated separated transparent 1254px upper/left/right atlas, rendered at iPad proportion; Phase 7 motion and gameplay checks pass locally. CI/Web confirmation pending."
     },
     {
       "id": "character_hollow",
@@ -159,10 +166,10 @@
       "kind": "motion",
       "runtime_path": "actors/player.gd",
       "status": "integrated",
-      "generation_method": "procedural_godot_motion",
+      "generation_method": "procedural_godot_motion_with_generated_atlas",
       "priority": "high",
       "ai_target": true,
-      "notes": "Seven weapon families already have distinct procedural movement; future AI iterations must preserve dodge canceling and damage timing."
+      "notes": "Seven weapon-specific strikes, idle/walk, dash, hurt and collapse poses use the generated atlas; seven dodge-cancel checks and six-step chain order pass. CI/Web confirmation pending."
     },
     {
       "id": "vfx_weapon_families",
