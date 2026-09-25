@@ -54,9 +54,13 @@ var touch_move=Vector2.ZERO
 var touch_attack=false
 var test_move=Vector2.ZERO
 var controlled_by_test=false
-var texture=preload("res://assets/characters/player.svg")
+var texture=preload("res://assets/characters/oath_knight.png")
 var weapon_art={}
 var sword=preload("res://assets/icons/sword.svg")
+const STRIKE_VISUAL_TIME:=0.20
+const BODY_REGION:=Rect2(295,0,665,735)
+const LEFT_LEG_REGION:=Rect2(185,730,270,515)
+const RIGHT_LEG_REGION:=Rect2(800,730,270,515)
 func setup(g)->void:
  for kind in WeaponDB.TYPES:weapon_art[kind]=load("res://assets/icons/"+kind+".svg")
  game=g;oath_board=OathBoard.sanitize(game.profile.oaths);active_oaths=oath_board.active.duplicate();rebuild_stats();hp=stats.hp
@@ -290,7 +294,7 @@ func take_damage(amount:float,knock:Vector2=Vector2.ZERO,fatal:bool=false)->bool
  position=game.dungeon.move_body(position,knock*.06,18)
  game.fx.number(position,str(ceili(damage)),Color("ef8d84"),true);game.fx.burst(position,Color("d4716f"),10,120)
  game.shake(8);game.sound.play("hurt");game.metrics.hits_taken+=1
- if hp<=0:dead=true;game.player_died()
+ if hp<=0:dead=true;queue_redraw();game.player_died()
  return true
 func heal(amount:float)->void:hp=minf(stats.hp,hp+amount*(1+clampf(stats.healing,0,2)))
 func drink()->bool:
@@ -320,25 +324,40 @@ func gain_xp(amount:int)->void:
 func _draw()->void:
  draw_set_transform(Vector2(0,5),0,Vector2(1,.37));draw_circle(Vector2.ZERO,32,Color(0,0,0,.45));draw_set_transform(Vector2.ZERO)
  draw_arc(Vector2(0,2),26,0,TAU,40,Color(.5,.85,.8,.36),1.3,true)
- var walking=velocity.length()>20;var bob=sin(anim*2)*(3 if walking else .8);var sx=1 if facing.x>=0 else -1
+ var walking=velocity.length()>20;var bob=sin(anim*2)*(2.2 if walking else .65);var sx=1 if facing.x>=0 else -1
  var tint=Color(2.3,2.3,2.3) if flash>0 else Color.WHITE
  if invulnerable>0 and sin(anim*15)>0:tint.a=.6
- draw_set_transform(Vector2(0,bob-21),velocity.x*.000035,Vector2(sx,1))
- var step_y=sin(anim*2)*4 if walking else 0.0
- draw_texture_rect_region(texture,Rect2(-42,13+step_y,42,29),Rect2(0,84,64,44),tint)
- draw_texture_rect_region(texture,Rect2(0,13-step_y,42,29),Rect2(64,84,64,44),tint)
- draw_set_transform(Vector2(0,bob-25),velocity.x*.000035,Vector2(sx,1))
- draw_texture_rect_region(texture,Rect2(-42,-42,84,56),Rect2(0,0,128,85),tint);draw_set_transform(Vector2.ZERO)
  var a=facing.angle();var kind=String(equipment[Loadout.WEAPONS[maxi(0,combo-1)]].weapon_type)
+ var phase=clampf(1.0-attack_time/STRIKE_VISUAL_TIME,0.0,1.0)
+ var strike=attack_time>0 and not dead and dash_time<=0
+ var impact=sin(phase*PI) if strike else 0.0
+ var step_y=sin(anim*2)*5 if walking else 0.0
+ var lean=0.0
+ if strike:
+  lean=impact*({"sword":.11,"scythe":.29,"spear":.13,"staff":.09,"fist":.19,"mace":.23,"spellblade":.17}.get(kind,.1))
+ if dash_time>0:lean=.24
+ if dead:lean=1.27;bob=15;step_y=0
+ # Source crops keep the original generated upper/left/right atlas intact.
+ draw_set_transform(Vector2(0,bob-20),lean*.35,Vector2(sx,1))
+ draw_texture_rect_region(texture,Rect2(-34,9+step_y,31,44),LEFT_LEG_REGION,tint)
+ draw_texture_rect_region(texture,Rect2(3,9-step_y,31,44),RIGHT_LEG_REGION,tint)
+ draw_set_transform(Vector2(0,bob-25),lean+velocity.x*.000035,Vector2(sx,1))
+ draw_texture_rect_region(texture,Rect2(-47,-58,94,81),BODY_REGION,tint)
+ draw_set_transform(Vector2.ZERO)
  var extension=0.0
- if attack_time>0:a+=lerpf(TAU,0,attack_time/.2) if equipment[Loadout.WEAPONS[maxi(0,combo-1)]].weapon_type=="scythe" else lerpf(1.2,-1.1,attack_time/.3)
- if attack_time>0:
-  if kind in ["spear","staff","fist"]:
-   a=facing.angle();extension=sin(clampf(1-attack_time/.3,0,1)*PI)*(28 if kind=="spear" else 17)
-  elif kind=="mace":a=facing.angle()+lerpf(1.7,-1.4,clampf(attack_time/.3,0,1))
-  elif kind=="spellblade":extension=sin(attack_time*18)*9
- draw_set_transform(Vector2.from_angle(a)*(29+extension)+Vector2(0,-24),a+PI*.25,Vector2(.67,.67))
- draw_texture_rect(weapon_art.get(equipment[Loadout.WEAPONS[maxi(0,combo-1)]].weapon_type,sword),Rect2(-26,-78,64,64),false,tint);draw_set_transform(Vector2.ZERO)
+ if strike:
+  match kind:
+   "scythe":a+=phase*TAU
+   "spear":extension=37*impact
+   "staff":extension=27*impact
+   "fist":extension=16*absf(sin(phase*TAU*2.0));a+=.16*sin(phase*TAU*2.0)
+   "mace":a+=lerpf(-1.55,1.35,phase);extension=8*impact
+   "spellblade":a+=lerpf(-.75,.65,phase);extension=14*impact
+   _:a+=lerpf(-.85,.85,phase)
+ if dash_time>0:extension=-14
+ if dead:extension=-8;a+=1.1
+ draw_set_transform(Vector2.from_angle(a)*(29+extension)+Vector2(0,-24+bob*.35),a+PI*.25,Vector2(.67,.67))
+ draw_texture_rect(weapon_art.get(kind,sword),Rect2(-26,-78,64,64),false,tint);draw_set_transform(Vector2.ZERO)
  if barrier>0:draw_arc(Vector2.ZERO,40,0,TAU,48,Color("c9b5ff"),3,true)
  if counter_time>0:draw_arc(Vector2.ZERO,30,0,TAU,48,Color("eeecad"),2,true)
  if dash_time>0:draw_arc(Vector2.ZERO,35,0,TAU,40,Color("94e8db"),2,true)
