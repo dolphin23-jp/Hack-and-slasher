@@ -2,17 +2,24 @@
   "version": 1,
   "project": "ASHEN VOW — 灰冠の再誓",
   "intent": "Track visual, motion, music, and SFX assets as they move from the existing baseline to AI-assisted, integrated, gameplay-validated production assets.",
-  "status_values": ["baseline", "planned", "generated", "integrated", "validated", "deferred"],
+  "status_values": [
+    "baseline",
+    "planned",
+    "generated",
+    "integrated",
+    "validated",
+    "deferred"
+  ],
   "targets": [
     {
       "id": "character_player",
       "kind": "character",
-      "runtime_path": "assets/characters/player.svg",
-      "status": "baseline",
-      "generation_method": "legacy_original_svg_baseline",
+      "runtime_path": "assets/characters/oath_knight.png",
+      "status": "validated",
+      "generation_method": "GPT_Image_original_upper_lower_atlas",
       "priority": "high",
       "ai_target": true,
-      "notes": "Preserve or deliberately replace the 128x128 upper-body/lower-leg atlas contract used by actors/player.gd."
+      "notes": "Original separated transparent atlas used in gameplay. 15 iPad-class touch-layout renders inspected; Phase 7 tests and full campaign pass; PR #44 Visual smoke and Web/browser CI green. Physical iPad Safari remains untested."
     },
     {
       "id": "character_hollow",
@@ -158,11 +165,11 @@
       "id": "motion_three_weapon_chain",
       "kind": "motion",
       "runtime_path": "actors/player.gd",
-      "status": "integrated",
-      "generation_method": "procedural_godot_motion",
+      "status": "validated",
+      "generation_method": "procedural_godot_motion_with_generated_atlas",
       "priority": "high",
       "ai_target": true,
-      "notes": "Seven weapon families already have distinct procedural movement; future AI iterations must preserve dodge canceling and damage timing."
+      "notes": "Seven attacks, idle/movement, dash, hit, collapse and real three-weapon chain rendered; dodge cancel and chain order tests pass. PR #44 Visual smoke and Web/browser CI green."
     },
     {
       "id": "vfx_weapon_families",
