@@ -56,6 +56,8 @@ var test_move=Vector2.ZERO
 var controlled_by_test=false
 var texture=preload("res://assets/characters/player.svg")
 var weapon_art={}
+# Bumped whenever stats are rebuilt (equipment, level, blessings); keys cached comparisons.
+var stats_revision=0
 var sword=preload("res://assets/icons/sword.svg")
 func setup(g)->void:
  for kind in WeaponDB.TYPES:weapon_art[kind]=load("res://assets/icons/"+kind+".svg")
@@ -174,7 +176,7 @@ func item_upgrade_ratio(item:Dictionary)->float:
  if current<=0.001:return 0.0
  var loadout:Dictionary=equipment.duplicate(true);loadout[target]=item
  return build_score(loadout)/current-1.0
-func rebuild_stats()->void:stats=calculated();hp=minf(hp,stats.hp)
+func rebuild_stats()->void:stats=calculated();hp=minf(hp,stats.hp);stats_revision+=1
 # Adds barrier up to max(cap, shield_max) without ever cutting a larger barrier from another source.
 func grant_barrier(amount:float,cap:float,duration:float)->void:
  barrier=maxf(barrier,minf(barrier+amount,maxf(cap,stats.shield_max)));barrier_time=maxf(barrier_time,duration)

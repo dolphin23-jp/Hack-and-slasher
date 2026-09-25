@@ -177,6 +177,28 @@ func run()->void:
   check("departure summary matches the %s start %s"%[start[0],str(actual)],summary==actual)
  game.profile.chronicle=ChronicleDB.empty();game.start_run();await process_frame;clear();p=game.player
 
+ # --- Armor tier text follows the slot path, not the random weapon_type every item carries ---
+ var tier_armor=legend("fire_dash");tier_armor.weapon_type="scythe"
+ check("armor tier text uses the armor path",WeaponDB.tier_text(tier_armor,3)==WeaponDB.ARMOR_TIER_TEXT.armor[2])
+ var tier_scythe=ItemDB.initial_items().weapon2
+ check("weapon tier text keeps the family path",WeaponDB.tier_text(tier_scythe,3)==WeaponDB.WEAPON_TIER_TEXT.scythe[2])
+
+ # --- Drop labels reuse their build comparison until stats change ---
+ clear();var label_rng=RandomNumberGenerator.new();label_rng.seed=3;var labelled=[]
+ for i in range(12):labelled.append(game.spawn_drop(Vector2(40+i*10,0),ItemDB.generate(label_rng,5,2+i%3)))
+ var first_label=labelled[0].comparison_label(true)
+ check("drop label is cached between frames",is_same(labelled[0].comparison_label(true),first_label))
+ check("drop label refreshes when proximity changes",not is_same(labelled[0].comparison_label(false),first_label))
+ var cached=labelled[0].comparison_label(false);p.rebuild_stats()
+ check("drop label refreshes after stats change",not is_same(labelled[0].comparison_label(false),cached))
+ for d in labelled:d.comparison_label(true)
+ var label_start=Time.get_ticks_usec()
+ for frame in range(60):
+  for d in labelled:d.comparison_label(true)
+ var label_ms=(Time.get_ticks_usec()-label_start)/1000.0
+ check("12 drop labels cost %.2f ms over 60 frames"%label_ms,label_ms<60.0)
+ clear()
+
  # --- BGM loops over the whole track, not the first ~20% (QOA data size != frames) ---
  var rate=AudioServer.get_mix_rate()
  for key in ["menu","dungeon","elite_music","boss_music","boss_awakened","victory_music"]:

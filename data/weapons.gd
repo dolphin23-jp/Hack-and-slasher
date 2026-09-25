@@ -37,5 +37,6 @@ static func attributes(item:Dictionary)->String:
  return "＋".join(names)
 static func tier_text(item:Dictionary,tier:int)->String:
  var index=clampi(tier-1,0,4)
- if item.get("weapon_type","") in WEAPON_TIER_TEXT:return WEAPON_TIER_TEXT[item.weapon_type][index]
+ # Every generated item carries a weapon_type; only weapon slots use the family path.
+ if String(item.get("slot","weapon")) in Loadout.WEAPONS and item.get("weapon_type","") in WEAPON_TIER_TEXT:return WEAPON_TIER_TEXT[item.weapon_type][index]
  return ARMOR_TIER_TEXT.get(String(item.get("slot","armor")),TIERS)[index]
