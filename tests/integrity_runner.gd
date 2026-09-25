@@ -153,6 +153,18 @@ func run()->void:
  check("comparison lists the relic effect",tokens.any(func(t):return String(t).begins_with("聖遺物: ")))
  check("chain-rule legendaries do not duplicate unique text as relic text",ItemDB.effect_text(legend("chain_hands")).is_empty() and ItemDB.effect_text(legend("weapon_scythe")).is_empty())
 
+ # --- BGM loops over the whole track, not the first ~20% (QOA data size != frames) ---
+ var rate=AudioServer.get_mix_rate()
+ for key in ["menu","dungeon","elite_music","boss_music","boss_awakened","victory_music"]:
+  game.sound.set_music(key);var stream:AudioStreamWAV=game.sound.music.stream;var length=stream.get_length()
+  var playback=stream.instantiate_playback();playback.start(0.0)
+  playback.mix_audio(1.0,int(rate*(length-1.0)))
+  var near_end=playback.get_playback_position()
+  playback.mix_audio(1.0,int(rate*1.5))
+  var wrapped=playback.get_playback_position()
+  check("BGM %s plays to its end before looping"%key,stream.loop_end==int(round(length*stream.mix_rate)) and absf(near_end-(length-1.0))<.1 and absf(wrapped-.5)<.1)
+ game.sound.set_music("dungeon")
+
  DirAccess.make_dir_recursive_absolute("res://test-artifacts")
  var summary="INTEGRITY checks=%d failures=%d\n"%[checks,failures.size()]
  FileAccess.open("res://test-artifacts/integrity_summary.txt",FileAccess.WRITE).store_string(summary+"\n".join(failures));print(summary)

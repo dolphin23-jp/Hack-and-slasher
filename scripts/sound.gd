@@ -30,7 +30,9 @@ func set_music(key:String)->void:
  if music.playing:outgoing.play(music.get_playback_position())
  music.stop();fade=0
  var stream=load("res://assets/audio/"+key+".wav")
- stream.loop_mode=AudioStreamWAV.LOOP_FORWARD;stream.loop_begin=0;stream.loop_end=stream.data.size()/2
+ # loop_end is in frames. Tracks are QOA-compressed on import, so the byte size of
+ # stream.data is not a frame count; derive it from the decoded length instead.
+ stream.loop_mode=AudioStreamWAV.LOOP_FORWARD;stream.loop_begin=0;stream.loop_end=int(round(stream.get_length()*stream.mix_rate))
  music.stream=stream;music.volume_db=-65;music.play()
 func _process(dt:float)->void:
  fade=minf(1,fade+dt*1.4);update_volume()
