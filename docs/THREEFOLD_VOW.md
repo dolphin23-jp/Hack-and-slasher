@@ -90,7 +90,24 @@ the first nodes so existing saves remain useful. Secondary paths contribute half
 their node stats; branch effects and capstones are primary-path behavior.
 Elite/boss kills still award oath fragments.
 
-Fire and lightning procs come from active oaths, not the old equipment sets.
+Every branch/capstone effect has live behavior (`tests/integrity_runner.gd` fails if an
+advertised effect id has no handler):
+
+| Node | Effect |
+|---|---|
+| 無拍子 `flow_chain` | Linked (in-window) normal strikes attack 12% faster |
+| 破拍子 `impact_chain` | Linked melee strikes deal 30% more knockback/stagger |
+| 無窮穿ち `arcane_pierce` | Magic bolts (normal attacks and staff/spellblade skills) pierce 2 more |
+| 帰還律 `arcane_echo` | Normal-attack magic bolts return once at 60% damage |
+| 星界回路 `arcane_cap` | Linked magic strikes and magic chain-skill/finisher stages +20% |
+| 恒久障壁 `shield_sustain` | Barrier regeneration +60% |
+
+Fire and lightning procs come from active oaths **or** from the equipped legendary
+that carries the relic effect (e.g. シンダーウェイク grants the fire dash while worn).
+Two equipped relics of the same family (storm / cinder / echo) also activate that
+family's two-piece synergy, matching the comparison screen. Non-weapon legendaries
+without a chain-rule unique carry `chain_aegis`: each completed three-chain grants
+4 barrier (Mythic 8), capped at max(25, barrier max) and never reducing a larger barrier.
 Old elemental discoveries receive two fragments per discovery on version-1 migration.
 Equipment stats and IDs are retained; legacy items receive compatible behavior.
 Drop Rate scales drop frequency, capped at 90%; Rarity Find separately scales
@@ -120,6 +137,10 @@ Save version 2, same `ashen_vow_v1.json` path. Before upgrading version 1, prese
 `.v1.bak`. Preserve records, settings, Chronicle, discoveries, contracts, map version,
 checkpoint, equipment and inventory; fill six missing slots. Infer the active elemental oath for an old in-progress Run from its equipped sets. Migration is idempotent.
 Invalid Run data is rejected without crashing, with a recovery backup and title notice.
+An unreadable profile (corrupt JSON, oversized, unknown version) is copied to
+`.recovery.bak` — or a timestamped `.recovery.<time>.bak` when that already exists —
+before defaults are used, so the next save can no longer destroy it silently. A save
+written by a newer version additionally blocks writes for the session.
 A mid-combat resume uses the existing cleared-sanctuary checkpoint policy.
 
 Projectile cap 192, delayed blasts 64, hazards 96. Existing visual-effect and

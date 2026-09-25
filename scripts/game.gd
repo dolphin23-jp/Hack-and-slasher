@@ -243,8 +243,13 @@ func begin_encounter(id:int)->void:
  if id in ROOM_MODIFIER_TEXT:toast(ROOM_MODIFIER_TEXT[id])
  if id==9:
   sound.set_music("boss_music");sound.play("boss");toast("王の攻撃を見極めろ / 青緑の輪は反撃の機会")
- elif id in [3,4,6,8,10,11]:sound.set_music("elite_music")
+ elif major_encounter(id):sound.set_music("elite_music")
  else:sound.set_music("dungeon")
+# Elite/boss/contract fights get elite music and a gilded chest. Branching routes (v3)
+# assign those roles per run, so they cannot use the legacy fixed room ids.
+func major_encounter(id:int)->bool:
+ if dungeon.layout_version>=3:return String(dungeon.rooms[id].get("room_type","")) in ["elite","boss","contract"]
+ return id in [3,4,6,8,10,11]
 func room_hazard_point(p:Vector2)->Vector2:
  var room=dungeon.rooms[dungeon.active];var r=room.rect.grow(-125.0)
  var q=Vector2(clampf(p.x,r.position.x,r.end.x),clampf(p.y,r.position.y,r.end.y))
@@ -379,7 +384,7 @@ func clear_encounter()->void:
  if room.get("optional",false):resolve_contract(id)
  if dungeon.layout_version>=3 and room.room_type=="elite":spawn_drop(room.center+Vector2(80,80),roll_loot(room.tier,2))
  sound.set_music("dungeon")
- spawn_chest(room.center+Vector2(0,125),room.tier,id in [3,4,6,8,10,11]);banner("聖域を解放","回復薬 +1。宝箱が開きました。次へ進む前に戦利品を確認できます。");save_run()
+ spawn_chest(room.center+Vector2(0,125),room.tier,major_encounter(id));banner("聖域を解放","回復薬 +1。宝箱が開きました。次へ進む前に戦利品を確認できます。");save_run()
 func nearest_enemy(p:Vector2,reach:float=1000):
  var nearest=null;var best=reach*reach
  for e in enemies:
@@ -588,7 +593,7 @@ func _persist_run_checkpoint(victory_ready:bool)->bool:
  profile.records.best_ascension=maxi(profile.records.best_ascension,ascension)
  profile.run=run_snapshot(victory_ready)
  var ok=profile.write_save()
- if not ok:toast("セーブできませんでした。保存先の権限を確認してください。")
+ if not ok:toast(profile.recovery_notice if profile.write_blocked else "セーブできませんでした。保存先の権限を確認してください。")
  return ok
 func save_run()->void:
  if not is_instance_valid(player) or player.dead or mode in ["title","dead"]:return

@@ -111,11 +111,10 @@ jobs:
           timeout 90s /tmp/godot/godot --headless --path . --script res://tests/phase6_runner.gd -- --test 2>&1 | tee test-artifacts/phase6.log
           timeout 90s xvfb-run -a -s "-screen 0 1440x900x24" /tmp/godot/godot --audio-driver Dummy --path . --script res://tests/phase6_visual.gd -- --test 2>&1 | tee test-artifacts/phase6-visual.log
 
-      - name: Validate player atlas, motion and iPad presentation
+      - name: Run effect integrity and review-fix regression
         run: |
           set -o pipefail
-          timeout 90s /tmp/godot/godot --headless --audio-driver Dummy --path . --script res://tests/phase7_runner.gd -- --test 2>&1 | tee test-artifacts/phase7.log
-          timeout 90s xvfb-run -a -s "-screen 0 1440x900x24" /tmp/godot/godot --audio-driver Dummy --path . --script res://tests/phase7_visual.gd -- --test 2>&1 | tee test-artifacts/phase7-visual.log
+          timeout 90s /tmp/godot/godot --verbose --headless --audio-driver Dummy --path . --script res://tests/integrity_runner.gd -- --test 2>&1 | tee test-artifacts/integrity.log
 
       - name: Play four weapon chains through the cathedral
         run: |

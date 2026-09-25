@@ -242,9 +242,7 @@ func act(action:String)->void:
   "settings":settings_return=game.mode;game.mode="settings"
   "help":settings_return=game.mode;game.mode="help"
   "journal":settings_return=game.mode;game.mode="journal"
-  "journal_next":
-   var pages=ceili(ItemDB.LEGENDS.size()/8.0) if journal_tab=="legends" else (ceili(ChronicleDB.ENEMIES.size()/8.0) if journal_tab=="enemies" else 1)
-   journal_page=(journal_page+1)%maxi(1,pages)
+  "journal_next":journal_page=(journal_page+1)%journal_pages()
   "back":game.mode=settings_return
   "title":game.return_to_title()
   "equip":game.player.equip(selected,reliquary.target);salvage_confirm=-1
@@ -358,7 +356,8 @@ func draw_title()->void:
   button(Rect2(520+i*285,583,270,48),entry.name if unlocked else entry.name+" / 未解放","start_oath:"+entry.id,game.profile.chronicle.start==entry.id)
   wrapped_text(entry.text if unlocked else ("初踏破で解放" if entry.id=="lance" else "レジェンダリー6種で解放"),Vector2(530+i*285,660),248,14,MUTED,23)
  button(Rect2(840,753,285,53),"誓印盤 / 永続ビルド","oaths")
- if not game.profile.recovery_notice.is_empty():wrapped_text(game.profile.recovery_notice,Vector2(850,760),520,16,RED)
+ if not game.profile.recovery_notice.is_empty():
+  panel(Rect2(860,28,545,104),Color(.06,.035,.04,.92),Color(RED,.6));wrapped_text(game.profile.recovery_notice,Vector2(880,58),505,16,RED,25)
  text("三連の誓い / 大型アップデート 0.3",Vector2(520,853),14,GOLD)
  text("オリジナルアクションRPG  /  プロトタイプ",Vector2(105,859),12,MUTED);text("GODOT 4.5.1",Vector2(1329,859),12,MUTED,true)
 func draw_hud()->void:
@@ -481,21 +480,6 @@ func draw_map(r:Rect2,large:bool)->void:
   text("01 入口  02 大広間  03 納骨堂  04 宝物庫(任意)  05 工房",Vector2(r.get_center().x,r.end.y-47),13,MUTED,true)
   text("南の近道: 11 告解室 → 12 鍛冶場 → 08 礼拝堂 / 危険な契約と秘宝" if game.dungeon.layout_version>=2 else "06 書庫  07 回廊  08 礼拝堂  09 行進路  10 王座",Vector2(r.get_center().x,r.end.y-24),13,MUTED,true)
 func draw_inventory()->void:reliquary.draw(self)
-func dps(s:Dictionary)->float:return s.attack*(1+s.haste)*(1+s.crit*s.crit_damage)
-func item_card(it:Dictionary,r:Rect2,tag:String)->void:
- var c=ItemDB.COLORS[int(it.rarity)];panel(r,Color("13252f"),Color(c,.7));draw_rect(Rect2(r.position,Vector2(r.size.x,3)),c)
- var x=r.position.x+19;var y=r.position.y+30;text(tag,Vector2(x,y),11,MUTED);reliquary.draw_item_art(self,it,Rect2(x,y+13,60,60))
- text(ItemDB.RARITIES[int(it.rarity)],Vector2(x+78,y+38),12,c);text("ティア %d / %s"%[it.tier,ItemDB.slot_text(String(it.slot))],Vector2(x+78,y+62),10,MUTED)
- y=wrapped_text(it.name,Vector2(x,y+105),r.size.x-38,20,c,26)+9;rule(x,y,r.size.x-38,Color(c,.3));y+=28
- for key in it.base:text(ItemDB.stat_text(key,it.base[key]),Vector2(x,y),15);y+=25
- if not it.affixes.is_empty():y+=9
- for key in it.affixes:text(ItemDB.stat_text(key,it.affixes[key]),Vector2(x,y),14,Color("9fc8cb"));y+=23
- if not it.effect.is_empty():
-  y+=5;rule(x,y,r.size.x-38,Color(c,.3));y+=19
-  var family=ItemDB.set_of(it)
-  text("レジェンダリー / "+BuildDB.SET_NAMES.get(family,""),Vector2(x,y),11,c);y+=22
-  y=wrapped_text(it.description,Vector2(x,y),r.size.x-38,12,c,18)
-  if not family.is_empty():wrapped_text(BuildDB.SET_TEXT[family],Vector2(x,y+5),r.size.x-38,11,TEAL,16)
 func draw_upgrades()->void:
  dim();text("誓いが強くなる",Vector2(720,207),37,TEXT,true,true);text("LV %d / 祝福を1つ選択"%game.player.level,Vector2(720,244),15,GOLD,true)
  for i in range(3):
@@ -572,6 +556,13 @@ func draw_event()->void:
   wrapped_text(c[1],Vector2(x+24,395),262,17,TEXT,29)
   button(Rect2(x+20,550,270,45),"この道を選ぶ","contract:"+c[2])
  text("契約は一度だけ。部屋を解放するまで報酬は得られません。",Vector2(720,685),16,MUTED,true)
+func journal_pages()->int:
+ if journal_tab=="legends":return maxi(1,ceili(ItemDB.LEGENDS.size()/8.0))
+ if journal_tab=="enemies":return maxi(1,ceili(ChronicleDB.ENEMIES.size()/8.0))
+ return 1
+# The page button wraps around, so say where it goes instead of a fixed "next/previous".
+func journal_next_label()->String:
+ return ("次の頁  %d / %d" if journal_page<journal_pages()-1 else "最初の頁  %d / %d")%[journal_page+1,journal_pages()]
 func draw_journal()->void:
  dim();text("灰の記録",Vector2(70,79),36,TEXT,false,true)
  button(Rect2(1090,38,260,50),"戻る","back")
@@ -587,9 +578,10 @@ func draw_journal()->void:
    panel(Rect2(pos,Vector2(630,126)),PANEL,GOLD if found else LINE)
    text(entry.name if found else "未発見 / "+ItemDB.slot_text(entry.slot),pos+Vector2(19,29),19,GOLD if found else MUTED)
    text("三連の聖遺物",pos+Vector2(455,29),14,TEAL)
-   var preview={"unique":ItemDB.legendary_unique(entry,entry.get("weapon_type",WeaponDB.TYPES.keys()[idx%7]))}
-   wrapped_text(ItemDB.unique_text(preview) if found else "宝箱、精鋭、危険な契約、王の戦利品から発見できる。",pos+Vector2(19,62),590,15,TEXT if found else MUTED,24)
-  button(Rect2(566,806,308,48),"次の頁" if journal_page==0 else "前の頁","journal_next")
+   var preview={"unique":ItemDB.legendary_unique(entry,entry.get("weapon_type",WeaponDB.TYPES.keys()[idx%7])),"effect":entry.effect}
+   var relic=ItemDB.effect_text(preview);var summary=(relic+" / " if not relic.is_empty() else "")+"固有: "+ItemDB.unique_text(preview)
+   wrapped_text(summary if found else "宝箱、精鋭、危険な契約、王の戦利品から発見できる。",pos+Vector2(19,62),590,15,TEXT if found else MUTED,24)
+  button(Rect2(566,806,308,48),journal_next_label(),"journal_next")
  elif journal_tab=="enemies":
   var kinds=ChronicleDB.ENEMIES.keys();var start=journal_page*8;var shown=kinds.slice(start,mini(start+8,kinds.size()))
   for i in range(shown.size()):
@@ -597,14 +589,14 @@ func draw_journal()->void:
    panel(Rect2(pos,Vector2(630,126)));text(entry[0] if known else "未遭遇",pos+Vector2(19,29),20,GOLD)
    wrapped_text(entry[1]+" / "+DamageModel.hint(kind) if known else "撃破すると行動と対処の記録が残る。",pos+Vector2(19,61),590,16,MUTED,24)
    if known:text("討伐 %d"%history.enemies[kind],pos+Vector2(495,30),13,TEAL)
-  if kinds.size()>8:button(Rect2(566,806,308,48),"敵図鑑 / 次の頁","journal_next")
+  if kinds.size()>8:button(Rect2(566,806,308,48),journal_next_label(),"journal_next")
  else:
   var i=0
   for id in ChronicleDB.ACHIEVEMENTS:
    var entry=ChronicleDB.ACHIEVEMENTS[id];var done=id in history.achievements;var y=222+i*110
    panel(Rect2(105,y-26,1230,96));text(("達成 / " if done else "未達成 / ")+entry[0],Vector2(125,y+2),21,TEAL if done else GOLD)
    text(entry[1],Vector2(125,y+40),16,TEXT);i+=1
-  text("見切り %d / 5  ・  契約達成 %d  ・  発見 %d / 23"%[history.evades,history.contracts,history.legends.size()],Vector2(720,820),17,GOLD,true)
+  text("見切り %d / 5  ・  契約達成 %d  ・  発見 %d / %d"%[history.evades,history.contracts,history.legends.size(),ItemDB.LEGENDS.size()],Vector2(720,820),17,GOLD,true)
 
 func draw_route_map(r:Rect2,large:bool)->void:
  panel(r)

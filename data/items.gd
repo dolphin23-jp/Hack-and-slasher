@@ -75,6 +75,12 @@ static func legendary_unique(entry:Dictionary,kind:String)->String:
   "chain_rewind":return "chain_cooldown"
   "barrier_burst":return "barrier_burst_armor"
  return "chain_aegis"
+const UNIQUE_RELIC_EFFECTS=["chain_crown","chain_hands","chain_feet","chain_rewind","barrier_burst"]
+# Relic effect text for legendaries whose effect is separate from their unique rule.
+static func effect_text(item:Dictionary)->String:
+ var effect=String(item.get("effect",""))
+ if effect.is_empty() or effect.begins_with("weapon_") or effect in UNIQUE_RELIC_EFFECTS:return ""
+ return String(legend_info(effect).get("text",""))
 static func unique_text(item:Dictionary)->String:
  var id=String(item.get("unique",""))
  return WeaponDB.UNIQUE_TEXT.get(id,ARMOR_UNIQUE_TEXT.get(id,"固有能力"))

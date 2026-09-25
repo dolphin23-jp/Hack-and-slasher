@@ -15,11 +15,14 @@ static func strike(p,linked:bool=false)->void:
  if String(transition.label).contains("同型"):amount*=1+p.upgrades.get("same_family_mastery",0)
  if linked and p.last_chain_weapon=="scythe" and kind=="staff":amount*=1+p.upgrades.get("harvest_cast_mastery",0)
  if tier>=3 and kind=="sword" and linked:amount*=1.12
+ # Primary-oath node behaviors: 無拍子, 破拍子 and 星界回路 only shape linked strikes.
+ if linked and "magic" in w.types and p.has_effect("arcane_cap"):amount*=1.2
  var tier2_reach={"sword":1.10,"scythe":1.16,"spear":1.18,"staff":1.10,"fist":1.08,"mace":1.12,"spellblade":1.12}
  var reach=w.reach*(tier2_reach.get(kind,1.0) if tier>=2 else 1.0)*(1.15 if p.combo==3 else 1.0)*float(transition.reach)*(1+p.upgrades.get("slot2_reach",0) if p.combo==2 else 1.0)
  if linked and p.last_chain_weapon=="scythe" and kind=="staff":reach*=1+p.upgrades.get("harvest_cast_mastery",0)
  var arc=float(w.arc)*(1.25 if tier>=4 and kind=="sword" else 1.0)
  var strike_knock=w.knock*float(transition.knock)*(1.22 if tier>=4 and kind=="fist" else 1.0)
+ if linked and p.has_effect("impact_chain"):strike_knock*=1.3
  if tier>=4 and kind=="mace":reach*=1.15
  if int(it.rarity)==4 and kind=="mace":reach*=1.18
  if p.dash_attack_time>0 and p.upgrades.get("dash_hunter",0)>0:reach+=35
@@ -31,6 +34,7 @@ static func strike(p,linked:bool=false)->void:
   if p.upgrades.get("storm_counter",0)>0:g.chain_lightning(p.position,p.stats.attack*.8,null,2)
   p.counter_time=0
  p.attack_cd=w.cooldown/(1+p.stats.haste)/float(transition.haste);p.attack_time=.2
+ if linked and p.has_effect("flow_chain"):p.attack_cd/=1.12
  var tier5_repeat=tier>=5 and p.combo==3 and kind in ["sword","scythe"]
  var mythic_repeat=int(it.rarity)==4 and p.combo==3 and kind in ["sword","scythe"]
  var shield_double=p.has_unique("full_shield_double_magic") and "magic" in w.types and p.stats.shield_max>0 and p.barrier>=p.stats.shield_max-.01
@@ -42,10 +46,11 @@ static func strike(p,linked:bool=false)->void:
    if int(it.rarity)==4 and kind=="staff":angles=[-.13,0.0,.13]
    elif int(it.rarity)==4 and kind=="spellblade":angles=[-.17,.17]
    for a in angles:
-    var pierce=4 if tier>=4 and kind in ["staff","spellblade"] else 2
+    var pierce=(4 if tier>=4 and kind in ["staff","spellblade"] else 2)+(2 if "magic" in w.types and p.has_effect("arcane_pierce") else 0)
     var bolt=g.fire(p.position+p.facing*20,p.facing.rotated(a)*780,amount/(1.7 if angles.size()>1 else 1),true,pierce,Color("bfabff"))
     bolt.tier_shield=tier>=3 and kind in ["staff","spellblade"];bolt.damage_types=w.types;bolt.life=reach/780;bolt.radius=22 if w.shape=="wave" else 9
     bolt.normal_group=p.normal_group;bolt.normal_serial=p.normal_serial;bolt.chain_kind=kind
+    bolt.can_return="magic" in w.types and p.has_effect("arcane_echo")
     if transition.homing:bolt.homing_target=ChainResolver.seek_target(p)
     bolt.bounces=2 if unique=="ricochet" else (1 if tier>=4 and kind=="staff" else 0)
   else:
@@ -104,7 +109,7 @@ static func strike(p,linked:bool=false)->void:
    "spellblade":
     p.barrier=minf(p.barrier+14,maxf(28,p.stats.shield_max));p.barrier_time=5
  if p.combo==3:
-  if unique=="chain_guard":p.barrier+=12;p.barrier_time=5
+  if unique=="chain_guard":p.grant_barrier(12,36,5)
   if unique=="fist_nova":g.area_damage(p.position,155,amount*.8,true);g.fx.ring(p.position,155,Color("ffcc8a"),.3)
  if p.chain_streak>=3 and p.chain_streak%3==0:
   if p.has_effect("weapon_echo"):g.queue_blast(p.position+p.facing*55,120,p.stats.attack*.55,.14,Color("d7ccff"))
@@ -118,7 +123,7 @@ static func strike(p,linked:bool=false)->void:
   for slot in ItemDB.SLOTS:
    if slot in Loadout.WEAPONS:continue
    var gear=p.equipment[slot]
-   if gear.get("unique","")=="chain_guard":p.barrier=minf(p.barrier+(8 if int(gear.rarity)==4 else 4),maxf(25,p.stats.shield_max));p.barrier_time=5
+   if gear.get("unique","")=="chain_aegis":p.grant_barrier(8 if int(gear.rarity)==4 else 4,25,5)
    if int(gear.tier)<5:continue
    match String(slot):
     "head":g.queue_blast(p.position,125,p.stats.attack*.45,.12,Color("cbbcff"))

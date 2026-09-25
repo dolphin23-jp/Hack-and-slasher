@@ -48,6 +48,8 @@ static func ability_tokens(item:Dictionary)->Array:
   if WeaponActionResolver.ARTS.has(kind):out.append("武技: "+String(WeaponActionResolver.ARTS[kind].name))
  for tier in range(2,mini(5,int(item.get("tier",1)))+1):
   out.append("T%d: %s"%[tier,WeaponDB.tier_text(item,tier)])
+ var relic=ItemDB.effect_text(item)
+ if not relic.is_empty():out.append("聖遺物: "+relic)
  var unique=String(item.get("unique",""))
  if not unique.is_empty():out.append("固有: "+ItemDB.unique_text(item))
  var family=ItemDB.set_of(item)

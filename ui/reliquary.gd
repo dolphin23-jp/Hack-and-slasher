@@ -1,13 +1,13 @@
 class_name ReliquaryUI
 extends RefCounted
 const NODE_EFFECT_TEXT={
- "flow_chain":"連携速度を強化",
- "impact_chain":"連携の怯ませを強化",
+ "flow_chain":"連携中の攻撃速度 +12%",
+ "impact_chain":"連携中の押出・怯ませ +30%",
  "weapon_echo":"3連携で追撃",
- "arcane_pierce":"魔撃の貫通を強化",
- "arcane_echo":"魔撃が帰還",
- "arcane_cap":"魔撃連携を強化",
- "shield_sustain":"障壁回復を強化",
+ "arcane_pierce":"魔撃弾の貫通 +2",
+ "arcane_echo":"通常攻撃の魔撃弾が60%威力で帰還",
+ "arcane_cap":"連携中の魔撃威力 +20%",
+ "shield_sustain":"障壁回復 +60%",
  "shield_burst":"障壁を攻撃へ変換",
  "fortress_cap":"3連携で障壁",
  "burn_long":"炎上時間を延長",
@@ -52,10 +52,7 @@ func current_weapon_types(g)->Array:
   var starter=ItemDB.initial_items()
   for slot in Loadout.WEAPONS:out.append(String(starter[slot].get("weapon_type","sword")))
  return out
-func departure_weapon_types(g)->Array:
- var out=["sword","sword","sword"]
- if g.profile.chronicle.start=="lance" and "first_clear" in g.profile.chronicle.achievements:out[0]="spear"
- return out
+func departure_weapon_types(g)->Array:return ChronicleDB.starting_weapon_types(g.profile.chronicle)
 func weapon_line(kinds:Array)->String:
  var names=[]
  for kind in kinds:names.append(WeaponDB.TYPES.get(String(kind),WeaponDB.TYPES.sword).name)
@@ -398,7 +395,12 @@ func detail(u,it:Dictionary,r:Rect2,label:String)->void:
  y+=ceilf(rows.size()/2.0)*22+8
  for tier in range(1,int(it.tier)+1):
   u.text("T%d %s"%[tier,WeaponDB.tier_text(it,tier)],Vector2(x,y),11,u.TEAL);y+=16
- if int(it.rarity)>=3:u.wrapped_text("固有: "+ItemDB.unique_text(it)+(" / 神話: 武器系統または固有能力のルールを追加変化" if int(it.rarity)==4 else ""),Vector2(x,y+5),r.size.x-36,13,ItemDB.COLORS[int(it.rarity)],19)
+ if int(it.rarity)>=3:
+  var relic=ItemDB.effect_text(it);var line_y=y+5
+  if not relic.is_empty():line_y=u.wrapped_text("聖遺物: "+relic,Vector2(x,line_y),r.size.x-36,13,ItemDB.COLORS[int(it.rarity)],19)
+  var family=ItemDB.set_of(it)
+  if not family.is_empty():line_y=u.wrapped_text(BuildDB.SET_NAMES[family]+" "+BuildDB.SET_TEXT[family],Vector2(x,line_y),r.size.x-36,12,u.TEAL,18)
+  u.wrapped_text("固有: "+ItemDB.unique_text(it)+(" / 神話: 武器系統または固有能力のルールを追加変化" if int(it.rarity)==4 else ""),Vector2(x,line_y),r.size.x-36,13,ItemDB.COLORS[int(it.rarity)],19)
 func draw_forge(u)->void:
  var p=u.game.player;var it=p.equipment[forge_slot]
  detail(u,it,Rect2(40,290,780,535),"鍛冶対象 / "+ItemDB.slot_text(forge_slot))

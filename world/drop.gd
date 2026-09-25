@@ -7,6 +7,9 @@ var age=0.0
 var taken=false
 var icon:Texture2D
 var font=preload("res://assets/fonts/Body.ttf")
+# The comparison label runs full build scoring; cache it until the player's stats change.
+var label_key=""
+var label={}
 func setup(g,p:Vector2,value:Dictionary,type:String="item")->void:
  game=g;position=p;item=value;kind=type
  if font.fallbacks.is_empty():
@@ -49,25 +52,29 @@ func _draw()->void:
   draw_arc(Vector2(0,-44),18+sin(age*2)*3,0,TAU,32,Color("fff0c1"),2,true)
   for side in [-1,1]:draw_line(Vector2(side*10,-195),Vector2(0,-205),Color("ffe4a3"),2,true)
  if kind=="item" and (game.player.position.distance_to(position)<170 or (rarity>=2 and game.enemies.is_empty())):
-  var near:bool=game.player.position.distance_to(position)<210
-  var target=game.player.item_upgrade_target(item) if kind=="item" else String(item.slot)
-  var detail:String="ティア %d / %s"%[int(item.tier),ItemDB.slot_text(target if not target.is_empty() else String(item.slot))]
-  var detail_color:=Color("9aabb0")
-  if near:
-   var signals=game.player.item_comparison(item,target)
-   if not signals.is_empty():
-    detail+="  /  "+" · ".join(signals.slice(0,3))
-    detail_color=Color("91d7b8") if signals.any(func(v):return String(v).ends_with("↑") or String(v)=="固有能力") else Color("c9c3a5")
-  if rarity>=3:detail+=" / "+BuildDB.SET_NAMES.get(ItemDB.set_of(item),"固有効果")
-  var name_w:float=font.get_string_size(item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,13).x
-  var detail_w:float=font.get_string_size(detail,HORIZONTAL_ALIGNMENT_LEFT,-1,11).x
-  var w:float=maxf(name_w,detail_w)
+  var info=comparison_label(game.player.position.distance_to(position)<210)
+  var w:float=maxf(info.name_w,info.detail_w)
   draw_rect(Rect2(-w/2-9,18,w+18,43),Color("101b25"))
-  draw_string(font,Vector2(-name_w/2,35),item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,13,c)
-  draw_string(font,Vector2(-detail_w/2,53),detail,HORIZONTAL_ALIGNMENT_LEFT,-1,11,detail_color)
+  draw_string(font,Vector2(-info.name_w/2,35),item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,13,c)
+  draw_string(font,Vector2(-info.detail_w/2,53),info.detail,HORIZONTAL_ALIGNMENT_LEFT,-1,11,info.color)
  if kind=="chest":
   var prompt="[C] 開く"
   if game.profile.settings.touch:prompt="「回収」で開く"
   elif is_instance_valid(game.ui) and game.ui.pad_active:prompt="十字上で開く"
   var prompt_w=font.get_string_size(prompt,HORIZONTAL_ALIGNMENT_LEFT,-1,13).x
   draw_string(font,Vector2(-prompt_w/2,38),prompt,HORIZONTAL_ALIGNMENT_LEFT,-1,13,c)
+func comparison_label(near:bool)->Dictionary:
+ var p=game.player;var key="%d:%d:%s"%[p.get_instance_id(),p.stats_revision,near]
+ if key==label_key:return label
+ var target=p.item_upgrade_target(item)
+ var detail:String="ティア %d / %s"%[int(item.tier),ItemDB.slot_text(target if not target.is_empty() else String(item.slot))]
+ var detail_color:=Color("9aabb0")
+ if near:
+  var signals=p.item_comparison(item,target)
+  if not signals.is_empty():
+   detail+="  /  "+" · ".join(signals.slice(0,3))
+   detail_color=Color("91d7b8") if signals.any(func(v):return String(v).ends_with("↑") or String(v)=="固有能力") else Color("c9c3a5")
+ if int(item.get("rarity",0))>=3:detail+=" / "+BuildDB.SET_NAMES.get(ItemDB.set_of(item),"固有効果")
+ label_key=key
+ label={"detail":detail,"color":detail_color,"name_w":font.get_string_size(item.name,HORIZONTAL_ALIGNMENT_LEFT,-1,13).x,"detail_w":font.get_string_size(detail,HORIZONTAL_ALIGNMENT_LEFT,-1,11).x}
+ return label

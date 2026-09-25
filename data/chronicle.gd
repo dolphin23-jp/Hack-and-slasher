@@ -25,5 +25,11 @@ const STARTS=[
  {"id":"blade","name":"刃の巡礼","text":"初期装備で開始。探索中の祝福を自由に選べる。","unlock":""},
  {"id":"lance","name":"槍の巡礼","text":"第1武器が槍。武技威力 +18%、攻撃速度 -10%。","unlock":"first_clear"},
  {"id":"ember","name":"残火の巡礼","text":"回避が小さな炎を残す。最大生命 -15。","unlock":"collector"}]
+# Weapon order a new run departs with; start_run() applies the same lance swap.
+static func starting_weapon_types(chronicle:Dictionary)->Array:
+ var starter=ItemDB.initial_items();var out=[]
+ for slot in Loadout.WEAPONS:out.append(String(starter[slot].weapon_type))
+ if chronicle.get("start","blade")=="lance" and "first_clear" in chronicle.get("achievements",[]):out[0]="spear"
+ return out
 static func empty()->Dictionary:
  return {"legends":[],"enemies":{},"achievements":[],"evades":0,"contracts":0,"start":"blade"}
