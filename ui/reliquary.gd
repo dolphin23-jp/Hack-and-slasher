@@ -398,6 +398,8 @@ func detail(u,it:Dictionary,r:Rect2,label:String)->void:
  if int(it.rarity)>=3:
   var relic=ItemDB.effect_text(it);var line_y=y+5
   if not relic.is_empty():line_y=u.wrapped_text("聖遺物: "+relic,Vector2(x,line_y),r.size.x-36,13,ItemDB.COLORS[int(it.rarity)],19)
+  var family=ItemDB.set_of(it)
+  if not family.is_empty():line_y=u.wrapped_text(BuildDB.SET_NAMES[family]+" "+BuildDB.SET_TEXT[family],Vector2(x,line_y),r.size.x-36,12,u.TEAL,18)
   u.wrapped_text("固有: "+ItemDB.unique_text(it)+(" / 神話: 武器系統または固有能力のルールを追加変化" if int(it.rarity)==4 else ""),Vector2(x,line_y),r.size.x-36,13,ItemDB.COLORS[int(it.rarity)],19)
 func draw_forge(u)->void:
  var p=u.game.player;var it=p.equipment[forge_slot]

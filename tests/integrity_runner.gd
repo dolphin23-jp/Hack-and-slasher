@@ -199,6 +199,17 @@ func run()->void:
  check("12 drop labels cost %.2f ms over 60 frames"%label_ms,label_ms<60.0)
  clear()
 
+ # --- Branching routes use each room's role, not legacy ids, for major fights ---
+ game.dungeon.layout_version=3
+ var roles_ok=true
+ for room in game.dungeon.rooms:
+  if room.has("room_type"):roles_ok=roles_ok and game.major_encounter(int(room.id))==(String(room.room_type) in ["elite","boss","contract"])
+ var v3_rooms=game.dungeon.rooms.filter(func(r):return r.has("room_type"))
+ check("v3 major encounters follow room roles",not v3_rooms.is_empty() and roles_ok and game.major_encounter(1))
+ game.dungeon.layout_version=2
+ check("legacy major encounters keep their fixed rooms",game.major_encounter(3) and game.major_encounter(11) and not game.major_encounter(1))
+ game.dungeon.layout_version=3
+
  # --- BGM loops over the whole track, not the first ~20% (QOA data size != frames) ---
  var rate=AudioServer.get_mix_rate()
  for key in ["menu","dungeon","elite_music","boss_music","boss_awakened","victory_music"]:
