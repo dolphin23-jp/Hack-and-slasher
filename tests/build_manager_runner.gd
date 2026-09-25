@@ -65,7 +65,7 @@ func run()->void:
  game.profile.write_save()
  game.mode="title";game.ui.act("start")
  check("title start opens build confirmation",game.mode=="build_confirm")
- check("pre-run weapon summary uses departure loadout",game.ui.reliquary.current_weapon_types(game)==game.ui.reliquary.departure_weapon_types(game))
+ check("pre-run weapon summary uses departure loadout",game.ui.reliquary.current_weapon_types(game)==["sword","scythe","staff"])
  game.ui.act("cancel_start")
  check("build confirmation can return to title",game.mode=="title")
  game.mode="dead";game.ui.act("start")

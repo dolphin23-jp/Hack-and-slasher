@@ -52,10 +52,7 @@ func current_weapon_types(g)->Array:
   var starter=ItemDB.initial_items()
   for slot in Loadout.WEAPONS:out.append(String(starter[slot].get("weapon_type","sword")))
  return out
-func departure_weapon_types(g)->Array:
- var out=["sword","sword","sword"]
- if g.profile.chronicle.start=="lance" and "first_clear" in g.profile.chronicle.achievements:out[0]="spear"
- return out
+func departure_weapon_types(g)->Array:return ChronicleDB.starting_weapon_types(g.profile.chronicle)
 func weapon_line(kinds:Array)->String:
  var names=[]
  for kind in kinds:names.append(WeaponDB.TYPES.get(String(kind),WeaponDB.TYPES.sword).name)

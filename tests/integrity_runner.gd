@@ -169,6 +169,14 @@ func run()->void:
   check("%s phase 2 opens with %s"%[kind,openers[kind]],boss.phase==2 and boss.state=="approach" and boss.boss_phase_text()==openers[kind])
  clear()
 
+ # --- Build confirmation shows the weapons the run actually departs with ---
+ for start in [["blade",[]],["lance",["first_clear"]]]:
+  game.profile.chronicle.start=start[0];game.profile.chronicle.achievements=start[1].duplicate()
+  var summary=game.ui.reliquary.departure_weapon_types(game);game.start_run();await process_frame
+  var actual=[];for slot in Loadout.WEAPONS:actual.append(String(game.player.equipment[slot].weapon_type))
+  check("departure summary matches the %s start %s"%[start[0],str(actual)],summary==actual)
+ game.profile.chronicle=ChronicleDB.empty();game.start_run();await process_frame;clear();p=game.player
+
  # --- BGM loops over the whole track, not the first ~20% (QOA data size != frames) ---
  var rate=AudioServer.get_mix_rate()
  for key in ["menu","dungeon","elite_music","boss_music","boss_awakened","victory_music"]:
