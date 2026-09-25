@@ -7,6 +7,8 @@ static func empty_run_metrics()->Dictionary:
  for key in RUN_METRIC_KEYS:out[key]=0.0 if key=="damage_dealt" else 0
  return out
 var recovery_notice=""
+# Set when the file on disk must not be overwritten (newer version or failed backup).
+var write_blocked=false
 var path="user://ashen_vow_v1.json"
 var settings={"music":.65,"sfx":.8,"shake":.7,"auto_aim":false,"touch":false,"touch_size":.5,"touch_inset":.5,"hitstop":true,"auto_salvage_rare":false,"salvage_rules":SalvagePolicy.defaults()}
 var records={"runs":0,"wins":0,"best_level":1,"best_ascension":0,"total_kills":0}
@@ -18,9 +20,14 @@ var chronicle=ChronicleDB.empty()
 func read_save()->void:
  if not FileAccess.file_exists(path):return
  var content=FileAccess.get_file_as_string(path)
- if content.length()>2000000:return
- var data=JSON.parse_string(content)
- if not data is Dictionary or data.get("version",0)!=1 and data.get("version",0)!=VERSION:return
+ if content.length()>2000000:preserve_unreadable("保存データを開けませんでした。新しいデータで開始します。");return
+ var json=JSON.new()
+ var data=json.data if json.parse(content)==OK else null
+ if not data is Dictionary:preserve_unreadable("保存データを開けませんでした。新しいデータで開始します。");return
+ var version=data.get("version",0)
+ if (version is int or version is float) and float(version)>VERSION:
+  write_blocked=true;preserve_unreadable("新しいバージョンの保存データです。上書きを防ぐため、このバージョンでは保存しません。");return
+ if version!=1 and version!=VERSION:preserve_unreadable("保存データを開けませんでした。新しいデータで開始します。");return
  if data.get("version")==1 and not FileAccess.file_exists(path+".v1.bak"):
   DirAccess.copy_absolute(path,path+".v1.bak")
  data=SaveMigration.migrate(data)
@@ -74,8 +81,15 @@ func read_save()->void:
   for slot in ItemDB.SLOTS:run.equipment[slot].rarity=int(run.equipment[slot].rarity)
   for item in run.inventory:item.rarity=int(item.rarity)
  if s is Dictionary and not s.is_empty() and run.is_empty():
-  recovery_notice="保存データの一部を復元できません。元データは .recovery.bak に保護しました。"
-  if not FileAccess.file_exists(path+".recovery.bak"):DirAccess.copy_absolute(path,path+".recovery.bak")
+  preserve_unreadable("保存データの一部を復元できません。")
+# Keeps an unreadable save instead of letting the next write replace it with defaults.
+func preserve_unreadable(reason:String)->void:
+ var backup=path+".recovery.bak"
+ if FileAccess.file_exists(backup):backup=path+".recovery.%d.bak"%int(Time.get_unix_time_from_system())
+ if DirAccess.copy_absolute(path,backup)==OK:
+  recovery_notice=reason+"元データは "+backup.get_file()+" に保護しました。"
+ else:
+  write_blocked=true;recovery_notice=reason+"元データを保護できないため、保存を停止しています。"
 func valid_run(v:Variant)->bool:
  if not v is Dictionary or v.is_empty():return false
  for k in ["level","xp","hp","potions","seed","kills","elapsed","ascension","equipment","inventory","upgrades","cleared","position"]:
@@ -167,6 +181,7 @@ func vector_valid(v:Variant)->bool:
   if not (n is int or n is float) or not is_finite(float(n)):return false
  return true
 func write_save()->bool:
+ if write_blocked:return false
  var f=FileAccess.open(path+".tmp",FileAccess.WRITE)
  if f==null:return false
  f.store_string(JSON.stringify({"version":VERSION,"settings":settings,"records":records,"run":run,"chronicle":chronicle,"oaths":oaths,"build_presets":build_presets,"vault":vault}));f.flush();f.close()

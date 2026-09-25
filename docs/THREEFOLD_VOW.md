@@ -137,6 +137,10 @@ Save version 2, same `ashen_vow_v1.json` path. Before upgrading version 1, prese
 `.v1.bak`. Preserve records, settings, Chronicle, discoveries, contracts, map version,
 checkpoint, equipment and inventory; fill six missing slots. Infer the active elemental oath for an old in-progress Run from its equipped sets. Migration is idempotent.
 Invalid Run data is rejected without crashing, with a recovery backup and title notice.
+An unreadable profile (corrupt JSON, oversized, unknown version) is copied to
+`.recovery.bak` — or a timestamped `.recovery.<time>.bak` when that already exists —
+before defaults are used, so the next save can no longer destroy it silently. A save
+written by a newer version additionally blocks writes for the session.
 A mid-combat resume uses the existing cleared-sanctuary checkpoint policy.
 
 Projectile cap 192, delayed blasts 64, hazards 96. Existing visual-effect and

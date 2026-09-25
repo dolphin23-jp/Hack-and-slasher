@@ -358,7 +358,8 @@ func draw_title()->void:
   button(Rect2(520+i*285,583,270,48),entry.name if unlocked else entry.name+" / 未解放","start_oath:"+entry.id,game.profile.chronicle.start==entry.id)
   wrapped_text(entry.text if unlocked else ("初踏破で解放" if entry.id=="lance" else "レジェンダリー6種で解放"),Vector2(530+i*285,660),248,14,MUTED,23)
  button(Rect2(840,753,285,53),"誓印盤 / 永続ビルド","oaths")
- if not game.profile.recovery_notice.is_empty():wrapped_text(game.profile.recovery_notice,Vector2(850,760),520,16,RED)
+ if not game.profile.recovery_notice.is_empty():
+  panel(Rect2(860,28,545,104),Color(.06,.035,.04,.92),Color(RED,.6));wrapped_text(game.profile.recovery_notice,Vector2(880,58),505,16,RED,25)
  text("三連の誓い / 大型アップデート 0.3",Vector2(520,853),14,GOLD)
  text("オリジナルアクションRPG  /  プロトタイプ",Vector2(105,859),12,MUTED);text("GODOT 4.5.1",Vector2(1329,859),12,MUTED,true)
 func draw_hud()->void:

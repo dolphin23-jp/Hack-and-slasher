@@ -588,7 +588,7 @@ func _persist_run_checkpoint(victory_ready:bool)->bool:
  profile.records.best_ascension=maxi(profile.records.best_ascension,ascension)
  profile.run=run_snapshot(victory_ready)
  var ok=profile.write_save()
- if not ok:toast("セーブできませんでした。保存先の権限を確認してください。")
+ if not ok:toast(profile.recovery_notice if profile.write_blocked else "セーブできませんでした。保存先の権限を確認してください。")
  return ok
 func save_run()->void:
  if not is_instance_valid(player) or player.dead or mode in ["title","dead"]:return

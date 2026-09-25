@@ -37,6 +37,8 @@ func linked_strike()->Dictionary:
  p.attack_cd=0;p.attack();p.attack_cd=0
  var before=game.projectiles.size();p.attack()
  return {"cd":p.attack_cd,"bolt":game.projectiles[before] if game.projectiles.size()>before else null}
+func write_text(path:String,text:String)->void:
+ var f=FileAccess.open(path,FileAccess.WRITE);f.store_string(text);f.close()
 func source_text()->String:
  var out=""
  for dir in ["res://actors","res://systems","res://scripts","res://world","res://ui","res://data"]:
@@ -164,6 +166,29 @@ func run()->void:
   var wrapped=playback.get_playback_position()
   check("BGM %s plays to its end before looping"%key,stream.loop_end==int(round(length*stream.mix_rate)) and absf(near_end-(length-1.0))<.1 and absf(wrapped-.5)<.1)
  game.sound.set_music("dungeon")
+
+ # --- Unreadable or newer saves are preserved instead of silently replaced ---
+ var save_dir="user://integrity-saves"
+ DirAccess.make_dir_recursive_absolute(save_dir)
+ for file in DirAccess.get_files_at(save_dir):DirAccess.remove_absolute(ProjectSettings.globalize_path(save_dir+"/"+file))
+ var corrupt_path=save_dir+"/corrupt.json";var corrupt_text="{\"version\":2,\"records\":{\"wins\":7},"
+ write_text(corrupt_path,corrupt_text)
+ var store=ProfileStore.new();store.path=corrupt_path;store.read_save()
+ check("corrupt save shows a recovery notice",not store.recovery_notice.is_empty() and not store.write_blocked)
+ check("corrupt save is copied to a recovery backup",FileAccess.get_file_as_string(corrupt_path+".recovery.bak")==corrupt_text)
+ check("play can continue and save after a corrupt file",store.write_save() and FileAccess.get_file_as_string(corrupt_path+".recovery.bak")==corrupt_text)
+ write_text(corrupt_path,"not json at all")
+ var again=ProfileStore.new();again.path=corrupt_path;again.read_save()
+ var backups=Array(DirAccess.get_files_at(save_dir)).filter(func(f):return String(f).begins_with("corrupt.json.recovery"))
+ check("a second corruption never overwrites the first backup",backups.size()==2 and FileAccess.get_file_as_string(corrupt_path+".recovery.bak")==corrupt_text)
+ var future_path=save_dir+"/future.json";var future_text="{\"version\":3,\"records\":{\"wins\":7},\"run\":{}}"
+ write_text(future_path,future_text)
+ var future=ProfileStore.new();future.path=future_path;future.read_save()
+ check("newer save version blocks writes",future.write_blocked and not future.write_save() and FileAccess.get_file_as_string(future_path)==future_text)
+ check("newer save version is also backed up",FileAccess.get_file_as_string(future_path+".recovery.bak")==future_text and not future.recovery_notice.is_empty())
+ var healthy=ProfileStore.new();healthy.path=save_dir+"/healthy.json";healthy.records.wins=3;healthy.write_save()
+ var reread=ProfileStore.new();reread.path=healthy.path;reread.read_save()
+ check("valid saves load without notice or backup",reread.records.wins==3 and reread.recovery_notice.is_empty() and not FileAccess.file_exists(healthy.path+".recovery.bak"))
 
  DirAccess.make_dir_recursive_absolute("res://test-artifacts")
  var summary="INTEGRITY checks=%d failures=%d\n"%[checks,failures.size()]
