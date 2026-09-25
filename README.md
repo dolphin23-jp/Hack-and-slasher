@@ -41,6 +41,7 @@ See [the update and design notes](docs/CATHEDRAL_REBORN.md) for rules, controls 
 - Original ten-room campaign, including treasury and boss, using movement and normal attacks for combat.
 - Southern-route campaign using normal attacks, skills, dodge and healing; both paid contracts must complete before the boss.
 - 40 forge/salvage safety checks; 55 Skill 2.0 and recipe behavior checks; 108 item / forge / oath / migration checks.
+- 65 integrity checks: every advertised oath / relic / unique effect id has a gameplay handler, equipped relics and two-piece sets work, BGM loops over the full track, unreadable saves are preserved, boss phase-2 openers match their banners.
 - Rendered UI captures with click/gamepad/touch checks, including journal, contracts, awakened boss, equipment synergy and simultaneous stick/attack at iPad-class aspect ratio.
 - Script errors and resource leaks fail CI. Web export and Chromium / touch / PWA runtime gates remain required before merging.
 
