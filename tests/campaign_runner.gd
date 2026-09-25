@@ -8,6 +8,11 @@ var route = [1, 3, 1, 2, 4, 5, 6, 7, 8, 9]
 var southern = false
 var branching = false
 var chain_build=[]
+var forced_guardian=""
+var guardian_seen=false
+var guardian_awakened=false
+var render_guardian=false
+var rendered_states={}
 
 var game
 var route_index = 0
@@ -35,6 +40,15 @@ func _run() -> void:
 	branching=game.dungeon.layout_version>=3
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--chain="):chain_build=arg.trim_prefix("--chain=").split(",")
+		if arg.begins_with("--guardian="):forced_guardian=arg.trim_prefix("--guardian=")
+		render_guardian=render_guardian or arg=="--render-guardian"
+	if render_guardian:
+		DisplayServer.window_set_size(Vector2i(1180,820))
+		game.profile.settings.touch=true
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts/ui"))
+	if forced_guardian in ["forge_boss","thorn_boss"] and branching:
+		for room in game.dungeon.rooms:
+			if room.get("room_type","")=="boss":room.special=forced_guardian
 	if chain_build.size()==3:
 		for i in range(3):game.player.equipment[Loadout.WEAPONS[i]].weapon_type=chain_build[i]
 		game.player.rebuild_stats()
@@ -46,7 +60,7 @@ func _run() -> void:
 	print("CAMPAIGN START seed=", game.run_seed)
 
 	while simulated < MAX_SIM_SECONDS and game.mode not in ["victory", "dead"]:
-		for _substep in range(SUBSTEPS_PER_FRAME):
+		for _substep in range(30 if render_guardian else SUBSTEPS_PER_FRAME):
 			if branching and game.mode=="route_event":game.choose_route_event(false)
 			if branching and game.mode=="inventory":game.mode="play"
 			if game.mode == "event":
@@ -63,6 +77,11 @@ func _run() -> void:
 			if southern or branching: _use_build_actions()
 			game.step(DT)
 			simulated += DT
+			if not forced_guardian.is_empty():
+				for enemy in game.enemies:
+					if enemy.kind==forced_guardian:
+						guardian_seen=true
+						if enemy.phase==2:guardian_awakened=true
 			if game.player.hp < last_hp - 0.5:
 				var boss = _boss_enemy()
 				var boss_note: String = "none" if boss == null else "%s p=%d phase=%d d=%.0f" % [boss.state, boss.pattern, boss.phase, boss.position.distance_to(game.player.position)]
@@ -90,6 +109,15 @@ func _run() -> void:
 		if not failures.is_empty():
 			break
 		await get_tree().process_frame
+		if render_guardian:
+			game.camera.position=game.player.position+game.player.facing*42
+			game.player.queue_redraw()
+			game.ui.queue_redraw()
+			game.overlay.queue_redraw()
+			for enemy in game.enemies:enemy.queue_redraw()
+			await get_tree().process_frame
+			await get_tree().process_frame
+			_capture_live_boss()
 
 	game.player.test_move = Vector2.ZERO
 	var unique_visited: Array[int] = []
@@ -112,6 +140,12 @@ func _run() -> void:
 		failures.append("normal attack was never used")
 	if game.player.dead:
 		failures.append("player died before campaign completion")
+	if not forced_guardian.is_empty() and (not guardian_seen or not guardian_awakened):
+		failures.append("guardian %s did not reach awakened phase during actual campaign"%forced_guardian)
+	if render_guardian:
+		for kind in [forced_guardian,"boss"]:
+			for phase_label in ["phase1","phase2"]:
+				if not rendered_states.has(kind+"_"+phase_label):failures.append("no rendered live boss state: "+kind+"_"+phase_label)
 
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://test-artifacts"))
 	var summary = "CAMPAIGN mode=%s simulated=%.1fs attacks=%d blessings=%d kills=%d visited=%s failures=%d\n" % [
@@ -125,6 +159,19 @@ func _run() -> void:
 		file.close()
 	print(summary.strip_edges())
 	game.shutdown(0 if failures.is_empty() else 1)
+
+func _capture_live_boss()->void:
+	for enemy in game.enemies:
+		if not is_instance_valid(enemy) or enemy.dead or enemy.kind not in [forced_guardian,"boss"]:continue
+		if enemy.state not in ["windup","recover","approach"]:continue
+		var label=enemy.kind+("_phase2" if enemy.phase==2 else "_phase1")
+		if rendered_states.has(label):continue
+		var img=get_viewport().get_texture().get_image()
+		if img==null:failures.append("live render unavailable: "+label);return
+		var file=ProjectSettings.globalize_path("res://test-artifacts/ui/phase8_play_%s.png"%label)
+		if img.save_png(file)!=OK:failures.append("live render save failed: "+label);return
+		rendered_states[label]=true
+		print("PHASE8 PLAY SHOT ",label," state=",enemy.state," hp=",ceili(enemy.hp))
 
 func _advance_route_if_ready() -> void:
 	if branching:

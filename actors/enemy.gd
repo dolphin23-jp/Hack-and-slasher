@@ -44,6 +44,7 @@ const ELITE_AFFIXES={
  "volatile":{"name":"爆裂","hint":"死亡後に爆発","color":Color("c98bd8")},
  "echoing":{"name":"反響","hint":"攻撃後に追加弾","color":Color("9cbbe8")}} 
 const FULL_BOSSES=["forge_boss","thorn_boss","boss"]
+const BOSS_ART={"forge_boss":"res://assets/characters/forge_boss.png","thorn_boss":"res://assets/characters/thorn_boss.png","boss":"res://assets/characters/boss_king.png"}
 func is_full_boss()->bool:return kind in FULL_BOSSES
 func is_boss_like()->bool:return is_full_boss() or kind=="miniboss"
 func boss_title()->String:
@@ -71,7 +72,9 @@ func setup(g,type:String,p:Vector2,tier:int,room:int,forced_affix:String="")->vo
  game=g;kind=type;position=p;room_id=room;spec=game.enemy_data[kind];radius=spec.radius
  max_hp=spec.hp*(1+maxi(0,tier-1)*.25+game.ascension*.45);hp=max_hp
  damage=spec.damage*(1+maxi(0,tier-1)*.085+game.ascension*.15);speed=spec.speed;xp=int(spec.xp*(1+maxi(0,tier-1)*.12))
- texture=load("res://assets/characters/"+texture_kind()+".svg");windup=spec.windup
+ var art_path=String(BOSS_ART.get(kind,""))
+ texture=load(art_path) if not art_path.is_empty() and ResourceLoader.exists(art_path) else load("res://assets/characters/"+texture_kind()+".svg")
+ windup=spec.windup
  if kind in ["elite","champion"]:
   max_hp*=game.ascension_elite_hp_mult();hp=max_hp;damage*=game.ascension_elite_damage_mult()
   affix=forced_affix if forced_affix in ELITE_AFFIXES else ELITE_AFFIXES.keys()[game.rng.randi_range(0,ELITE_AFFIXES.size()-1)]
@@ -342,36 +345,49 @@ func take_damage(amount:float,knock:Vector2,crit:bool=false,proc:bool=false)->vo
    game.toast("爆裂の誓い / 爆発範囲から離れろ")
   game.enemy_died(self,proc);queue_free()
 func _draw()->void:
- var size=145 if is_full_boss() else (125 if kind=="miniboss" else (110 if kind=="champion" else (104 if kind in ["elite","warden","brute"] else (88 if kind=="lancer" else (77 if kind=="hound" else 79)))))
+ var size=170 if is_full_boss() else (125 if kind=="miniboss" else (110 if kind=="champion" else (104 if kind in ["elite","warden","brute"] else (88 if kind=="lancer" else (77 if kind=="hound" else 79)))))
  draw_set_transform(Vector2(0,8),0,Vector2(1,.4));draw_circle(Vector2.ZERO,radius*1.3,Color(0,0,0,.4));draw_set_transform(Vector2.ZERO)
  if is_full_boss():
   var boss_color={"forge_boss":Color("ffba72"),"thorn_boss":Color("e6a1c8"),"boss":Color("e9b171")}.get(kind,Color("e9b171"))
   draw_arc(Vector2.ZERO,radius+8,0,TAU,48,Color("8cf3d2") if state=="recover" else boss_color,3,true)
-  if phase==2:
-   if kind=="boss":
-    for side in [-1,1]:
-     var wing=PackedVector2Array([Vector2(side*28,-24),Vector2(side*123,-104),Vector2(side*91,-10),Vector2(side*54,12)])
-     draw_colored_polygon(wing,Color(.93,.35,.18,.36));draw_polyline(wing,Color("ffc489"),2,true)
-    draw_arc(Vector2(0,-83),39,PI,TAU,32,Color("ffcc87"),4,true)
-   elif kind=="forge_boss":
-    for j in range(6):draw_line(Vector2.from_angle(j*TAU/6)*(radius+8),Vector2.from_angle(j*TAU/6)*(radius+26),Color("ffc071"),4)
-   elif kind=="thorn_boss":
-    for j in range(8):draw_line(Vector2.from_angle(j*TAU/8)*(radius+6),Vector2.from_angle(j*TAU/8)*(radius+30),Color("efb0d1"),3)
+  if state=="transform":
+   draw_arc(Vector2.ZERO,radius+18,age*1.8,age*1.8+PI*1.55,32,boss_color,4,true)
+  elif state=="recover":
+   draw_arc(Vector2.ZERO,radius+16,PI*.15,PI*.85,20,Color("8cf3d2"),4,true)
  elif kind in ["elite","champion"]:
 
   draw_arc(Vector2.ZERO,radius+9,0,TAU,48,Color(affix_color(),.72),3,true)
   draw_arc(Vector2.ZERO,radius+14,age*.7,age*.7+PI*1.15,32,Color(affix_color(),.34),2,true)
  var tint=Color(2.7,2.7,2.7) if flash>0 else Color.WHITE
- if kind=="boss" and phase==2 and flash<=0:tint=Color(1.3,.75,.56)
- if kind=="forge_boss" and flash<=0:tint=Color(1.25,.82,.58) if phase==2 else Color(1.05,.88,.72)
- if kind=="thorn_boss" and flash<=0:tint=Color(1.18,.72,1.0) if phase==2 else Color(1.02,.88,1.08)
+ if is_full_boss() and state=="recover" and flash<=0:tint=Color(.85,1.10,1.07)
+ elif kind=="thorn_boss" and flash<=0:tint=Color(1.18,1.10,1.16)
  if kind=="weaver" and flash<=0:tint=Color(.88,.72,1.22)
  if kind=="brute" and flash<=0:tint=Color(1.05,.88,.72)
  if kind=="summoner" and flash<=0:tint=Color(.85,.7,1.3)
  if state=="spawn":tint.a=clampf(1-timer/(1.5 if is_full_boss() else (.9 if kind=="miniboss" else .65)),.15,1)
  if slow_time>0 and flash<=0:tint=Color(.65,1,1.12)
- draw_set_transform(Vector2(0,sin(age*7)*(2.2 if state=="approach" else .5)),sin(age*7)*.025 if state=="approach" else 0,Vector2(1 if aim.x>=0 else -1,1))
- draw_texture_rect(texture,Rect2(-size*.5,-size*.76,size,size),false,tint);draw_set_transform(Vector2.ZERO)
+ var pose_offset=Vector2(0,sin(age*7)*(2.2 if state=="approach" else .5))
+ var pose_angle=sin(age*7)*.025 if state=="approach" else 0.0
+ var pose_scale=Vector2(1 if aim.x>=0 else -1,1)
+ if is_full_boss():
+  if state in ["windup","chain_windup"]:
+   # Pull back along the attack line while the floor warning remains fully visible.
+   var progress=clampf(1.0-timer/maxf(.01,windup),0.0,1.0)
+   pose_offset-=aim*(5.0+7.0*progress);pose_angle+=(-.13 if aim.x>=0 else .13)*progress
+   pose_scale.y+=.06*progress
+  elif state=="charge":pose_offset+=aim*5.0;pose_angle+=.13 if aim.x>=0 else -.13
+  elif state=="recover":pose_offset+=aim*7.0;pose_angle+=.12 if aim.x>=0 else -.12;pose_scale.y=.91
+  elif state=="transform":pose_scale*=1.0+.055*sin(age*16.0)
+ draw_set_transform(pose_offset,pose_angle,pose_scale)
+ if is_full_boss() and texture.get_width()>=1500:
+  var frame=1 if phase==2 and (state!="transform" or timer<.8) else 0
+  var half=texture.get_width()*.5
+  var src=Rect2(half*frame,0,half,texture.get_height())
+  var dest=Rect2(-size*.5,-size*.88,size,size*1.17)
+  draw_texture_rect_region(texture,dest.grow(3),src,Color(.05,.07,.09,.9))
+  draw_texture_rect_region(texture,dest,src,tint)
+ else:draw_texture_rect(texture,Rect2(-size*.5,-size*.76,size,size),false,tint)
+ draw_set_transform(Vector2.ZERO)
  if kind=="warden" and shield_break<=0:
   draw_arc(Vector2(0,-10),36,aim.angle()-1.05,aim.angle()+1.05,28,Color("b4e3f2"),7,true)
  if kind=="summoner":draw_arc(Vector2(0,-57),25,age,age+TAU*.8,32,Color("dfa8ff"),3,true)
