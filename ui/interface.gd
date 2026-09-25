@@ -587,8 +587,9 @@ func draw_journal()->void:
    panel(Rect2(pos,Vector2(630,126)),PANEL,GOLD if found else LINE)
    text(entry.name if found else "未発見 / "+ItemDB.slot_text(entry.slot),pos+Vector2(19,29),19,GOLD if found else MUTED)
    text("三連の聖遺物",pos+Vector2(455,29),14,TEAL)
-   var preview={"unique":ItemDB.legendary_unique(entry,entry.get("weapon_type",WeaponDB.TYPES.keys()[idx%7]))}
-   wrapped_text(ItemDB.unique_text(preview) if found else "宝箱、精鋭、危険な契約、王の戦利品から発見できる。",pos+Vector2(19,62),590,15,TEXT if found else MUTED,24)
+   var preview={"unique":ItemDB.legendary_unique(entry,entry.get("weapon_type",WeaponDB.TYPES.keys()[idx%7])),"effect":entry.effect}
+   var relic=ItemDB.effect_text(preview);var summary=(relic+" / " if not relic.is_empty() else "")+"固有: "+ItemDB.unique_text(preview)
+   wrapped_text(summary if found else "宝箱、精鋭、危険な契約、王の戦利品から発見できる。",pos+Vector2(19,62),590,15,TEXT if found else MUTED,24)
   button(Rect2(566,806,308,48),"次の頁" if journal_page==0 else "前の頁","journal_next")
  elif journal_tab=="enemies":
   var kinds=ChronicleDB.ENEMIES.keys();var start=journal_page*8;var shown=kinds.slice(start,mini(start+8,kinds.size()))

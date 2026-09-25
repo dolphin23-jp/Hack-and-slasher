@@ -67,6 +67,8 @@ static func execute(p,action:Dictionary,origin:Vector2,aim:Vector2,chained:bool)
  var reach=220.0+p.upgrades.get("chain_radius",0) if chained else 220.0
  g.fx.weapon(origin,aim,kind,reach,"finisher" if action.get("finisher",false) else ("chain" if chained else "art"))
  var amount=float(action.damage)
+ if chained and "magic" in action.types and p.has_effect("arcane_cap"):amount*=1.2
+ var magic_pierce=2 if "magic" in action.types and p.has_effect("arcane_pierce") else 0
  match kind:
   "sword":
    if not chained:p.position=g.dungeon.move_body(p.position,aim*95,18);origin=p.position
@@ -81,7 +83,7 @@ static func execute(p,action:Dictionary,origin:Vector2,aim:Vector2,chained:bool)
    g.fx.ring(origin,reach,color,.3);g.fx.slash(origin,aim,reach,color,true,true)
   "spear","staff":
    var start=origin-aim*90 if chained else origin+aim*20
-   var bolt=g.fire(start,aim*1050,amount,true,12,color)
+   var bolt=g.fire(start,aim*1050,amount,true,12+magic_pierce,color)
    bolt.damage_types=action.types;bolt.radius=18 if kind=="spear" else 28;bolt.life=.65
    bolt.can_return=p.has_effect("lance_return");bolt.chain_on_hit=p.synergy("storm")
    if p.has_effect("lance_fork"):
@@ -99,7 +101,7 @@ static func execute(p,action:Dictionary,origin:Vector2,aim:Vector2,chained:bool)
    g.fx.ring(origin,reach,color,.32);g.fx.burst(origin,color,24,230)
   "spellblade":
    for angle in [-.16,0,.16]:
-    var bolt=g.fire(origin-aim*60 if chained else origin+aim*20,aim.rotated(angle)*870,amount/3,true,6,color)
+    var bolt=g.fire(origin-aim*60 if chained else origin+aim*20,aim.rotated(angle)*870,amount/3,true,6+magic_pierce,color)
     bolt.damage_types=action.types;bolt.radius=23;bolt.life=.6
    g.fx.slash(origin,aim,180,color,true,true)
  if action.mythic:g.fx.ring(origin,85,Color("ffe4a3"),.28)

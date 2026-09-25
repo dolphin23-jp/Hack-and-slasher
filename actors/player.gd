@@ -175,21 +175,27 @@ func item_upgrade_ratio(item:Dictionary)->float:
  var loadout:Dictionary=equipment.duplicate(true);loadout[target]=item
  return build_score(loadout)/current-1.0
 func rebuild_stats()->void:stats=calculated();hp=minf(hp,stats.hp)
+# Adds barrier up to max(cap, shield_max) without ever cutting a larger barrier from another source.
+func grant_barrier(amount:float,cap:float,duration:float)->void:
+ barrier=maxf(barrier,minf(barrier+amount,maxf(cap,stats.shield_max)));barrier_time=maxf(barrier_time,duration)
 func has_unique(id:String)->bool:
  for slot in ItemDB.SLOTS:
   if String(equipment[slot].get("unique",""))==id:return true
  return false
 func has_effect(effect:String)->bool:
  if OathBoard.has_effect(oath_board,active_oaths,effect):return true
+ # Equipped legendaries grant their own relic effect in addition to oath-granted effects.
  for slot in ItemDB.SLOTS:
-  if effect in ["echo","reaper","execution","judgement_echo","lance_fork","lance_return","echo_guard","dash_nova"] and equipment[slot].effect==effect:return true
+  if String(equipment[slot].get("effect",""))==effect:return true
  return false
 func set_count(family:String,loadout:Dictionary=equipment)->int:
  var count=0
  for slot in ItemDB.SLOTS:
   if ItemDB.set_of(loadout[slot])==family:count+=1
  return count
-func synergy(family:String)->bool:return ("storm" in active_oaths if family=="storm" else ("flame" in active_oaths if family=="cinder" else "dance" in active_oaths))
+func synergy(family:String)->bool:
+ var oath={"storm":"storm","cinder":"flame","echo":"dance"}.get(family,"")
+ return (not oath.is_empty() and oath in active_oaths) or set_count(family)>=2
 func perfect_evade()->void:
  if dash_evaded:return
  dash_evaded=true;counter_time=2.0;dash_cd=maxf(0,dash_cd-(.35 if upgrades.get("riposte",0)>0 else .2))
@@ -201,7 +207,8 @@ func tick(dt:float)->void:
  counter_time=maxf(0,counter_time-dt);dash_attack_time=maxf(0,dash_attack_time-dt);dash_nova_cd=maxf(0,dash_nova_cd-dt)
  barrier_time=maxf(0,barrier_time-dt)
  if barrier_time<=0:barrier=minf(barrier,stats.shield_max)
- barrier=minf(maxf(barrier,0)+stats.shield_regen*dt,maxf(barrier,stats.shield_max))
+ var regen=stats.shield_regen*(1.6 if has_effect("shield_sustain") else 1.0)
+ barrier=minf(maxf(barrier,0)+regen*dt,maxf(barrier,stats.shield_max))
  WeaponActionResolver.tick(self,dt)
  for i in range(3):cooldowns[i]=maxf(0,cooldowns[i]-dt)
  dash_cd=maxf(0,dash_cd-dt);attack_cd=maxf(0,attack_cd-dt);invulnerable=maxf(0,invulnerable-dt);flash=maxf(0,flash-dt)
