@@ -109,7 +109,7 @@ static func strike(p,linked:bool=false)->void:
    "spellblade":
     p.barrier=minf(p.barrier+14,maxf(28,p.stats.shield_max));p.barrier_time=5
  if p.combo==3:
-  if unique=="chain_guard":p.barrier+=12;p.barrier_time=5
+  if unique=="chain_guard":p.grant_barrier(12,36,5)
   if unique=="fist_nova":g.area_damage(p.position,155,amount*.8,true);g.fx.ring(p.position,155,Color("ffcc8a"),.3)
  if p.chain_streak>=3 and p.chain_streak%3==0:
   if p.has_effect("weapon_echo"):g.queue_blast(p.position+p.facing*55,120,p.stats.attack*.55,.14,Color("d7ccff"))

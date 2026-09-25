@@ -150,6 +150,12 @@ func run()->void:
  for i in range(3):p.attack_cd=0;p.attack()
  check("mythic chain_aegis grants a larger barrier",is_equal_approx(p.barrier,8.0))
 
+ # chain_guard (巡る守護の魔刃) barrier is bounded like every other barrier source.
+ clear();var guard_blade=legend("weapon_spellblade");p.equipment.weapon3=guard_blade;p.rebuild_stats();p.stats.crit=0;foe(Vector2(60,0))
+ for i in range(3):p.attack_cd=0;p.attack()
+ check("chain_guard grants barrier on the third strike",guard_blade.unique=="chain_guard" and is_equal_approx(p.barrier,12.0))
+ for i in range(120):p.attack_cd=0;p.attack();p.tick(0.0)
+ check("chain_guard barrier is capped under sustained attacks",p.barrier<=maxf(36,p.stats.shield_max)+.001 and p.barrier>=36-.001)
  # Relic text is visible in details, journal and comparison tokens.
  var tokens=EquipmentCompare.ability_tokens(legend("phoenix"))
  check("comparison lists the relic effect",tokens.any(func(t):return String(t).begins_with("聖遺物: ")))
