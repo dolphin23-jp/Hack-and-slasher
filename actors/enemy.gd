@@ -164,7 +164,7 @@ func tick(dt:float)->void:
      timer=2.4 if kind=="boss" else (2.05 if is_boss_like() else (1.5 if kind in ["lancer","champion"] else 1.2))
    if int(age*30)%3==0:game.fx.burst(position,Color("ad796a"),2,30)
   "transform":
-   if timer<=0:state="approach";timer=.5;pattern=3
+   if timer<=0:state="approach";timer=.5
   "chain_windup":
    if timer<=0:state="charge";timer=.65;charge_hit=false
   "recover":

@@ -161,6 +161,14 @@ func run()->void:
  check("comparison lists the relic effect",tokens.any(func(t):return String(t).begins_with("聖遺物: ")))
  check("chain-rule legendaries do not duplicate unique text as relic text",ItemDB.effect_text(legend("chain_hands")).is_empty() and ItemDB.effect_text(legend("weapon_scythe")).is_empty())
 
+ # --- Phase-2 bosses open with the move their transformation banner teaches ---
+ var openers={"forge_boss":"火花扇 / 横へ","thorn_boss":"眷属 / 範囲で処理","miniboss":"突進 / 横へ","boss":"突進 / 横へ回避"}
+ for kind in openers:
+  clear();var boss=game.spawn_enemy(kind,Vector2(400,0),5,4);boss.state="approach";boss.timer=5.0;boss.hp=boss.max_hp*.4;boss.tick(.01)
+  boss.timer=0.0;boss.tick(.01)
+  check("%s phase 2 opens with %s"%[kind,openers[kind]],boss.phase==2 and boss.state=="approach" and boss.boss_phase_text()==openers[kind])
+ clear()
+
  # --- BGM loops over the whole track, not the first ~20% (QOA data size != frames) ---
  var rate=AudioServer.get_mix_rate()
  for key in ["menu","dungeon","elite_music","boss_music","boss_awakened","victory_music"]:
